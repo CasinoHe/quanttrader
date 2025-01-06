@@ -19,6 +19,7 @@
 #include <mutex>
 #include <iostream>
 #include <map>
+#include <memory>
 
 namespace quanttrader
 {
@@ -26,15 +27,6 @@ namespace logger
 {
     using LevelEnum = spdlog::level::level_enum;
     using LoggerPtr = std::shared_ptr<spdlog::logger>;
-
-    enum class LogCategory : int
-    {
-        file = 1,
-        syslog = 4,
-        console = 5,
-    };
-
-    // reflection to log category
 
     class QuantLoggerMgr
     {
@@ -53,7 +45,7 @@ namespace logger
             /* AIGC Function explaination:
             */
             template<typename Sink, typename... SinkArgs>
-            LoggerPtr get_logger(const LogCategory category, const std::string &name, SinkArgs &&... sink_args)
+            LoggerPtr get_logger(const std::string &name, bool with_stdout, SinkArgs &&... sink_args)
             {
                 auto logger = spdlog::get(name);
                 if (logger)
@@ -66,22 +58,19 @@ namespace logger
                 try
                 {
                     auto formattor = std::make_unique<spdlog::pattern_formatter>(quanttrader::kSpdLogPattern);
-                    if (category == LogCategory::console)
+                    logger = spdlog::create_async_nb<Sink>(name, std::forward<SinkArgs>(sink_args)...);
+                    auto sink = std::make_shared<Sink>(std::forward<SinkArgs>(sink_args)...);
+                    sink->set_formatter(formattor->clone());
+                    sink->set_level(log_level_);
+                    logger->sinks().push_back(sink);
+
+                    if (with_stdout)
                     {
                         auto stdout_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
                         stdout_sink->set_formatter(formattor->clone());
                         stdout_sink->set_level(log_level_);
                         logger->sinks().push_back(stdout_sink);
                     }
-                    else
-                    {
-                        logger = spdlog::create_async_nb<Sink>(name, std::forward<SinkArgs>(sink_args)...);
-                        logger->sinks()[0]->set_formatter(formattor->clone());
-                        logger->sinks()[0]->set_level(log_level_);
-                    }
-
-                    // return logger;
-                    return nullptr;
                 }
                 catch(const std::exception& e)
                 {
@@ -90,12 +79,14 @@ namespace logger
                 }
             }
 
-            LoggerPtr get_file_logger(const std::string &name, const std::string &logfile,
-                                      std::map<std::string, size_t> &max_size_map,
-                                      std::map<std::string, int> &rotation_hour_map
-                                    );
+            LoggerPtr get_file_logger(const std::string &name, const std::string &logfile, bool with_stdout = false,
+                                      std::shared_ptr<std::map<std::string, size_t>> max_size_map = nullptr,
+                                      std::shared_ptr<std::map<std::string, int>> rotation_hour_map = nullptr);
 
             LoggerPtr get_console_logger(const std::string &name);
+            LoggerPtr get_file_and_console_logger(const std::string &name, const std::string &logfile,
+                                                  std::shared_ptr<std::map<std::string, size_t>> max_size_map = nullptr,
+                                                  std::shared_ptr<std::map<std::string, int>> rotation_hour_map = nullptr);
 
         private:
             void init_thread_pool();
@@ -107,6 +98,7 @@ namespace logger
     };
 
     extern QuantLoggerMgr g_logger_mgr;
+    extern LoggerPtr g_logger;
 
     // ---- Automatically script interface generation begin ----
 

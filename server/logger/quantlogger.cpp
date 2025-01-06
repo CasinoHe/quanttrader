@@ -14,6 +14,7 @@ namespace quanttrader
         std::mutex QuantLoggerMgr::logger_mutex_ {};
 
         QuantLoggerMgr g_logger_mgr = QuantLoggerMgr();
+        LoggerPtr g_logger = g_logger_mgr.get_console_logger("quanttrader");
 
         QuantLoggerMgr::QuantLoggerMgr()
         {
@@ -44,49 +45,61 @@ namespace quanttrader
             }
         }
 
-        LoggerPtr QuantLoggerMgr::get_file_logger(const std::string &name, const std::string &logfile,
-                                      std::map<std::string, size_t> &max_size_map,
-                                      std::map<std::string, int> &rotation_hour_map)
+        LoggerPtr QuantLoggerMgr::get_file_logger(const std::string &name, const std::string &logfile, bool with_stdout,
+                                      std::shared_ptr<std::map<std::string, size_t>> max_size_map,
+                                      std::shared_ptr<std::map<std::string, int>> rotation_hour_map)
         {
             const std::string &path = get_log_path(logfile);
 
-            if (max_size_map.find("max_size") != max_size_map.end())
+            if (max_size_map && max_size_map->find("max_size") != max_size_map->end())
             {
-                size_t max_size = max_size_map["max_size"];
+                size_t max_size = max_size_map->at("max_size");
 
-                uint16_t max_files = kSpdLogMaxRotatingFiles;
-                if (max_size_map.find("max_files") == max_size_map.end())
+                uint16_t max_files = quanttrader::kSpdLogMaxRotatingFiles;
+                if (max_size_map->find("max_files") == max_size_map->end())
                 {
-                    max_files = static_cast<uint16_t>(max_size_map["max_files"]);
+                    max_files = static_cast<uint16_t>(max_size_map->at("max_files"));
                 }
 
                 std::cout << fmt::format("Create rotating file logger: {} path: {} max_size: {} max_files: {}", name, path, max_size, max_files) << std::endl;
-                return get_logger<spdlog::sinks::rotating_file_sink_mt>(LogCategory::file, name, path, max_size, max_files);
+                return get_logger<spdlog::sinks::rotating_file_sink_mt>(name, with_stdout, path, max_size, max_files);
             }
-            else if (rotation_hour_map.find("rotation_hour") != rotation_hour_map.end() && rotation_hour_map.find("rotation_min") != rotation_hour_map.end())
+            else if (rotation_hour_map && rotation_hour_map->find("rotation_hour") != rotation_hour_map->end())
             {
-                int rotation_hour = rotation_hour_map["rotation_hour"];
-                int rotation_min = rotation_hour_map["rotation_min"];
+                int rotation_hour = rotation_hour_map->at("rotation_hour");
+                int rotation_min = 0;
 
-                uint16_t max_files = kSpdLogMaxRotatingFiles;
-                if (max_size_map.find("max_files") == max_size_map.end())
+                if (rotation_hour_map->find("rotation_min") != rotation_hour_map->end())
                 {
-                    max_files = static_cast<uint16_t>(max_size_map["max_files"]);
+                    rotation_min = rotation_hour_map->at("rotation_min");
+                }
+
+                uint16_t max_files = quanttrader::kSpdLogMaxRotatingFiles;
+                if (rotation_hour_map->find("max_files") == rotation_hour_map->end())
+                {
+                    max_files = static_cast<uint16_t>(rotation_hour_map->at("max_files"));
                 }
 
                 std::cout << fmt::format("Create daily file logger: {} path: {} rotation_hour: {} rotation_min: {} max_files: {}", name, path, rotation_hour, rotation_min, max_files) << std::endl;
-                return get_logger<spdlog::sinks::daily_file_sink_mt>(LogCategory::file, name, path, rotation_hour, rotation_min, false, max_files);
+                return get_logger<spdlog::sinks::daily_file_sink_mt>(name, with_stdout, path, rotation_hour, rotation_min, false, max_files);
             }
             else
             {
                 std::cout << "Create common file logger" << name << " path: " << path << std::endl;
-                return get_logger<spdlog::sinks::basic_file_sink_mt>(LogCategory::file, name, path);
+                return get_logger<spdlog::sinks::basic_file_sink_mt>(name, with_stdout, path);
             }
         }
 
         LoggerPtr QuantLoggerMgr::get_console_logger(const std::string &name)
         {
-            return get_logger<spdlog::sinks::stdout_color_sink_mt>(LogCategory::console, name);
+            return get_logger<spdlog::sinks::stdout_color_sink_mt>(name, false);
+        }
+
+        LoggerPtr QuantLoggerMgr::get_file_and_console_logger(const std::string &name, const std::string &logfile,
+                                                              std::shared_ptr<std::map<std::string, size_t>> max_size_map,
+                                                              std::shared_ptr<std::map<std::string, int>> rotation_hour_map)
+        {
+            return get_file_logger(name, logfile, true, max_size_map, rotation_hour_map);
         }
     }
 } // namespace quanttrader

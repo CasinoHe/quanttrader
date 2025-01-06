@@ -2,10 +2,10 @@
 
 namespace quanttrader
 {
-    const int kSpdLogQueueSize = 1 << 16;
-    const int kSpdLogThreadsCount = 3;
-    const char* kSpdLogPattern = "[%Y-%m-%d %H:%M:%S.%e][%z][%@][%^%l%$] %v";
-    const uint16_t kSpdLogMaxRotatingFiles = 60;
+    constexpr int kSpdLogQueueSize = 1 << 16;
+    constexpr int kSpdLogThreadsCount = 3;
+    constexpr char kSpdLogPattern[] = "[%Y-%m-%d %H:%M:%S.%e][%z][%@][%^%l%$] %v";
+    constexpr uint16_t kSpdLogMaxRotatingFiles = 60;
 
-    const char* kDefaultLogDir = "log";
+    constexpr char kDefaultLogDir[] = "log";
 }
