@@ -9,10 +9,10 @@
 #include "spdlog/pattern_formatter.h"
 
 #ifdef __LINUX__
-#include "spdlog/sinks/syslog_sink.h"
+#include "spdlog/sinks/syslog_sink.h" // Include syslog sink for Linux systems
 #endif
 
-#include "common/consts.h"
+#include "common/consts.h" // Include custom constants used in the logger
 
 #include <thread>
 #include <mutex>
@@ -21,98 +21,107 @@
 #include <unordered_map>
 #include <memory>
 
-namespace quanttrader
-{
-namespace logger
-{
-    using LevelEnum = spdlog::level::level_enum;
-    using LoggerPtr = std::shared_ptr<spdlog::logger>;
+namespace quanttrader {
+namespace logger {
 
-    class QuantLoggerMgr
+// Alias for log level and logger pointer for better readability
+using LevelEnum = spdlog::level::level_enum;
+using LoggerPtr = std::shared_ptr<spdlog::logger>;
+
+class QuantLoggerMgr {
+public:
+    // Constructor: Initializes thread pool on first creation
+    QuantLoggerMgr();
+
+    // Destructor: Ensures all loggers are shutdown properly
+    ~QuantLoggerMgr();
+
+    // Deleted copy/move constructors and assignment operators
+    QuantLoggerMgr(const QuantLoggerMgr &other) = delete;
+    QuantLoggerMgr(QuantLoggerMgr &&other) = delete;
+    QuantLoggerMgr &operator=(const QuantLoggerMgr &other) = delete;
+
+    // Sets the logging level dynamically based on input string
+    bool set_log_level(std::string level);
+
+    // Returns the log file path based on the provided name
+    const std::string get_log_path(const std::string &logname);
+
+    // Helper to safely retrieve map values with a default fallback
+    template <typename KeyType, typename ValueType>
+    ValueType get_map_value(const std::shared_ptr<std::map<KeyType, ValueType>> map, const KeyType& key, const ValueType& default_val)
     {
-        public:
-            QuantLoggerMgr();
-            ~QuantLoggerMgr();
-        private:
-            QuantLoggerMgr(const QuantLoggerMgr &other) = delete;
-            QuantLoggerMgr(QuantLoggerMgr &&other) = delete;
-            QuantLoggerMgr &operator=(const QuantLoggerMgr &other) = delete;
+        return (map && map->find(key) != map->end()) ? map->at(key) : default_val;
+    }
 
-        public:
-            bool set_log_level(std::string level);
-            const std::string get_log_path(const std::string &logname);
+    // Retrieves or creates a logger with specified sink type
+    template<typename Sink, typename... SinkArgs>
+    LoggerPtr get_logger(const std::string &name, bool with_stdout, SinkArgs &&... sink_args)
+    {
+        auto logger = spdlog::get(name);
+        if (logger)
+        {
+            return logger;
+        }
 
-            template <typename KeyType, typename ValueType>
-            ValueType get_map_value(const std::shared_ptr<std::map<KeyType, ValueType>> map, const KeyType& key, const ValueType& default_val)
-            {
-                return (map && map->find(key) != map->end()) ? map->at(key) : default_val;
-            }
+        std::lock_guard<std::mutex> lock(QuantLoggerMgr::logger_mutex_);
 
-            /* AIGC Function explaination:
-            */
-            template<typename Sink, typename... SinkArgs>
-            LoggerPtr get_logger(const std::string &name, bool with_stdout, SinkArgs &&... sink_args)
-            {
-                auto logger = spdlog::get(name);
-                if (logger)
-                {
-                    return logger;
-                }
+        try
+        {
+            return create_logger<Sink>(name, with_stdout, std::forward<SinkArgs>(sink_args)...);
+        }
+        catch(const std::exception& e)
+        {
+            std::cerr << e.what() << '\n';
+            return nullptr;
+        }
+    }
 
-                std::lock_guard<std::mutex> lock(QuantLoggerMgr::logger_mutex_);
+    // Logger creation methods for specific use cases
+    LoggerPtr get_file_logger(const std::string &name, const std::string &logfile, bool with_stdout = false,
+                              std::shared_ptr<std::map<std::string, size_t>> max_size_map = nullptr,
+                              std::shared_ptr<std::map<std::string, int>> rotation_hour_map = nullptr);
 
-                try
-                {
-                    return create_logger<Sink>(name, with_stdout, std::forward<SinkArgs>(sink_args)...);
-                }
-                catch(const std::exception& e)
-                {
-                    std::cerr << e.what() << '\n';
-                    return nullptr;
-                }
-            }
+    LoggerPtr get_console_logger(const std::string &name);
+    LoggerPtr get_file_and_console_logger(const std::string &name, const std::string &logfile,
+                                          std::shared_ptr<std::map<std::string, size_t>> max_size_map = nullptr,
+                                          std::shared_ptr<std::map<std::string, int>> rotation_hour_map = nullptr);
 
-            LoggerPtr get_file_logger(const std::string &name, const std::string &logfile, bool with_stdout = false,
-                                      std::shared_ptr<std::map<std::string, size_t>> max_size_map = nullptr,
-                                      std::shared_ptr<std::map<std::string, int>> rotation_hour_map = nullptr);
+private:
+    // Initializes the thread pool used for asynchronous logging
+    void init_thread_pool();
 
-            LoggerPtr get_console_logger(const std::string &name);
-            LoggerPtr get_file_and_console_logger(const std::string &name, const std::string &logfile,
-                                                  std::shared_ptr<std::map<std::string, size_t>> max_size_map = nullptr,
-                                                  std::shared_ptr<std::map<std::string, int>> rotation_hour_map = nullptr);
+    // Encapsulated logic for creating a logger with specified sink
+    template<typename Sink, typename... SinkArgs>
+    LoggerPtr create_logger(const std::string &name, bool with_stdout, SinkArgs &&... sink_args)
+    {
+        auto formattor = std::make_unique<spdlog::pattern_formatter>(quanttrader::kSpdLogPattern);
+        auto sink = std::make_shared<Sink>(std::forward<SinkArgs>(sink_args)...);
+        sink->set_formatter(formattor->clone());
+        sink->set_level(log_level_);
+        auto logger = spdlog::create_async_nb<Sink>(name, std::forward<SinkArgs>(sink_args)...);
+        logger->sinks().push_back(sink);
 
-        private:
-            void init_thread_pool();
+        if (with_stdout)
+        {
+            auto stdout_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+            stdout_sink->set_formatter(formattor->clone());
+            stdout_sink->set_level(log_level_);
+            logger->sinks().push_back(stdout_sink);
+        }
+        return logger;
+    }
 
-            template<typename Sink, typename... SinkArgs>
-            LoggerPtr create_logger(const std::string &name, bool with_stdout, SinkArgs &&... sink_args)
-            {
-                auto formattor = std::make_unique<spdlog::pattern_formatter>(quanttrader::kSpdLogPattern);
-                auto sink = std::make_shared<Sink>(std::forward<SinkArgs>(sink_args)...);
-                sink->set_formatter(formattor->clone());
-                sink->set_level(log_level_);
-                auto logger = spdlog::create_async_nb<Sink>(name, std::forward<SinkArgs>(sink_args)...);
-                logger->sinks().push_back(sink);
+    // Static members shared across all instances
+    static std::unordered_map<std::string, LevelEnum> log_level_map_; // Map for string-to-level conversion
+    static LevelEnum log_level_; // Current log level
+    static std::once_flag thread_pool_flag_; // Ensures thread pool is initialized only once
+    static std::mutex logger_mutex_; // Mutex for thread-safe logger operations
+};
 
-                if (with_stdout)
-                {
-                    auto stdout_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-                    stdout_sink->set_formatter(formattor->clone());
-                    stdout_sink->set_level(log_level_);
-                    logger->sinks().push_back(stdout_sink);
-                }
-                return logger;
-            }
-
-        private:
-            static std::unordered_map<std::string, LevelEnum> log_level_map_;
-            static LevelEnum log_level_;
-            static std::once_flag thread_pool_flag_;
-            static std::mutex logger_mutex_;
-    };
-
-    extern QuantLoggerMgr g_logger_mgr;
-    extern LoggerPtr g_logger;
+// Global logger manager and default logger instance
+extern QuantLoggerMgr g_logger_mgr;
+extern LoggerPtr g_logger;
 
     // ---- Automatically script interface generation begin ----
 
