@@ -3,6 +3,8 @@
 #include "quantlogger.h"
 #include "spdlog/async.h"
 
+#include <filesystem>
+
 namespace quanttrader {
 namespace logger {
 
@@ -50,6 +52,9 @@ bool QuantLoggerMgr::set_log_level(std::string level) {
 
 // Generates the log file path based on the provided name
 const std::string QuantLoggerMgr::get_log_path(const std::string &logname) {
+    if (!std::filesystem::exists(quanttrader::kDefaultLogDir)) {
+        std::filesystem::create_directories(quanttrader::kDefaultLogDir);
+    }
     return logname.empty()
         ? fmt::format("{}/running.log", quanttrader::kDefaultLogDir)
         : fmt::format("{}/{}.log", quanttrader::kDefaultLogDir, logname);
