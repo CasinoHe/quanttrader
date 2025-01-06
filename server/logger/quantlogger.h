@@ -100,6 +100,7 @@ private:
         sink->set_formatter(formattor->clone());
         sink->set_level(log_level_);
         auto logger = spdlog::create_async_nb<Sink>(name, std::forward<SinkArgs>(sink_args)...);
+        logger->sinks().clear();
         logger->sinks().push_back(sink);
 
         if (with_stdout)
