@@ -9,12 +9,20 @@ namespace quanttrader
     namespace logger
     {
         // Initialize static members
-        std::once_flag QuantLoggerMgr::thread_pool_flag_ {};
         LevelEnum QuantLoggerMgr::log_level_ = LevelEnum::info;
-        std::mutex QuantLoggerMgr::logger_mutex_ {};
+        std::once_flag QuantLoggerMgr::thread_pool_flag_;
+        std::mutex QuantLoggerMgr::logger_mutex_;
+        std::unordered_map<std::string, LevelEnum> QuantLoggerMgr::log_level_map_ = {
+            {"trace", LevelEnum::trace},
+            {"debug", LevelEnum::debug},
+            {"info", LevelEnum::info},
+            {"warn", LevelEnum::warn},
+            {"error", LevelEnum::err},
+            {"critical", LevelEnum::critical},
+        };
 
         QuantLoggerMgr g_logger_mgr = QuantLoggerMgr();
-        LoggerPtr g_logger = g_logger_mgr.get_console_logger("quanttrader");
+        LoggerPtr g_logger = g_logger_mgr.get_file_and_console_logger("quanttrader", "global");
 
         QuantLoggerMgr::QuantLoggerMgr()
         {
@@ -31,6 +39,18 @@ namespace quanttrader
         void QuantLoggerMgr::init_thread_pool()
         {
             spdlog::init_thread_pool(quanttrader::kSpdLogQueueSize, quanttrader::kSpdLogThreadsCount);
+        }
+
+        bool QuantLoggerMgr::set_log_level(std::string level)
+        {
+            auto it = log_level_map_.find(level);
+            if (it != log_level_map_.end()) {
+                log_level_ = it->second;
+                return true;
+            } else {
+                std::cerr << "Invalid log level: " << level << std::endl;
+                return false;
+            }
         }
 
         const std::string QuantLoggerMgr::get_log_path(const std::string &logname)
@@ -55,11 +75,7 @@ namespace quanttrader
             {
                 size_t max_size = max_size_map->at("max_size");
 
-                uint16_t max_files = quanttrader::kSpdLogMaxRotatingFiles;
-                if (max_size_map->find("max_files") == max_size_map->end())
-                {
-                    max_files = static_cast<uint16_t>(max_size_map->at("max_files"));
-                }
+                uint16_t max_files = static_cast<uint16_t>(get_map_value<std::string, size_t>(max_size_map, "max_files", quanttrader::kSpdLogMaxRotatingFiles));
 
                 std::cout << fmt::format("Create rotating file logger: {} path: {} max_size: {} max_files: {}", name, path, max_size, max_files) << std::endl;
                 return get_logger<spdlog::sinks::rotating_file_sink_mt>(name, with_stdout, path, max_size, max_files);
@@ -67,18 +83,8 @@ namespace quanttrader
             else if (rotation_hour_map && rotation_hour_map->find("rotation_hour") != rotation_hour_map->end())
             {
                 int rotation_hour = rotation_hour_map->at("rotation_hour");
-                int rotation_min = 0;
-
-                if (rotation_hour_map->find("rotation_min") != rotation_hour_map->end())
-                {
-                    rotation_min = rotation_hour_map->at("rotation_min");
-                }
-
-                uint16_t max_files = quanttrader::kSpdLogMaxRotatingFiles;
-                if (rotation_hour_map->find("max_files") == rotation_hour_map->end())
-                {
-                    max_files = static_cast<uint16_t>(rotation_hour_map->at("max_files"));
-                }
+                int rotation_min = get_map_value<std::string, int>(rotation_hour_map, "rotation_min", 0);
+                uint16_t max_files = static_cast<uint16_t>(get_map_value<std::string, int>(rotation_hour_map, "max_files", quanttrader::kSpdLogMaxRotatingFiles));
 
                 std::cout << fmt::format("Create daily file logger: {} path: {} rotation_hour: {} rotation_min: {} max_files: {}", name, path, rotation_hour, rotation_min, max_files) << std::endl;
                 return get_logger<spdlog::sinks::daily_file_sink_mt>(name, with_stdout, path, rotation_hour, rotation_min, false, max_files);

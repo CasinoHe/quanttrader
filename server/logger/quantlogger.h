@@ -14,11 +14,11 @@
 
 #include "common/consts.h"
 
-#include <unordered_map>
 #include <thread>
 #include <mutex>
 #include <iostream>
 #include <map>
+#include <unordered_map>
 #include <memory>
 
 namespace quanttrader
@@ -39,8 +39,14 @@ namespace logger
             QuantLoggerMgr &operator=(const QuantLoggerMgr &other) = delete;
 
         public:
-            inline void set_log_level(const LevelEnum level) { log_level_ = level; }
+            bool set_log_level(std::string level);
             const std::string get_log_path(const std::string &logname);
+
+            template <typename KeyType, typename ValueType>
+            ValueType get_map_value(const std::shared_ptr<std::map<KeyType, ValueType>> map, const KeyType& key, const ValueType& default_val)
+            {
+                return (map && map->find(key) != map->end()) ? map->at(key) : default_val;
+            }
 
             /* AIGC Function explaination:
             */
@@ -57,20 +63,7 @@ namespace logger
 
                 try
                 {
-                    auto formattor = std::make_unique<spdlog::pattern_formatter>(quanttrader::kSpdLogPattern);
-                    logger = spdlog::create_async_nb<Sink>(name, std::forward<SinkArgs>(sink_args)...);
-                    auto sink = std::make_shared<Sink>(std::forward<SinkArgs>(sink_args)...);
-                    sink->set_formatter(formattor->clone());
-                    sink->set_level(log_level_);
-                    logger->sinks().push_back(sink);
-
-                    if (with_stdout)
-                    {
-                        auto stdout_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-                        stdout_sink->set_formatter(formattor->clone());
-                        stdout_sink->set_level(log_level_);
-                        logger->sinks().push_back(stdout_sink);
-                    }
+                    return create_logger<Sink>(name, with_stdout, std::forward<SinkArgs>(sink_args)...);
                 }
                 catch(const std::exception& e)
                 {
@@ -91,7 +84,28 @@ namespace logger
         private:
             void init_thread_pool();
 
+            template<typename Sink, typename... SinkArgs>
+            LoggerPtr create_logger(const std::string &name, bool with_stdout, SinkArgs &&... sink_args)
+            {
+                auto formattor = std::make_unique<spdlog::pattern_formatter>(quanttrader::kSpdLogPattern);
+                auto sink = std::make_shared<Sink>(std::forward<SinkArgs>(sink_args)...);
+                sink->set_formatter(formattor->clone());
+                sink->set_level(log_level_);
+                auto logger = spdlog::create_async_nb<Sink>(name, std::forward<SinkArgs>(sink_args)...);
+                logger->sinks().push_back(sink);
+
+                if (with_stdout)
+                {
+                    auto stdout_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+                    stdout_sink->set_formatter(formattor->clone());
+                    stdout_sink->set_level(log_level_);
+                    logger->sinks().push_back(stdout_sink);
+                }
+                return logger;
+            }
+
         private:
+            static std::unordered_map<std::string, LevelEnum> log_level_map_;
             static LevelEnum log_level_;
             static std::once_flag thread_pool_flag_;
             static std::mutex logger_mutex_;
