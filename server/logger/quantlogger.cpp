@@ -100,5 +100,26 @@ LoggerPtr QuantLoggerMgr::get_file_and_console_logger(const std::string &name, c
     return get_file_logger(name, logfile, true, max_size_map, rotation_hour_map);
 }
 
+LoggerPtr get_common_rotation_logger(const std::string &name, const std::string &logfile, bool with_stdout) {
+    auto rotation_data = std::make_shared<std::map<std::string, int>>(
+        std::map<std::string, int> {
+            {"rotation_hour", 0},
+            {"rotation_min", 0},
+            {"max_files", quanttrader::kSpdLogMaxRotatingFiles}
+        }
+    );
+
+    auto logger = g_logger_mgr.get_file_logger(name, logfile, with_stdout, nullptr, rotation_data);
+    if (!logger)
+    {
+        std::cerr << "Failed to create logger: " << name << std::endl;
+        return nullptr;
+    }
+    else
+    {
+        return logger;
+    }
+}
+
 } // namespace logger
 } // namespace quanttrader

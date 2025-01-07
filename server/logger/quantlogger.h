@@ -134,5 +134,6 @@ extern LoggerPtr g_logger;
 
     // ---- Automatically script interface generation end ----
 
+    extern LoggerPtr get_common_rotation_logger(const std::string &name, const std::string &logfile, bool with_stdout = false);
 } // namespace logger
 } // namespace quanttrader
