@@ -79,7 +79,14 @@ endif()
 
 # --------------------- add boost and build boost end ---------------------------
 
-add_executable(${PROJECT_NAME} ${SERVER_SOURCES})
+# --------------------- build lua start ---------------------------
+set(LUA_ROOT "${THIRDPARTY_DIR}/lua")
+file(GLOB LUA_SOURCES LIST_DIRECTORIES false ${LUA_ROOT}/*.c)
+list(REMOVE_ITEM LUA_SOURCES ${LUA_ROOT}/lua.c ${LUA_ROOT}/onelua.c)
+include_directories(${LUA_ROOT})
+# --------------------- build lua end ---------------------------
+
+add_executable(${PROJECT_NAME} ${SERVER_SOURCES} ${LUA_SOURCES})
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${THIRDPARTY_DIR}/fmt/include
                                                   ${THIRDPARTY_DIR}/spdlog/include
