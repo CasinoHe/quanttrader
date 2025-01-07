@@ -31,66 +31,30 @@ target_include_directories(spdlog INTERFACE ${THIRDPARTY_DIR}/fmt/include)
 set(BOOST_ROOT "${THIRDPARTY_DIR}/boost")
 set(BOOST_VERSION 1.86.0)
 
-# Define platform-specific bootstrap and build commands
+# Define platform-specific commands for bootstrapping
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-    set(BOOST_BUILD_COMMAND "${BOOST_ROOT}/b2.exe")
-elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin" OR CMAKE_SYSTEM_NAME STREQUAL "Linux")
-    set(BOOST_BUILD_COMMAND "${BOOST_ROOT}/b2")
+    set(BOOST_BOOTSTRAP_COMMAND "${BOOST_ROOT}/bootstrap.bat")
+    set(BOOST_BUILD_COMMAND "b2")
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
+    # macOS: Use bootstrap.sh
+    set(BOOST_BOOTSTRAP_COMMAND "${BOOST_ROOT}/bootstrap.sh")
+    set(BOOST_BUILD_COMMAND "./b2")
+elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    set(BOOST_BOOTSTRAP_COMMAND "${BOOST_ROOT}/bootstrap.sh")
+    set(BOOST_BUILD_COMMAND "./b2")
 else()
     message(FATAL_ERROR "Unsupported platform: ${CMAKE_SYSTEM_NAME}")
 endif()
 
-# Check if the BOOST_BUILD_COMMAND exists
-if(EXISTS ${BOOST_BUILD_COMMAND})
-    message(STATUS "Boost build command found: ${BOOST_BUILD_COMMAND}. Skipping bootstrap.")
-    set(SKIP_BOOTSTRAP TRUE)
-else()
-    message(STATUS "Boost build command not found. Running bootstrap.")
-    set(SKIP_BOOTSTRAP FALSE)
-endif()
-
-# Add boost_bootstrap target only if needed
-if(NOT SKIP_BOOTSTRAP)
-    # Define platform-specific commands for bootstrapping
-    if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
-        # Windows: Use bootstrap.bat
-        add_custom_target(boost_bootstrap
-            COMMAND ${CMAKE_COMMAND} -E echo "Running Boost bootstrap.bat on Windows"
-            COMMAND ${BOOST_ROOT}/bootstrap.bat
-            WORKING_DIRECTORY ${BOOST_ROOT}
-            COMMENT "Bootstrapping Boost on Windows"
-        )
-        set(BOOST_BUILD_COMMAND "b2")
-    elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
-        # macOS: Use bootstrap.sh
-        add_custom_target(boost_bootstrap
-            COMMAND ${CMAKE_COMMAND} -E echo "Running Boost bootstrap.sh on macOS"
-            COMMAND ${CMAKE_COMMAND} -E chdir ${BOOST_ROOT} ./bootstrap.sh
-            WORKING_DIRECTORY ${BOOST_ROOT}
-            COMMENT "Bootstrapping Boost on macOS"
-        )
-        set(BOOST_BUILD_COMMAND "./b2")
-    elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
-        # Linux: Use bootstrap.sh
-        add_custom_target(boost_bootstrap
-            COMMAND ${CMAKE_COMMAND} -E echo "Running Boost bootstrap.sh on Linux"
-            COMMAND ${CMAKE_COMMAND} -E chdir ${BOOST_ROOT} ./bootstrap.sh
-            WORKING_DIRECTORY ${BOOST_ROOT}
-            COMMENT "Bootstrapping Boost on Linux"
-        )
-        set(BOOST_BUILD_COMMAND "./b2")
-    else()
-        message(FATAL_ERROR "Unsupported platform: ${CMAKE_SYSTEM_NAME}")
-    endif()
-endif()
-
-# Build Boost libraries (common for all platforms)
-add_custom_target(boost_build ALL
-    COMMAND ${BOOST_BUILD_COMMAND} headers
-    COMMAND ${BOOST_BUILD_COMMAND} --with-system variant=release link=static runtime-link=static threading=multi stage
-    WORKING_DIRECTORY ${BOOST_ROOT}
-    COMMENT "Building Boost libraries"
-    DEPENDS boost_bootstrap
+include(ExternalProject)
+ExternalProject_Add(
+    boost_build
+    SOURCE_DIR ${BOOST_ROOT}
+    UPDATE_COMMAND ""
+    CONFIGURE_COMMAND ${BOOST_BOOTSTRAP_COMMAND}
+    BUILD_COMMAND ${BOOST_BUILD_COMMAND} headers && ${BOOST_BUILD_COMMAND} --with-system variant=release link=static runtime-link=static threading=multi stage
+    INSTALL_COMMAND ""
+    BUILD_IN_SOURCE TRUE
 )
 
 # Locate Boost after building
@@ -98,9 +62,6 @@ add_custom_target(boost_find ALL
     COMMENT "Finding Boost libraries after building"
     DEPENDS boost_build
 )
-
-# # Set CMake prefix path for BoostConfig.cmake
-# set(CMAKE_PREFIX_PATH ${BOOST_ROOT}/stage/lib/cmake/Boost-${BOOST_VERSION})
 
 # Find Boost in the main CMakeLists.txt after boost_build
 if(TARGET boost_find)
