@@ -3,3 +3,6 @@
 
 *.sln
 build
+
+server/vcpkg_installed
+client/vcpkg_installed
