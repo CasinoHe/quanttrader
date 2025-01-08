@@ -169,7 +169,10 @@ class BuildServer(object):
         if self.args.enable_install:
             manifest_install = "ON"
         else:
-            manifest_install = "OFF"
+            if not os.path.exists(os.path.join(self.server_root, "build", "vcpkg_installed")):
+                manifest_install = "ON"
+            else:
+                manifest_install = "OFF"
 
         variant = self.args.build_variant
 
