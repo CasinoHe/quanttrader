@@ -1,7 +1,16 @@
 {
     "name": "quanttrader-server",
     "version": "0.1.0",
-    "dependencies": ["fmt", "spdlog"],
+    "dependencies": [
+        {
+            "name": "fmt", 
+            "features": []
+        },
+        {
+            "name": "spdlog",
+            "features": []
+        }
+    ],
     "overrides": [
         {
             "name": "fmt",
