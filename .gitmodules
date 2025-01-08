@@ -10,3 +10,6 @@
 [submodule "lua"]
 	path = thirdparties/lua
 	url = https://github.com/lua/lua.git
+[submodule "vcpkg"]
+	path = thirdparties/vcpkg
+	url = https://github.com/CasinoHe/vcpkg.git
