@@ -26,6 +26,7 @@ set(THIRDPARTY_DIR ${PROJECT_ROOT_DIR}/thirdparties)
 # the dependencies is built by vcpkg or custom build
 find_package(fmt 11.0.2 REQUIRED)
 find_package(spdlog 1.15.0 REQUIRED)
+find_package(Boost 1.86.0 REQUIRED COMPONENTS program_options)
 
 # --------------------- build lua start ---------------------------
 set(LUA_ROOT "${THIRDPARTY_DIR}/lua")
@@ -40,7 +41,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE ${THIRDPARTY_DIR}/fmt/include
                                                   ${THIRDPARTY_DIR}/spdlog/include
                                                   ${SERVER_ROOT_DIR}
                                                   )
-target_link_libraries(${PROJECT_NAME} PRIVATE fmt::fmt spdlog::spdlog)
+target_link_libraries(${PROJECT_NAME} PRIVATE fmt::fmt spdlog::spdlog Boost::program_options)
 
 if (WIN32)
     target_compile_options(${PROJECT_NAME} PRIVATE "/MT")
