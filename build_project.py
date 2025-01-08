@@ -106,7 +106,8 @@ class BuildDependencies(object):
             env["VCPKG_BUILD_TYPE"] = "Debug"
 
         args = ["install", "--triplet", triplet, "--vcpkg-root", self.vcpkg_dir,
-                "--x-install-root", os.path.join(workdir, "build", "vcpkg_installed"), "--clean-after-build"]
+                "--x-install-root", os.path.join(workdir, "build", "vcpkg_installed"),
+                "--clean-buildtrees-after-build", "--clean-packages-after-build"]
         if self.args.dry_run:
             args.append("--dry-run")
         if not self._run_command(workdir, self.vcpkg_path, args, env=env):

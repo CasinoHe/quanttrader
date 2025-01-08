@@ -9,6 +9,10 @@
         {
             "name": "spdlog",
             "features": []
+        },
+        {
+            "name": "boost-program-options",
+            "features": []
         }
     ],
     "overrides": [
