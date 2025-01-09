@@ -78,7 +78,7 @@ int LuaConfigData::get_int_value(const std::string &table_name, const std::strin
 std::string LuaConfigData::get_string_value(const std::string &table_name, const std::string &key) {
     if (table_name.empty() || key.empty()) {
         logger_->error("Table name *{}* or key *{}* is empty.", table_name, key);
-        return 0;
+        return "";
     }
     lua_getglobal(luastate_, table_name.c_str()); // Push the table onto the stack
     if (!lua_istable(luastate_, -1)) {
