@@ -202,38 +202,3 @@ namespace time {
 
 } // namespace time
 } // namespace quanttrader
-
-// int main() {
-//     using namespace std::chrono;
-
-//     // Create two TimeWithZone objects
-//     TimeWithZone nyTime("America/New_York", local_days{2025_y / January / 9} + hours{10});
-//     TimeWithZone londonTime("Europe/London", local_days{2025_y / January / 9} + hours{15});
-
-//     // Serialize and unserialize example
-//     std::string serializedNyTime = nyTime.serialize();
-//     std::cout << "Serialized New York time: " << serializedNyTime << "\n";
-
-//     TimeWithZone deserializedNyTime = TimeWithZone::unserialize(serializedNyTime);
-//     std::cout << "Deserialized New York time: " << deserializedNyTime << "\n";
-
-//     // Serialize to bytes and unserialize from bytes
-//     std::vector<unsigned char> serializedBytes = nyTime.serializeToBytes();
-//     TimeWithZone deserializedFromBytes = TimeWithZone::unserializeFromBytes(serializedBytes);
-//     std::cout << "Deserialized from bytes New York time: " << deserializedFromBytes << "\n";
-
-//     // Compare the two times
-//     if (nyTime < londonTime) {
-//         std::cout << "New York time is earlier than London time.\n";
-//     } else if (nyTime == londonTime) {
-//         std::cout << "Both times are equal.\n";
-//     } else {
-//         std::cout << "New York time is later than London time.\n";
-//     }
-
-//     // Print the times
-//     std::cout << "New York time: " << nyTime << "\n";
-//     std::cout << "London time: " << londonTime << "\n";
-
-//     return 0;
-// }
