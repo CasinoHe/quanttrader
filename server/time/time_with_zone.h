@@ -19,7 +19,7 @@ private:
 public:
     using ZonedTime = std::chrono::zoned_time<std::chrono::nanoseconds>;
 
-    TimeWithZone(std::string time_zone, std::chrono::local_time<std::chrono::nanoseconds> local_time);
+    TimeWithZone(std::string_view time_zone, std::chrono::local_time<std::chrono::nanoseconds> local_time);
     TimeWithZone(const ZonedTime& zoned_time) : zoned_time_(zoned_time) {}
     TimeWithZone(const ZonedTime&& zoned_time) : zoned_time_(std::move(zoned_time)) {}
     TimeWithZone(const TimeWithZone& other) : zoned_time_(other.zoned_time_) {}
@@ -35,10 +35,10 @@ public:
     // parse from a time string contains time zone name like "20240510 09:29:30 US/Eastern"
     static std::optional<TimeWithZone> from_zone_string(const std::string& data);
     // parse from a time string from IB API historical data like "20240510 09:29:30 US/Eastern"
-    static std::optional<TimeWithZone> from_ibapi_string(const std::string& data, const std::string& zone_name);
+    static std::optional<TimeWithZone> from_ibapi_string(const std::string& data, const std::string_view zone_name);
     static std::optional<std::string> find_zone_by_offset(std::chrono::seconds &offset);
-    static bool is_valid_time_zone(const std::string& time_zone);
-    static std::string get_canonical_zone_name(std::string_view time_zone);
+    static bool is_valid_time_zone(const std::string_view time_zone);
+    static std::string_view get_canonical_zone_name(std::string_view time_zone);
 
     // get zone time object
     inline const ZonedTime &get_zoned_time() const { return zoned_time_; }

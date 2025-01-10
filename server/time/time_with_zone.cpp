@@ -11,7 +11,7 @@ namespace time {
 
     const std::chrono::tzdb& TimeWithZone::tzdb_ = std::chrono::get_tzdb();
 
-    TimeWithZone::TimeWithZone(std::string time_zone, std::chrono::local_time<std::chrono::nanoseconds> localTime) : zoned_time_(time_zone, localTime) {
+    TimeWithZone::TimeWithZone(std::string_view time_zone, std::chrono::local_time<std::chrono::nanoseconds> localTime) : zoned_time_(time_zone, localTime) {
     }
 
     std::string TimeWithZone::to_string() const {
@@ -79,7 +79,7 @@ namespace time {
         }
     }
 
-    std::optional<TimeWithZone> TimeWithZone::from_ibapi_string(const std::string& data, const std::string &zone_name) {
+    std::optional<TimeWithZone> TimeWithZone::from_ibapi_string(const std::string& data, const std::string_view zone_name) {
         std::istringstream iss(data);
         std::chrono::local_time<std::chrono::nanoseconds> tp;
         std::string abbrev;
@@ -117,7 +117,7 @@ namespace time {
         return std::nullopt; // No matching zone found
     }
 
-    bool TimeWithZone::is_valid_time_zone(const std::string& time_zone) {
+    bool TimeWithZone::is_valid_time_zone(const std::string_view time_zone) {
         for (const auto& zone : tzdb_.zones) {
             if (zone.name() == time_zone) {
                 return true;
@@ -126,9 +126,9 @@ namespace time {
         return false;
     }
 
-    std::string TimeWithZone::get_canonical_zone_name(std::string_view time_zone) {
+    std::string_view TimeWithZone::get_canonical_zone_name(std::string_view time_zone) {
         if (TimeWithZone::is_valid_time_zone(std::string(time_zone))) {
-            return std::string(time_zone);
+            return time_zone;
         }
 
         static const std::map<std::string, std::string> legacy_zone_to_canonical = {
