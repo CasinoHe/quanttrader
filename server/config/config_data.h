@@ -40,7 +40,7 @@ public:
 private:
     lua_State *luastate_ = NULL;
     std::string script_path_ = "";
-    quanttrader::logger::LoggerPtr logger_ = nullptr;
+    quanttrader::log::LoggerPtr logger_ = nullptr;
 };
 
 } // namespace luascript

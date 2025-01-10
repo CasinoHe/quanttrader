@@ -22,7 +22,7 @@
 #include <memory>
 
 namespace quanttrader {
-namespace logger {
+namespace log {
 
 // Alias for log level and logger pointer for better readability
 using LevelEnum = spdlog::level::level_enum;
@@ -134,6 +134,13 @@ extern LoggerPtr g_logger;
 
     // ---- Automatically script interface generation end ----
 
-    extern LoggerPtr get_common_rotation_logger(const std::string &name, const std::string &logfile, bool with_stdout = false);
+extern LoggerPtr get_common_rotation_logger(const std::string &name, const std::string &logfile, bool with_stdout = false);
+extern void Trace(const std::string &msg);
+extern void Debug(const std::string &msg);
+extern void Info(const std::string &msg);
+extern void Warn(const std::string &msg);
+extern void Error(const std::string &msg);
+extern void Critical(const std::string &msg);
+
 } // namespace logger
 } // namespace quanttrader

@@ -6,7 +6,7 @@
 #include <filesystem>
 
 namespace quanttrader {
-namespace logger {
+namespace log {
 
 // Static member initialization
 LevelEnum QuantLoggerMgr::log_level_ = LevelEnum::info; // Default log level
@@ -119,6 +119,30 @@ LoggerPtr get_common_rotation_logger(const std::string &name, const std::string 
     {
         return logger;
     }
+}
+
+void Trace(const std::string &msg) {
+    g_logger->trace(msg);
+}
+
+void Debug(const std::string &msg) {
+    g_logger->debug(msg);
+}
+
+void Info(const std::string &msg) {
+    g_logger->info(msg);
+}
+
+void Warn(const std::string &msg) {
+    g_logger->warn(msg);
+}
+
+void Error(const std::string &msg) {
+    g_logger->error(msg);
+}
+
+void Critical(const std::string &msg) {
+    g_logger->critical(msg);
 }
 
 } // namespace logger
