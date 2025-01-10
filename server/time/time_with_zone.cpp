@@ -126,20 +126,24 @@ namespace time {
         return false;
     }
 
-    std::string_view TimeWithZone::get_canonical_zone_name(std::string_view time_zone) {
-        if (TimeWithZone::is_valid_time_zone(std::string(time_zone))) {
-            return time_zone;
-        }
-
+    const std::map<std::string, std::string>& TimeWithZone::get_legacy_zone_to_canonical() {
         static const std::map<std::string, std::string> legacy_zone_to_canonical = {
             {"US/Eastern", "America/New_York"},
             {"US/Central", "America/Chicago"},
             {"US/Mountain", "America/Denver"},
             {"US/Pacific", "America/Los_Angeles"},
         };
+        return legacy_zone_to_canonical;
+    }
 
-        auto result = legacy_zone_to_canonical.find(std::string(time_zone));
-        if (result != legacy_zone_to_canonical.end()) {
+    std::string_view TimeWithZone::get_canonical_zone_name(std::string_view time_zone) {
+        if (TimeWithZone::is_valid_time_zone(std::string(time_zone))) {
+            return time_zone;
+        }
+
+        const auto& legacy_map = get_legacy_zone_to_canonical();
+        auto result = legacy_map.find(std::string(time_zone));
+        if (result != legacy_map.end()) {
             return result->second;
         }
         else {
@@ -148,6 +152,10 @@ namespace time {
     }
 
     std::chrono::local_time<std::chrono::nanoseconds> TimeWithZone::get_zone_time(const std::string &zone_name) const {
+        if (!is_valid_time_zone(zone_name)) {
+            quanttrader::log::Warn(std::format("Invalid time zone: '{}'", zone_name));
+            return zoned_time_.get_local_time(); // Fallback to current local time
+        }
         auto dest_time = std::chrono::zoned_time{zone_name, zoned_time_.get_sys_time()};
         return dest_time.get_local_time();
     }

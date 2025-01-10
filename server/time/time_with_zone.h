@@ -6,6 +6,7 @@
 #include <vector>
 #include <optional>
 #include <cstdint>
+#include <map>
 
 
 namespace quanttrader {
@@ -13,9 +14,6 @@ namespace time {
 
 // TimeWithZone is thread-safety, no global state, and no static members
 class TimeWithZone {
-private:
-    TimeWithZone() = delete;
-
 public:
     using ZonedTime = std::chrono::zoned_time<std::chrono::nanoseconds>;
 
@@ -66,52 +64,52 @@ public:
 
     // Comparison operators based on the underlying UTC time_point
     bool operator<(const TimeWithZone& other) const {
-        return zoned_time_.get_sys_time() < other.zoned_time_.get_sys_time();
+        return compare_time(other.zoned_time_.get_sys_time(), std::less<>());
     }
 
     bool operator>(const TimeWithZone& other) const {
-        return zoned_time_.get_sys_time() > other.zoned_time_.get_sys_time();
+        return compare_time(other.zoned_time_.get_sys_time(), std::greater<>());
     }
 
     bool operator<=(const TimeWithZone& other) const {
-        return zoned_time_.get_sys_time() <= other.zoned_time_.get_sys_time();
+        return compare_time(other.zoned_time_.get_sys_time(), std::less_equal<>());
     }
 
     bool operator>=(const TimeWithZone& other) const {
-        return zoned_time_.get_sys_time() >= other.zoned_time_.get_sys_time();
+        return compare_time(other.zoned_time_.get_sys_time(), std::greater_equal<>());
     }
 
     bool operator==(const TimeWithZone& other) const {
-        return zoned_time_.get_sys_time() == other.zoned_time_.get_sys_time();
+        return compare_time(other.zoned_time_.get_sys_time(), std::equal_to<>());
     }
 
     bool operator!=(const TimeWithZone& other) const {
-        return zoned_time_.get_sys_time() != other.zoned_time_.get_sys_time();
+        return compare_time(other.zoned_time_.get_sys_time(), std::not_equal_to<>());
     }
 
     // Comparison operators with time_point
     bool operator<(const std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds>& time_point) const {
-        return zoned_time_.get_sys_time() < time_point;
+        return compare_time(time_point, std::less<>());
     }
 
     bool operator>(const std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds>& time_point) const {
-        return zoned_time_.get_sys_time() > time_point;
+        return compare_time(time_point, std::greater<>());
     }
 
     bool operator<=(const std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds>& time_point) const {
-        return zoned_time_.get_sys_time() <= time_point;
+        return compare_time(time_point, std::less_equal<>());
     }
 
     bool operator>=(const std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds>& time_point) const {
-        return zoned_time_.get_sys_time() >= time_point;
+        return compare_time(time_point, std::greater_equal<>());
     }
 
     bool operator==(const std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds>& time_point) const {
-        return zoned_time_.get_sys_time() == time_point;
+        return compare_time(time_point, std::equal_to<>());
     }
 
     bool operator!=(const std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds>& time_point) const {
-        return zoned_time_.get_sys_time() != time_point;
+        return compare_time(time_point, std::not_equal_to<>());
     }
 
     // Comparison operators with uint64_t nanoseconds epoch 
@@ -151,6 +149,16 @@ private:
     mutable std::optional<std::string> cached_to_string_;
     mutable std::optional<std::string> cached_to_string_with_name_;
     static const std::chrono::tzdb& tzdb_;
+
+private:
+    TimeWithZone() = delete;
+    // Static member for legacy zone mapping
+    static const std::map<std::string, std::string>& get_legacy_zone_to_canonical();
+
+    template <typename Compare>
+    bool compare_time(const std::chrono::sys_time<std::chrono::nanoseconds>& other_time, Compare comp) const {
+        return comp(zoned_time_.get_sys_time(), other_time);
+    }
 };
 
 } // namespace time
