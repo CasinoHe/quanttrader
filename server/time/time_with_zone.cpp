@@ -5,33 +5,36 @@
 #include <sstream>
 #include <map>
 
-const static std::map<std::string, std::string> legacy_zone_to_canonical = {
-    {"US/Eastern", "America/New_York"},
-    {"US/Central", "America/Chicago"},
-    {"US/Mountain", "America/Denver"},
-    {"US/Pacific", "America/Los_Angeles"},
-};
-
 
 namespace quanttrader {
 namespace time {
+
+    const std::chrono::tzdb& TimeWithZone::tzdb_ = std::chrono::get_tzdb();
 
     TimeWithZone::TimeWithZone(std::string time_zone, std::chrono::local_time<std::chrono::nanoseconds> localTime) : zoned_time_(time_zone, localTime) {
     }
 
     std::string TimeWithZone::to_string() const {
-        return std::format("{:%F %T%z}", zoned_time_);
+        if (!cached_to_string_)
+        {
+            cached_to_string_ = std::format("{:%F %T%z}", zoned_time_);
+        }
+        return *cached_to_string_;
     }
 
     std::string TimeWithZone::to_string_with_offset() const {
-        return std::format("{:%F %T%z}", zoned_time_);
+        return to_string();
     }
 
     std::string TimeWithZone::to_string_with_name() const {
-        return std::format("{:%F %T%Z}", zoned_time_);
+        if (!cached_to_string_with_name_)
+        {
+            cached_to_string_with_name_ = std::format("{:%F %T%Z}", zoned_time_);
+        }
+        return *cached_to_string_with_name_;
     }
 
-    std::shared_ptr<TimeWithZone> TimeWithZone::from_offset_string(const std::string& data) {
+    std::optional<TimeWithZone> TimeWithZone::from_offset_string(const std::string& data) {
         std::istringstream iss(data);
         std::chrono::local_time<std::chrono::nanoseconds> tp;
         std::chrono::minutes offset;
@@ -40,21 +43,21 @@ namespace time {
             auto seconds = std::chrono::duration_cast<std::chrono::seconds>(offset);
             auto zone_name = TimeWithZone::find_zone_by_offset(seconds);
             if (zone_name.has_value()) {
-                return std::make_shared<TimeWithZone>(zone_name.value(), tp);
+                return TimeWithZone(zone_name.value(), tp);
             }
             else {
                 quanttrader::log::Error(std::format("Failed to find zone for offset: {} {}", data, offset));
-                return nullptr;
+                return std::nullopt;
             }
         }
         else
         {
-            quanttrader::log::Error(std::format("Failed to parse offset time string: {}", data));
-            return nullptr;
+            quanttrader::log::Error(std::format("Failed to parse offset time string: {}, Underlying error: {}", data, iss.fail()));
+            return std::nullopt;
         }
     }
 
-    std::shared_ptr<TimeWithZone> TimeWithZone::from_zone_string(const std::string& data) {
+    std::optional<TimeWithZone> TimeWithZone::from_zone_string(const std::string& data) {
         std::istringstream iss(data);
         std::chrono::local_time<std::chrono::nanoseconds> tp;
         std::string abbrev;
@@ -62,21 +65,21 @@ namespace time {
         if (iss >> std::chrono::parse("%F %T %Z", tp, abbrev)) {
             auto zone_name = TimeWithZone::get_canonical_zone_name(abbrev);
             if (!zone_name.empty()) {
-                return std::make_shared<TimeWithZone>(zone_name, tp);
+                return TimeWithZone(zone_name, tp);
             }
             else {
                 quanttrader::log::Error(std::format("Failed to find zone for abbrev: {} {}", data, abbrev));
-                return nullptr;
+                return std::nullopt;
             }
         }
         else
         {
-            quanttrader::log::Error(std::format("Failed to parse offset time string: {}", data));
-            return nullptr;
+            quanttrader::log::Error(std::format("Failed to parse offset time string: {}, Underlying error: {}", data, iss.fail()));
+            return std::nullopt;
         }
     }
 
-    std::shared_ptr<TimeWithZone> TimeWithZone::from_ibapi_string(const std::string& data, const std::string &zone_name) {
+    std::optional<TimeWithZone> TimeWithZone::from_ibapi_string(const std::string& data, const std::string &zone_name) {
         std::istringstream iss(data);
         std::chrono::local_time<std::chrono::nanoseconds> tp;
         std::string abbrev;
@@ -84,27 +87,25 @@ namespace time {
         if (iss >> std::chrono::parse("%Y%m%d %T %Z", tp, abbrev)) {
             abbrev = TimeWithZone::get_canonical_zone_name(abbrev);
             if (!abbrev.empty()) {
-                return std::make_shared<TimeWithZone>(abbrev, tp);
+                return TimeWithZone(abbrev, tp);
             }
             else {
                 log::Warn(std::format("Failed to find zone for abbrev: {} {}", data, abbrev));
-                return std::make_shared<TimeWithZone>(zone_name, tp);
+                return TimeWithZone(zone_name, tp);
             }
         }
         else if (iss >> std::chrono::parse("%Y%m%d %T", tp)) {
-            return std::make_shared<TimeWithZone>(zone_name, tp);
+            return TimeWithZone(zone_name, tp);
         }
         else
         {
-            quanttrader::log::Error(std::format("Failed to parse offset time string: {}", data));
-            return nullptr;
+            quanttrader::log::Error(std::format("Failed to parse offset time string: {}, Underlying error: {}", data, iss.fail()));
+            return std::nullopt;
         }
     }
 
     std::optional<std::string> TimeWithZone::find_zone_by_offset(std::chrono::seconds &offset) {
-        const auto& tzdb = std::chrono::get_tzdb();
-
-        for (const auto& zone : tzdb.zones) {
+        for (const auto& zone : tzdb_.zones) {
             // Get the current offset for the zone
             const auto& current_offset = zone.get_info(std::chrono::system_clock::now()).offset;
 
@@ -117,9 +118,7 @@ namespace time {
     }
 
     bool TimeWithZone::is_valid_time_zone(const std::string& time_zone) {
-        const auto& tzdb =  std::chrono::get_tzdb();
-
-        for (const auto& zone : tzdb.zones) {
+        for (const auto& zone : tzdb_.zones) {
             if (zone.name() == time_zone) {
                 return true;
             }
@@ -127,12 +126,19 @@ namespace time {
         return false;
     }
 
-    std::string TimeWithZone::get_canonical_zone_name(const std::string& time_zone) {
-        if (TimeWithZone::is_valid_time_zone(time_zone)) {
-            return time_zone;
+    std::string TimeWithZone::get_canonical_zone_name(std::string_view time_zone) {
+        if (TimeWithZone::is_valid_time_zone(std::string(time_zone))) {
+            return std::string(time_zone);
         }
 
-        auto result = legacy_zone_to_canonical.find(time_zone);
+        static const std::map<std::string, std::string> legacy_zone_to_canonical = {
+            {"US/Eastern", "America/New_York"},
+            {"US/Central", "America/Chicago"},
+            {"US/Mountain", "America/Denver"},
+            {"US/Pacific", "America/Los_Angeles"},
+        };
+
+        auto result = legacy_zone_to_canonical.find(std::string(time_zone));
         if (result != legacy_zone_to_canonical.end()) {
             return result->second;
         }
@@ -149,9 +155,7 @@ namespace time {
     std::vector<uint8_t> TimeWithZone::serialize_to_vector() const {
         auto nano_epoch = get_nano_epoch();
         std::vector<uint8_t> bytes(8); // uint64_t is 8 bytes
-        for (int i = 0; i < 8; ++i) {
-            bytes[i] = static_cast<uint8_t>((nano_epoch >> (i * 8)) & 0xFF); // Extract each byte
-        }
+        std::memcpy(bytes.data(), &nano_epoch, sizeof(uint64_t));
         return bytes;
     }
 
@@ -160,10 +164,10 @@ namespace time {
         std::memcpy(buffer, &nano_epoch, sizeof(uint64_t));
     }
 
-    std::shared_ptr<TimeWithZone> TimeWithZone::unserialize_from_vector(const std::vector<uint8_t>& bytes) {
+    std::optional<TimeWithZone> TimeWithZone::unserialize_from_vector(const std::vector<uint8_t>& bytes) {
         if (bytes.size() != 8) {
             log::Error("Vector size must be 8 to represent uint64_t for nanoseconds");
-            return nullptr;
+            return std::nullopt;
         }
 
         uint64_t nano_epoch = 0;
@@ -180,10 +184,10 @@ namespace time {
         auto timezone = std::chrono::current_zone(); // Gets the current system time zone
         std::chrono::zoned_time<std::chrono::nanoseconds> ztime(timezone, time_point_ns);
 
-        return std::make_shared<TimeWithZone>(std::move(ztime));
+        return TimeWithZone(std::move(ztime));
     }
 
-    std::shared_ptr<TimeWithZone> TimeWithZone::unserialize_from_buffer(const uint8_t* buffer) {
+    std::optional<TimeWithZone> TimeWithZone::unserialize_from_buffer(const uint8_t* buffer) {
         uint64_t nano_epoch = 0;
         for (int i = 0; i < 8; ++i) {
             nano_epoch |= static_cast<uint64_t>(static_cast<uint8_t>(buffer[i])) << (i * 8);
@@ -197,7 +201,7 @@ namespace time {
         auto timezone = std::chrono::current_zone(); // Gets the current system time zone
         std::chrono::zoned_time<std::chrono::nanoseconds> ztime(timezone, time_point_ns);
 
-        return std::make_shared<TimeWithZone>(std::move(ztime));
+        return TimeWithZone(std::move(ztime));
     }
 
 } // namespace time
