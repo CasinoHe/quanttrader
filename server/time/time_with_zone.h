@@ -1,5 +1,7 @@
 #pragma once
 
+#include "logger/quantlogger.h"
+
 #include <chrono>
 #include <string>
 #include <utility>
@@ -117,26 +119,44 @@ public:
     // Comparison operators with uint64_t nanoseconds epoch 
     // Caution: It only compares with the nanoseconds, not milliseconds or seconds
     bool operator<(const uint64_t nanoseconds) const {
+        if (nanoseconds < kMinimumNanosecondsEpoch) {
+            log::Error(std::format("Compare TimeWizoZone with a not nanoseconds epoch value: {}, it maybe milliseconds or seconds", nanoseconds));
+        }
         return get_nano_epoch() < nanoseconds;
     }
 
     bool operator>(const uint64_t nanoseconds) const {
+        if (nanoseconds < kMinimumNanosecondsEpoch) {
+            log::Error(std::format("Compare TimeWizoZone with a not nanoseconds epoch value: {}, it maybe milliseconds or seconds", nanoseconds));
+        }
         return get_nano_epoch() > nanoseconds;
     }
 
     bool operator<=(const uint64_t nanoseconds) const {
+        if (nanoseconds < kMinimumNanosecondsEpoch) {
+            log::Error(std::format("Compare TimeWizoZone with a not nanoseconds epoch value: {}, it maybe milliseconds or seconds", nanoseconds));
+        }
         return get_nano_epoch() <= nanoseconds;
     }
 
     bool operator>=(const uint64_t nanoseconds) const {
+        if (nanoseconds < kMinimumNanosecondsEpoch) {
+            log::Error(std::format("Compare TimeWizoZone with a not nanoseconds epoch value: {}, it maybe milliseconds or seconds", nanoseconds));
+        }
         return get_nano_epoch() >= nanoseconds;
     }
 
     bool operator==(const uint64_t nanoseconds) const {
+        if (nanoseconds < kMinimumNanosecondsEpoch) {
+            log::Error(std::format("Compare TimeWizoZone with a not nanoseconds epoch value: {}, it maybe milliseconds or seconds", nanoseconds));
+        }
         return get_nano_epoch() == nanoseconds;
     }
 
     bool operator!=(const uint64_t nanoseconds) const {
+        if (nanoseconds < kMinimumNanosecondsEpoch) {
+            log::Error(std::format("Compare TimeWizoZone with a not nanoseconds epoch value: {}, it maybe milliseconds or seconds", nanoseconds));
+        }
         return get_nano_epoch() != nanoseconds;
     }
 
