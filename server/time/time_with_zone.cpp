@@ -14,6 +14,13 @@ namespace time {
     TimeWithZone::TimeWithZone(std::string_view time_zone, std::chrono::local_time<std::chrono::nanoseconds> localTime) : zoned_time_(time_zone, localTime) {
     }
 
+    TimeWithZone::TimeWithZone(std::string_view time_zone, std::chrono::sys_time<std::chrono::nanoseconds> sys_time): zoned_time_(time_zone, sys_time) {
+    }
+
+    TimeWithZone::TimeWithZone(uint64_t nanoseconds_epoch, const std::string& zone_name) {
+        zoned_time_ = get_zoned_time(nanoseconds_epoch, zone_name);
+    }
+
     std::string TimeWithZone::to_string() const {
         if (!cached_to_string_)
         {
@@ -44,14 +51,11 @@ namespace time {
             auto zone_name = TimeWithZone::find_zone_by_offset(seconds);
             if (zone_name.has_value()) {
                 return TimeWithZone(zone_name.value(), tp);
-            }
-            else {
+            } else {
                 quanttrader::log::Error(std::format("Failed to find zone for offset: {} {}", data, offset));
                 return std::nullopt;
             }
-        }
-        else
-        {
+        } else {
             quanttrader::log::Error(std::format("Failed to parse offset time string: {}, Underlying error: {}", data, iss.fail()));
             return std::nullopt;
         }
@@ -71,9 +75,7 @@ namespace time {
                 quanttrader::log::Error(std::format("Failed to find zone for abbrev: {} {}", data, abbrev));
                 return std::nullopt;
             }
-        }
-        else
-        {
+        } else {
             quanttrader::log::Error(std::format("Failed to parse offset time string: {}, Underlying error: {}", data, iss.fail()));
             return std::nullopt;
         }
@@ -94,13 +96,15 @@ namespace time {
                 return TimeWithZone(zone_name, tp);
             }
         }
-        else if (iss >> std::chrono::parse("%Y%m%d %T", tp)) {
-            return TimeWithZone(zone_name, tp);
-        }
-        else
-        {
-            quanttrader::log::Error(std::format("Failed to parse offset time string: {}, Underlying error: {}", data, iss.fail()));
-            return std::nullopt;
+        else {
+            iss.clear();
+            iss.seekg(0, std::ios::beg);
+            if (iss >> std::chrono::parse("%Y%m%d %T", tp)) {
+                return TimeWithZone(zone_name, tp);
+            } else {
+                quanttrader::log::Error(std::format("Failed to parse offset time string: {}, Underlying error: {}", data, iss.fail()));
+                return std::nullopt;
+            }
         }
     }
 
@@ -184,15 +188,7 @@ namespace time {
 
         }
 
-        std::chrono::nanoseconds duration_since_epoch(nano_epoch);
-        // Convert the duration to a time_point with nanosecond precision
-        std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds> time_point_ns(duration_since_epoch);
-
-        // Create a zoned_time for a specific time zone (e.g., UTC)
-        auto timezone = std::chrono::current_zone(); // Gets the current system time zone
-        std::chrono::zoned_time<std::chrono::nanoseconds> ztime(timezone, time_point_ns);
-
-        return TimeWithZone(std::move(ztime));
+        return TimeWithZone(get_zoned_time(nano_epoch, ""));
     }
 
     std::optional<TimeWithZone> TimeWithZone::unserialize_from_buffer(const uint8_t* buffer) {
@@ -201,15 +197,28 @@ namespace time {
             nano_epoch |= static_cast<uint64_t>(static_cast<uint8_t>(buffer[i])) << (i * 8);
         }
 
+        return TimeWithZone(get_zoned_time(nano_epoch, ""));
+    }
+
+    std::chrono::zoned_time<std::chrono::nanoseconds> TimeWithZone::get_zoned_time(uint64_t nano_epoch, const std::string_view zone_name) {
+
+        // to avoid send a millisecond epoch or seconds epoch by mistake, we check the nano_epoch value
+        // if the value is smaller than 10^18, we assume it is not a nanoseconds epoch
+        if (nano_epoch < kMinimumNanosecondsEpoch) {
+            log::Error(std::format("The nanoseconds epoch value is too small: {}, it maybe milliseconds or seconds", nano_epoch));
+        }
+
         std::chrono::nanoseconds duration_since_epoch(nano_epoch);
         // Convert the duration to a time_point with nanosecond precision
         std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds> time_point_ns(duration_since_epoch);
 
         // Create a zoned_time for a specific time zone (e.g., UTC)
-        auto timezone = std::chrono::current_zone(); // Gets the current system time zone
-        std::chrono::zoned_time<std::chrono::nanoseconds> ztime(timezone, time_point_ns);
-
-        return TimeWithZone(std::move(ztime));
+        if (!zone_name.empty()) {
+            return std::chrono::zoned_time<std::chrono::nanoseconds>(zone_name, time_point_ns);
+        } else {
+            auto timezone = std::chrono::current_zone(); // Gets the current system time zone
+            return std::chrono::zoned_time<std::chrono::nanoseconds>(timezone, time_point_ns);
+        }
     }
 
 } // namespace time

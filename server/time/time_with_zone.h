@@ -18,10 +18,12 @@ public:
     using ZonedTime = std::chrono::zoned_time<std::chrono::nanoseconds>;
 
     TimeWithZone(std::string_view time_zone, std::chrono::local_time<std::chrono::nanoseconds> local_time);
+    TimeWithZone(std::string_view time_zone, std::chrono::sys_time<std::chrono::nanoseconds> sys_time);
     TimeWithZone(const ZonedTime& zoned_time) : zoned_time_(zoned_time) {}
     TimeWithZone(const ZonedTime&& zoned_time) : zoned_time_(std::move(zoned_time)) {}
     TimeWithZone(const TimeWithZone& other) : zoned_time_(other.zoned_time_) {}
     TimeWithZone(TimeWithZone&& other) noexcept : zoned_time_(std::move(other.zoned_time_)) {}
+    TimeWithZone(uint64_t nanoseconds_epoch, const std::string& zone_name);
 
     // get a readable time string
     std::string to_string() const;
@@ -159,6 +161,8 @@ private:
     bool compare_time(const std::chrono::sys_time<std::chrono::nanoseconds>& other_time, Compare comp) const {
         return comp(zoned_time_.get_sys_time(), other_time);
     }
+
+    static std::chrono::zoned_time<std::chrono::nanoseconds> get_zoned_time(uint64_t nano_epoch, const std::string_view zone_name);
 };
 
 } // namespace time
