@@ -1,5 +1,6 @@
 #include "logger/quantlogger.h"
 #include "boost/program_options.hpp"
+#include "service/strategy_service.h"
 
 #ifdef QUANTTRADER_BUILD_TEST
 #include "test/test_base.h"
@@ -38,6 +39,37 @@ int parse_test_command(const std::vector<std::string> &subargs) {
 #endif
     } else {
         std::cerr << "Error: No function specified for 'test'.\n";
+        std::cout << add_desc << "\n";
+        return 1;
+    }
+
+    return EXIT_SUCCESS;
+}
+
+
+int parse_strategy_command(const std::vector<std::string> &subargs) {
+    po::options_description add_desc("Options for 'strategy' command");
+    add_desc.add_options()
+        ("help,h", "Display help message")
+        ("name", po::value<std::string>(), "What strategy to run");
+
+    po::variables_map strategy_vm;
+    po::store(po::command_line_parser(subargs).options(add_desc).run(), strategy_vm);
+    po::notify(strategy_vm);
+
+    if (strategy_vm.count("help")) {
+        std::cout << add_desc << "\n";
+        return EXIT_SUCCESS;
+    }
+
+    if (strategy_vm.count("name")) {
+        std::string name = strategy_vm["name"].as<std::string>();
+        std::cout << "Running strategy: " << name << "\n";
+        quanttrader::service::StrategyService service;
+        service.run();
+        return EXIT_SUCCESS;
+    } else {
+        std::cerr << "Error: No strategy specified for 'strategy'.\n";
         std::cout << add_desc << "\n";
         return 1;
     }
@@ -85,6 +117,7 @@ int main(int argc, const char* argv[]) {
         if (command == "test") {
             return parse_test_command(subargs);
         } else if (command == "strategy") {
+            return parse_strategy_command(subargs);
         } else {
             std::cerr << "Error: Unknown command '" << command << "'.\n";
             return 1;
