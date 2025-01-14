@@ -13,6 +13,10 @@
         {
             "name": "boost-program-options",
             "features": []
+        },
+        {
+            "name": "intelrdfpmathlib",
+            "features": []
         }
     ],
     "overrides": [
@@ -23,6 +27,10 @@
         {
             "name": "spdlog",
             "version": "1.15.0#1"
+        },
+        {
+            "name": "intelrdfpmathlib",
+            "version": "20U2#6"
         }
     ]
 }
