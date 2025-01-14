@@ -53,13 +53,6 @@ if(MSVC)
 else()
     target_compile_options(twsapi PRIVATE -Wall -Wextra -pedantic -Wno-unused-parameter)
 endif()
-set_target_properties(twsapi
-    PROPERTIES
-    PREFIX "lib"
-    DEBUG_POSTFIX "d"
-    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/lib"
-    PUBLIC_HEADER "${HEADERS}"
-)
 target_link_libraries(twsapi PRIVATE intel_decimal128)
 # --------------------- build tws api end ---------------------------
 
@@ -69,6 +62,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE ${THIRDPARTY_DIR}/fmt/include
                                                   ${THIRDPARTY_DIR}/spdlog/include
                                                   ${SERVER_ROOT_DIR}
                                                   ${Boost_INCLUDE_DIRS}
+                                                  ${TWS_ROOT}
                                                   )
 target_link_directories(${PROJECT_NAME} PRIVATE ${Boost_LIBRARY_DIRS})
 target_link_libraries(${PROJECT_NAME} PRIVATE fmt::fmt spdlog::spdlog Boost::program_options twsapi)
