@@ -1,10 +1,11 @@
-/* Copyright (C) 2023 Interactive Brokers LLC. All rights reserved. This code is subject to the terms
+/* Copyright (C) 2024 Interactive Brokers LLC. All rights reserved. This code is subject to the terms
  * and conditions of the IB API Non-Commercial License or the IB API Commercial License, as applicable. */
 #pragma once
 #ifndef TWS_API_CLIENT_UTILS_H
 #define TWS_API_CLIENT_UTILS_H
 
 #include <string>
+#include <ctime>
 #include "CommonDefs.h"
 
 class Utils {
@@ -16,6 +17,7 @@ public:
     static bool isPegBestOrder(std::string orderType);
     static FundDistributionPolicyIndicator getFundDistributionPolicyIndicator(std::string value);
     static FundAssetType getFundAssetType(std::string value);
+    static time_t currentTimeMillis();
 };
 
 #endif

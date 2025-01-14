@@ -1,4 +1,4 @@
-/* Copyright (C) 2023 Interactive Brokers LLC. All rights reserved. This code is subject to the terms
+/* Copyright (C) 2024 Interactive Brokers LLC. All rights reserved. This code is subject to the terms
  * and conditions of the IB API Non-Commercial License or the IB API Commercial License, as applicable. */
 
 #pragma once
@@ -31,7 +31,7 @@ struct Execution
 	std::string	side;
 	Decimal 	shares;
 	double		price;
-	int			permId;
+	long long	permId;
 	long		clientId;
 	long		orderId;
 	int			liquidation;

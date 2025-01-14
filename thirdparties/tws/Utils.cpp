@@ -1,4 +1,4 @@
-/* Copyright (C) 2023 Interactive Brokers LLC. All rights reserved. This code is subject to the terms
+/* Copyright (C) 2024 Interactive Brokers LLC. All rights reserved. This code is subject to the terms
  * and conditions of the IB API Non-Commercial License or the IB API Commercial License, as applicable. */
 
 #include "StdAfx.h"
@@ -52,4 +52,8 @@ FundDistributionPolicyIndicator Utils::getFundDistributionPolicyIndicator(std::s
         return FundDistributionPolicyIndicator::IncomeFund;
     }
     return FundDistributionPolicyIndicator::None;
+}
+
+time_t Utils::currentTimeMillis() {
+    return time(NULL) * 1000;
 }

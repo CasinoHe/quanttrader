@@ -59,17 +59,16 @@ void EReader::start() {
 }
 
 void EReader::stop() {
-#if defined(IB_POSIX)
-  if (!pthread_equal(pthread_self(), m_hReadThread)) {
-    m_isAlive = false;
-    pthread_join(m_hReadThread, NULL);
-  }
-#elif defined(IB_WIN32)
   if (m_hReadThread) {
     m_isAlive = false;
-    WaitForSingleObject(m_hReadThread, INFINITE);
-  }
+#if defined(IB_POSIX)
+    if (!pthread_equal(pthread_self(), m_hReadThread))
+      pthread_join(m_hReadThread, NULL);
+#elif defined(IB_WIN32)
+    if (!(GetCurrentThreadId() == GetThreadId(m_hReadThread)))
+      WaitForSingleObject(m_hReadThread, INFINITE);
 #endif
+  }
 }
 
 #if defined(IB_POSIX)

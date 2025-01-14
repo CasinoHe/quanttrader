@@ -54,7 +54,7 @@ struct Order
 	// order identifier
 	long     orderId = 0;
 	long     clientId = 0;
-	int      permId = 0;
+	long long permId = 0;
 
 	// main order fields
 	std::string action;
@@ -70,7 +70,7 @@ struct Order
 	std::string ocaGroup;      // one cancels all group name
 	int      ocaType = 0;       // 1 = CANCEL_WITH_BLOCK, 2 = REDUCE_WITH_BLOCK, 3 = REDUCE_NON_BLOCK
 	std::string orderRef;      // order reference
-	bool     transmit = true;      // if false, order will be created but not transmited
+	bool     transmit = true;      // if false, order will be created but not transmitted
 	long     parentId = 0;      // Parent order Id, to associate Auto STP or TRAIL orders with the original order.
 	bool     blockOrder = false;
 	bool     sweepToFill = false;
@@ -246,8 +246,7 @@ struct Order
 	std::string customerAccount = "";
 	bool professionalCustomer = false;
 	std::string bondAccruedInterest = "";
-
-	std::string externalUserId = "";
+	bool includeOvernight = false;
 	int manualOrderIndicator = UNSET_INTEGER;
 
 public:

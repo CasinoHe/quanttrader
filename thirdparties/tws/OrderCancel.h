@@ -13,7 +13,6 @@ struct OrderCancel
 {
     std::string manualOrderCancelTime = "";
     std::string extOperator = "";
-    std::string externalUserId = "";
     int manualOrderIndicator = UNSET_INTEGER;
 };
 
