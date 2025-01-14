@@ -8,7 +8,11 @@ namespace broker {
 
 std::atomic<long> TwsClient::next_request_id_{0};
 
-TwsClient::TwsClient() : client_socket_(this) {
+TwsClient::TwsClient(const std::string_view ip, int port, int clientid) : client_socket_(this, &signal_handler_), mutex_() {
+    host_ = ip;
+    port_ = port;
+    clientid_ = clientid;
+    logger_ = qlog::get_common_rotation_logger("TwsClient", "tws_client", false);
     logger_->info("TwsClient instance created.");
 }
 
@@ -17,17 +21,23 @@ TwsClient::~TwsClient() {
     logger_->info("TwsClient instance destroyed.");
 }
 
-bool TwsClient::connect(const std::string &host, int port, int client_id) {
+bool TwsClient::connect() {
     if (client_socket_.isConnected()) {
         logger_->warn("Already connected.");
         return false;
     }
 
-    if (client_socket_.eConnect(host.c_str(), port, client_id)) {
-        logger_->info("Connected to TWS at {}:{} with client ID {}.", host, port, client_id);
+    // Set a signal handler to log connection signals (optional)
+    signal_handler_.set_on_signal([this]() {
+        logger_->info("Signal received for connection.");
+    });
+
+    logger_->info("Start Connecting to TWS at {}:{} with client ID {}.", host_, port_, clientid_);
+    if (client_socket_.eConnect(host_.c_str(), port_, clientid_)) {
+        logger_->info("Connected to TWS at {}:{} with client ID {}.", host_, port_, clientid_);
         return true;
     } else {
-        logger_->error("Failed to connect to TWS at {}:{} with client ID {}.", host, port, client_id);
+        logger_->error("Failed to connect to TWS at {}:{} with client ID {}.", host_, port_, clientid_);
         return false;
     }
 }
@@ -77,6 +87,10 @@ void TwsClient::tickSize(TickerId ticker_id, TickType field, Decimal size) {
 void TwsClient::historicalData(TickerId req_id, const Bar &bar) {
     logger_->info("Historical Data. ReqId: {}, Date: {}, Open: {}, High: {}, Low: {}, Close: {}, Volume: {}",
                   req_id, bar.time, bar.open, bar.high, bar.low, bar.close, bar.volume);
+}
+
+void TwsClient::historicalDataEnd(int req_id, const std::string& start_date, const std::string& end_date) {
+    logger_->info("Historical Data End. ReqId: {}, Start Date: {}, End Date: {}", req_id, start_date, end_date);
 }
 
 void TwsClient::error(int id, time_t error_time, int error_code, const std::string &error_string, const std::string& advancedOrderRejectJson) {
