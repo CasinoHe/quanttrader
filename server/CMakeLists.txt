@@ -20,6 +20,16 @@ list(APPEND SERVER_SOURCES ${C_SOURCES})
 list(FILTER SERVER_SOURCES EXCLUDE REGEX "${SERVER_ROOT_DIR}/build/.*")
 message(STATUS "SERVER_SOURCES: ${SERVER_SOURCES}")
 
+# -------------------------- build test code ----------------------------
+# TODO: build test using python/lua script in runtime
+option(BUILD_TEST "Build test" OFF)
+if (BUILD_TEST)
+    add_definitions(-DQUANTTRADER_BUILD_TEST)
+else()
+    list(FILTER SERVER_SOURCES EXCLUDE REGEX "${SERVER_ROOT_DIR}/test/.*")
+endif()
+# -------------------------- build test end ----------------------------
+
 set(THIRDPARTY_DIR ${PROJECT_ROOT_DIR}/thirdparties)
 
 # disable FindBoost module removed warning
@@ -44,19 +54,9 @@ set(TWS_ROOT "${THIRDPARTY_DIR}/tws")
 file(GLOB TWS_SOURCES ${TWS_ROOT}/*.cpp)
 file(GLOB TWS_HEADERS ${TWS_ROOT}/*.h)
 set(twsapi_VERSION 9.79.02)
-add_library(twsapi STATIC ${TWS_SOURCES})
-if(WIN32)
-    target_link_libraries(twsapi PUBLIC ws2_32)
-endif()
-if(MSVC)
-    target_compile_options(twsapi PRIVATE /W3)
-else()
-    target_compile_options(twsapi PRIVATE -Wall -Wextra -pedantic -Wno-unused-parameter)
-endif()
-target_link_libraries(twsapi PRIVATE intel_decimal128)
 # --------------------- build tws api end ---------------------------
 
-add_executable(${PROJECT_NAME} ${SERVER_SOURCES} ${LUA_SOURCES})
+add_executable(${PROJECT_NAME} ${SERVER_SOURCES} ${LUA_SOURCES} ${TWS_SOURCES})
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${THIRDPARTY_DIR}/fmt/include
                                                   ${THIRDPARTY_DIR}/spdlog/include
@@ -65,8 +65,15 @@ target_include_directories(${PROJECT_NAME} PRIVATE ${THIRDPARTY_DIR}/fmt/include
                                                   ${TWS_ROOT}
                                                   )
 target_link_directories(${PROJECT_NAME} PRIVATE ${Boost_LIBRARY_DIRS})
-target_link_libraries(${PROJECT_NAME} PRIVATE fmt::fmt spdlog::spdlog Boost::program_options twsapi)
+target_link_libraries(${PROJECT_NAME} PRIVATE fmt::fmt spdlog::spdlog Boost::program_options intel_decimal128)
 
 if (WIN32)
+    target_link_libraries(${PROJECT_NAME} PUBLIC ws2_32)
     target_compile_options(${PROJECT_NAME} PRIVATE "/MT")
+endif()
+
+if(MSVC)
+    target_compile_options(${PROJECT_NAME} PRIVATE /W3)
+else()
+    target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -pedantic -Wno-unused-parameter)
 endif()

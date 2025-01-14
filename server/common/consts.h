@@ -8,5 +8,5 @@ namespace quanttrader
     constexpr int kSpdLogMaxRotatingFiles = 180;
 
     constexpr char kDefaultLogDir[] = "log";
-    constexpr unsigned long long kMinimumNanosecondsEpoch = 1e+17;
+    constexpr unsigned long long kMinimumNanosecondsEpoch = static_cast<unsigned long long>(1e+17);
 }
