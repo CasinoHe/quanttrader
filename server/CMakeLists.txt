@@ -69,7 +69,8 @@ target_include_directories(${PROJECT_NAME} PRIVATE ${THIRDPARTY_DIR}/fmt/include
                                                   ${Boost_INCLUDE_DIRS}
                                                   ${TWS_ROOT}
                                                   )
-target_link_directories(${PROJECT_NAME} PRIVATE ${Boost_LIBRARY_DIRS})
+get_filename_component(THIRD_PARTY_LIB_DIRS ${Boost_INCLUDE_DIRS}/../lib ABSOLUTE)
+target_link_directories(${PROJECT_NAME} PRIVATE ${THIRD_PARTY_LIB_DIRS})
 target_link_libraries(${PROJECT_NAME} PRIVATE fmt::fmt spdlog::spdlog Boost::program_options intel_decimal128)
 
 if (WIN32)
