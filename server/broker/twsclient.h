@@ -12,6 +12,9 @@
 #include <map>
 #include <functional>
 #include <atomic>
+#include <memory>
+
+class EReader;
 
 namespace quanttrader {
 namespace broker {
@@ -25,7 +28,9 @@ public:
     ~TwsClient();
 
     bool connect();
+    inline bool is_connected() const { return client_socket_.isConnected(); }
     void disconnect();
+    void process_messages();
 
     void request_real_time_data(TickerId request_id, const Contract &contract);
     void cancel_real_time_data(TickerId request_id);
@@ -144,7 +149,9 @@ public:
     virtual void userInfo(int reqId, const std::string& whiteBrandingId) override {};
 
 private:
+    SignalHandler signal_handler_; // Signal handler for EClientSocket
     EClientSocket client_socket_;
+    std::unique_ptr<EReader> reader_ptr_;
     std::mutex mutex_;
     qlog::LoggerPtr logger_;
 
@@ -153,7 +160,6 @@ private:
     int clientid_;
 
     static std::atomic<TickerId> next_request_id_;
-    SignalHandler signal_handler_; // Signal handler for EClientSocket
 };
 
 }

@@ -68,6 +68,7 @@ public:
     // Run the service
     virtual bool prepare() { return load_config(); }
     virtual void run() = 0;
+    virtual void stop() = 0;
 
 protected:
     ServiceBase() = default;

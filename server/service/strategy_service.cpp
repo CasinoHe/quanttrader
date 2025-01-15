@@ -1,6 +1,9 @@
 #include "service/strategy_service.h"
 #include "broker/twsclient.h"
 
+#include <chrono>
+
+
 namespace quanttrader {
 namespace service {
 
@@ -33,7 +36,56 @@ void StrategyService::run() {
         return;
     }
 
-    client_->connect();
+    // start tws thread
+    tws_thread_ = std::make_shared<std::thread>(&StrategyService::run_tws, this);
+    tws_thread_->join();
+}
+
+void StrategyService::run_tws() {
+    // TEST
+    int test_count = 30;
+
+    auto connect_func = [this]() {
+        while (true) {
+            if (stop_flag_.load()) {
+                break;
+            }
+            // try connecting to TWS infinitely
+            if (!client_->connect()) {
+                logger_->error("Connect to TWS failed. Retry in {} milliseconds.", retry_milliseconds_);
+                std::this_thread::sleep_for(std::chrono::milliseconds(retry_milliseconds_));
+            } else {
+                break;
+            }
+        }
+    };
+
+    while (true) {
+        // try connect to TWS
+        connect_func();
+
+        while (client_->is_connected()) {
+            if (stop_flag_.load()) {
+                break;
+            }
+
+            client_->process_messages();
+
+            test_count -= 1;
+            if (test_count <= 0) {
+                stop();
+            }
+        }
+
+        if (stop_flag_.load()) {
+            break;
+        }
+    }
+}
+
+void StrategyService::stop() {
+    stop_flag_.store(true);
+    logger_->info("Set stop flag");
 }
 
 bool StrategyService::prepare() {
@@ -47,9 +99,20 @@ bool StrategyService::prepare() {
     int port = get_int_value("port");
     std::string ip = get_string_value("host");
     int clientid = get_int_value("clientid");
+    int retry_milliseconds = get_int_value("retry_milliseconds");
+    if (retry_milliseconds > 0) {
+        retry_milliseconds_ = retry_milliseconds;
+    } else {
+        logger_->info("Retry milliseconds is less than 0, use the default retry milliseconds {}", retry_milliseconds_);
+    }
 
     if (ip.empty() || port == 0 || clientid == 0) {
         logger_->error("Cannot get the configuration information from the config file. host {}, port {}, clientid {}", ip, port, clientid);
+        return false;
+    }
+
+    if (tws_thread_) {
+        logger_->warn("Tws thread is already running.");
         return false;
     }
 

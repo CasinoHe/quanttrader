@@ -1,4 +1,6 @@
 #include "twsclient.h"
+#include "EReader.h"
+#include "EReaderOSSignal.h"
 #include <iostream>
 #include <chrono>
 #include <thread>
@@ -8,7 +10,7 @@ namespace broker {
 
 std::atomic<long> TwsClient::next_request_id_{0};
 
-TwsClient::TwsClient(const std::string_view ip, int port, int clientid) : client_socket_(this, &signal_handler_), mutex_() {
+TwsClient::TwsClient(const std::string_view ip, int port, int clientid) : signal_handler_(60000), client_socket_(this, &signal_handler_), mutex_() {
     host_ = ip;
     port_ = port;
     clientid_ = clientid;
@@ -18,6 +20,10 @@ TwsClient::TwsClient(const std::string_view ip, int port, int clientid) : client
 
 TwsClient::~TwsClient() {
     disconnect();
+
+    if (reader_ptr_) {
+        reader_ptr_.reset();
+    }
     logger_->info("TwsClient instance destroyed.");
 }
 
@@ -27,14 +33,11 @@ bool TwsClient::connect() {
         return false;
     }
 
-    // Set a signal handler to log connection signals (optional)
-    signal_handler_.set_on_signal([this]() {
-        logger_->info("Signal received for connection.");
-    });
-
     logger_->info("Start Connecting to TWS at {}:{} with client ID {}.", host_, port_, clientid_);
     if (client_socket_.eConnect(host_.c_str(), port_, clientid_)) {
         logger_->info("Connected to TWS at {}:{} with client ID {}.", host_, port_, clientid_);
+        reader_ptr_ = std::make_unique<EReader>(&client_socket_, &signal_handler_);
+        reader_ptr_->start();
         return true;
     } else {
         logger_->error("Failed to connect to TWS at {}:{} with client ID {}.", host_, port_, clientid_);
@@ -47,6 +50,12 @@ void TwsClient::disconnect() {
         client_socket_.eDisconnect();
         logger_->info("Disconnected from TWS.");
     }
+}
+
+void TwsClient::process_messages() {
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    // TODO: TEST
+    logger_->info("Process message");
 }
 
 void TwsClient::request_real_time_data(TickerId request_id, const Contract &contract) {
