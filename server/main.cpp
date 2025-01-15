@@ -1,5 +1,6 @@
 #include "logger/quantlogger.h"
 #include "boost/program_options.hpp"
+#include "service/service_factory.h"
 #include "service/strategy_service.h"
 
 #ifdef QUANTTRADER_BUILD_TEST
@@ -51,7 +52,8 @@ int parse_strategy_command(const std::vector<std::string> &subargs) {
     po::options_description add_desc("Options for 'strategy' command");
     add_desc.add_options()
         ("help,h", "Display help message")
-        ("name", po::value<std::string>(), "What strategy to run");
+        ("name", po::value<std::string>(), "The name of strategy to run")
+        ("config,c", po::value<std::string>(), "The configuration file for the strategy");
 
     po::variables_map strategy_vm;
     po::store(po::command_line_parser(subargs).options(add_desc).run(), strategy_vm);
@@ -63,10 +65,18 @@ int parse_strategy_command(const std::vector<std::string> &subargs) {
     }
 
     if (strategy_vm.count("name")) {
+        namespace qservice = quanttrader::service;
+
+        if (!strategy_vm.count("config")) {
+            std::cerr << "Error: No configuration file specified for 'strategy'.\n";
+            std::cout << add_desc << "\n";
+            return 1;
+        }
         std::string name = strategy_vm["name"].as<std::string>();
-        std::cout << "Running strategy: " << name << "\n";
-        quanttrader::service::StrategyService service;
-        service.run();
+        std::string config_path = strategy_vm["config"].as<std::string>();
+        std::cout << "Prepare to run strategy: " << name << "\n";
+        auto service = qservice::ServiceFactory::get_service<qservice::StrategyService>();
+        service->run();
         return EXIT_SUCCESS;
     } else {
         std::cerr << "Error: No strategy specified for 'strategy'.\n";
@@ -85,7 +95,7 @@ int main(int argc, const char* argv[]) {
         global_desc.add_options()
             ("help,h", "Display help message")
             ("command", po::value<std::string>(), "Command to execute, choose from [test, strategy]")
-            ("subargs", po::value<std::vector<std::string>>()->multitoken(), "Arguments for command");
+            ("subargs", po::value<std::vector<std::string>>()->multitoken(), "Arguments for command, forexample: quanttrader --command strategy --subargs name=a config=b.lua");
 
         // Parse top-level options
         po::variables_map global_vm;
@@ -112,6 +122,13 @@ int main(int argc, const char* argv[]) {
         std::string command = global_vm["command"].as<std::string>();
         std::vector<std::string> subargs =
             global_vm.count("subargs") ? global_vm["subargs"].as<std::vector<std::string>>() : std::vector<std::string>();
+
+        // add "--" prefix to subargs for boost::program_options parser
+        for (int i = 0; i < subargs.size(); i++) {
+            if (!subargs[i].starts_with("--")) {
+                subargs[i] = "--" + subargs[i];
+            }
+        }
 
         // Sub-command-specific options
         if (command == "test") {
