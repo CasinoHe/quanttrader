@@ -38,6 +38,7 @@ public:
     std::string get_string_value(const std::string &table_name, const std::string &key);
 
 private:
+    bool inited_ = false;
     lua_State *luastate_ = NULL;
     std::string script_path_ = "";
     quanttrader::log::LoggerPtr logger_ = nullptr;

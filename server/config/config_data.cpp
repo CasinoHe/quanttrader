@@ -20,11 +20,6 @@ namespace luascript {
 
 LuaConfigData::LuaConfigData(const std::string &script_path): script_path_(script_path) {
     logger_ = quanttrader::log::get_common_rotation_logger("LuaConfigData", "lua_config");
-
-    luastate_ = luaL_newstate();
-    luaL_openlibs(luastate_); // Load Lua libraries
-
-    logger_->info("Lua state created for script: {}", script_path_);
 }
 
 LuaConfigData::~LuaConfigData() {
@@ -34,6 +29,14 @@ LuaConfigData::~LuaConfigData() {
 }
 
 bool LuaConfigData::run_lua_script() {
+    if (!inited_) {
+        luastate_ = luaL_newstate();
+        luaL_openlibs(luastate_); // Load Lua libraries
+
+        logger_->info("Lua state created for script: {}", script_path_);
+        inited_ = true;
+    }
+
     // check the file exists
     if (!std::filesystem::exists(script_path_)) {
         logger_->error("Lua script file does not exist: {}", script_path_);
