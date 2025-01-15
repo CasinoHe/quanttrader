@@ -7,6 +7,7 @@
 #include <unordered_map>
 #include <typeindex>
 #include <filesystem>
+#include <exception>
 
 namespace quanttrader {
 namespace service {
@@ -43,6 +44,22 @@ public:
     }
 
     virtual bool is_service_prepared() const { return config_loaded_; }
+
+    int get_int_value(const std::string &key) {
+        if (!config_loaded_) {
+            throw std::runtime_error("Service is not prepared. Please prepare the service first.");
+        }
+
+        return lua_config_->get_int_value("service", key);
+    }
+
+    std::string get_string_value(const std::string &key) {
+        if (!config_loaded_) {
+            throw std::runtime_error("Service is not prepared. Please prepare the service first.");
+        }
+
+        return lua_config_->get_string_value("service", key);
+    }
 
     // Run the service
     virtual bool prepare() { return load_config(); };
