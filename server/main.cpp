@@ -77,7 +77,7 @@ int parse_strategy_command(const std::vector<std::string> &subargs) {
         std::cout << "Prepare to run strategy: " << name << "\n";
         auto service = qservice::ServiceFactory::get_service<qservice::StrategyService>(config_path);
         if (!service->prepare()) {
-            std::cout << "Cannot prepare the service." << std::endl;
+            std::cout << "Cannot prepare the service. Check log for more information." << std::endl;
         } else {
             service->run();
         }

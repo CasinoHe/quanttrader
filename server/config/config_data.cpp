@@ -19,7 +19,7 @@ namespace quanttrader {
 namespace luascript {
 
 LuaConfigData::LuaConfigData(const std::string &script_path): script_path_(script_path) {
-    logger_ = quanttrader::log::get_common_rotation_logger("LuaConfigData", "lua_config");
+    logger_ = quanttrader::log::get_common_rotation_logger("LuaConfigData", "config");
 }
 
 LuaConfigData::~LuaConfigData() {

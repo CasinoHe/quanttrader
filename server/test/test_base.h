@@ -21,7 +21,7 @@ public:
 
 private:
     std::unordered_map<std::string, std::function<std::shared_ptr<TestBase>(const std::string &name)>> test_functions_;
-    quanttrader::log::LoggerPtr logger_ = quanttrader::log::get_common_rotation_logger("test", "test");
+    quanttrader::log::LoggerPtr logger_ = quanttrader::log::get_common_rotation_logger("TestBase", "test");
 };
 
 class TestBase {

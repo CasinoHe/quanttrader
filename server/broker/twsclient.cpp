@@ -12,7 +12,7 @@ TwsClient::TwsClient(const std::string_view ip, int port, int clientid) : client
     host_ = ip;
     port_ = port;
     clientid_ = clientid;
-    logger_ = qlog::get_common_rotation_logger("TwsClient", "tws_client", false);
+    logger_ = qlog::get_common_rotation_logger("TwsClient", "client", false);
     logger_->info("TwsClient instance created.");
 }
 
