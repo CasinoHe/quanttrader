@@ -1,17 +1,20 @@
 #pragma once
 
+#include <memory>
+
 namespace quanttrader {
 
 template <typename T>
 class Singleton {
 public:
-    static T& instance() {
-        static T instance;
+    template<typename... Args>
+    static std::shared_ptr<T> instance(Args&&... args) {
+        static std::shared_ptr<T> instance(new T(std::forward<Args>(args)...), [](T* ptr) { delete ptr; });
         return instance;
     }
 
 protected:
-    constexpr Singleton() = default;
+    Singleton() = default;
     ~Singleton() = default;
 
 private:
