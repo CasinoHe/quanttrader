@@ -75,8 +75,12 @@ int parse_strategy_command(const std::vector<std::string> &subargs) {
         std::string name = strategy_vm["name"].as<std::string>();
         std::string config_path = strategy_vm["config"].as<std::string>();
         std::cout << "Prepare to run strategy: " << name << "\n";
-        auto service = qservice::ServiceFactory::get_service<qservice::StrategyService>();
-        service->run();
+        auto service = qservice::ServiceFactory::get_service<qservice::StrategyService>(config_path);
+        if (!service->prepare()) {
+            std::cout << "Cannot prepare the service." << std::endl;
+        } else {
+            service->run();
+        }
         return EXIT_SUCCESS;
     } else {
         std::cerr << "Error: No strategy specified for 'strategy'.\n";
