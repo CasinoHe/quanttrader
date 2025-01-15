@@ -16,22 +16,26 @@ template<typename Derived>
 class ServiceBase : public Singleton<Derived> {
 public:
     bool set_config_path(const std::string_view path) {
+        // Get the absolute path
+        std::filesystem::path abs_path = std::filesystem::absolute(path);
+
         // Check if the path exists
-        if (!std::filesystem::exists(path)) {
+        if (!std::filesystem::exists(abs_path)) {
             return false;
         }
 
         // should be a file
-        if (!std::filesystem::is_regular_file(path)) {
+        if (!std::filesystem::is_regular_file(abs_path)) {
             return false;
         }
 
+        config_path_ = abs_path.string();
         // check the path should be a lua file
-        if (path.substr(path.find_last_of(".") + 1) != "lua") {
+        if (config_path_.substr(config_path_.find_last_of(".") + 1) != "lua") {
+            config_path_ = "";
             return false;
         }
 
-        config_path_ = path;
         return true;
     }
 
@@ -62,7 +66,7 @@ public:
     }
 
     // Run the service
-    virtual bool prepare() { return load_config(); };
+    virtual bool prepare() { return load_config(); }
     virtual void run() = 0;
 
 protected:
@@ -104,6 +108,8 @@ protected:
         config_loaded_ = true;
         return true;
     }
+
+    const std::string_view get_config_path() const { return config_path_; }
 
 private:
     bool config_loaded_ = false;
