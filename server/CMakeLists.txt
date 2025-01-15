@@ -56,6 +56,11 @@ file(GLOB TWS_HEADERS ${TWS_ROOT}/*.h)
 set(twsapi_VERSION 9.79.02)
 # --------------------- build tws api end ---------------------------
 
+# arrange the source files
+source_group("lua" FILES ${LUA_SOURCES})
+source_group("tws" FILES ${TWS_SOURCES} ${TWS_HEADERS})
+source_group("server" FILES ${SERVER_SOURCES})
+
 add_executable(${PROJECT_NAME} ${SERVER_SOURCES} ${LUA_SOURCES} ${TWS_SOURCES})
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${THIRDPARTY_DIR}/fmt/include
