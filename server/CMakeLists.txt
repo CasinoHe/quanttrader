@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 3.22)
 
+# disable FindBoost module removed warning
+if(POLICY CMP0167)
+  cmake_policy(SET CMP0167 NEW)
+endif()
+
 project(quanttrader)
 
 # Specify C++ standard
@@ -18,7 +23,6 @@ file(GLOB_RECURSE C_SOURCES LIST_DIRECTORIES false ${SERVER_ROOT_DIR}/*.c)
 list(APPEND SERVER_SOURCES ${C_SOURCES})
 # Exclude files in the build directory and its subdirectories
 list(FILTER SERVER_SOURCES EXCLUDE REGEX "${SERVER_ROOT_DIR}/build/.*")
-message(STATUS "SERVER_SOURCES: ${SERVER_SOURCES}")
 
 # -------------------------- build test code ----------------------------
 # TODO: build test using python/lua script in runtime
@@ -32,10 +36,6 @@ endif()
 
 set(THIRDPARTY_DIR ${PROJECT_ROOT_DIR}/thirdparties)
 
-# disable FindBoost module removed warning
-if(POLICY CMP0167)
-  cmake_policy(SET CMP0167 NEW)
-endif()
 # find all dependencies and add them to the project
 # the dependencies is built by vcpkg or custom build
 find_package(fmt 11.0.2 REQUIRED)
