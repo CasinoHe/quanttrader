@@ -36,6 +36,7 @@ QuantLoggerMgr::~QuantLoggerMgr() {
 // Initializes the thread pool with predefined constants
 void QuantLoggerMgr::init_thread_pool() {
     spdlog::init_thread_pool(quanttrader::kSpdLogQueueSize, quanttrader::kSpdLogThreadsCount);
+    spdlog::flush_on(spdlog::level::info);
 }
 
 // Sets the logging level dynamically based on string input
