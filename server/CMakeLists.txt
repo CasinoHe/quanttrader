@@ -41,6 +41,7 @@ set(THIRDPARTY_DIR ${PROJECT_ROOT_DIR}/thirdparties)
 find_package(fmt 11.0.2 REQUIRED)
 find_package(spdlog 1.15.0 REQUIRED)
 find_package(Boost 1.86.0 REQUIRED COMPONENTS program_options)
+find_package(unofficial-concurrentqueue CONFIG REQUIRED)
 
 # --------------------- build lua start ---------------------------
 set(LUA_ROOT "${THIRDPARTY_DIR}/lua")
@@ -71,7 +72,12 @@ target_include_directories(${PROJECT_NAME} PRIVATE ${THIRDPARTY_DIR}/fmt/include
                                                   )
 get_filename_component(THIRD_PARTY_LIB_DIRS ${Boost_INCLUDE_DIRS}/../lib ABSOLUTE)
 target_link_directories(${PROJECT_NAME} PRIVATE ${THIRD_PARTY_LIB_DIRS})
-target_link_libraries(${PROJECT_NAME} PRIVATE fmt::fmt spdlog::spdlog Boost::program_options intel_decimal128)
+target_link_libraries(${PROJECT_NAME} PRIVATE fmt::fmt 
+                                spdlog::spdlog
+                                Boost::program_options
+                                intel_decimal128
+                                unofficial::concurrentqueue::concurrentqueue
+                                )
 
 if (WIN32)
     target_link_libraries(${PROJECT_NAME} PUBLIC ws2_32)

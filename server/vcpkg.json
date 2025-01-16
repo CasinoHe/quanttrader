@@ -17,6 +17,10 @@
         {
             "name": "intelrdfpmathlib",
             "features": []
+        },
+        {
+            "name": "concurrentqueue",
+            "features": []
         }
     ],
     "overrides": [
@@ -31,6 +35,10 @@
         {
             "name": "intelrdfpmathlib",
             "version": "20U2#6"
+        },
+        {
+            "name": "concurrentqueue",
+            "version": "1.0.4"
         }
     ]
 }

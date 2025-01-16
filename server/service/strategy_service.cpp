@@ -60,6 +60,12 @@ void StrategyService::run_tws() {
         }
     };
 
+    // We will start four threads here
+    // 1. connect to TWS and keep the connection, when the connection is lost, try to reconnect
+    // 2. receive the data from TWS and process the data
+    // 3. receive request from the strategy and send the request to TWS
+    // 4. monitor the configuration file, update the configuration file when the file is changed
+
     while (true) {
         // try connect to TWS
         connect_func();
