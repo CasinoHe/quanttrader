@@ -4,4 +4,10 @@ service = {
 	host = "127.0.0.1",
 	port = 8001,
 	clientid = 0,
+
+	retry_interval = 5000,  -- retry interval in milliseconds
+	wait_timeout = 10,      -- wait data from TWS timeout in milliseconds
+	update_config_interval = 600000, -- update config interval in milliseconds
+	record_log = 0,         -- record log or not
+	stop_flag = 0,          -- stop flag
 }

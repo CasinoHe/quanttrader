@@ -27,6 +27,12 @@ TwsClient::~TwsClient() {
     logger_->info("TwsClient instance destroyed.");
 }
 
+void TwsClient::update_connect_config(const std::string_view ip, int port, int clientid) {
+    host_ = ip;
+    port_ = port;
+    clientid_ = clientid;
+}
+
 bool TwsClient::connect() {
     if (client_socket_.isConnected()) {
         logger_->warn("Already connected.");

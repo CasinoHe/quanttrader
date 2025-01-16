@@ -31,6 +31,10 @@ public:
     inline bool is_connected() const { return client_socket_.isConnected(); }
     void disconnect();
     void process_messages();
+    void update_connect_config(const std::string_view ip, int port, int clientid);
+    const std::string_view get_host() const { return host_; }
+    int get_port() const { return port_; }
+    int get_clientid() const { return clientid_; }
 
     void request_real_time_data(TickerId request_id, const Contract &contract);
     void cancel_real_time_data(TickerId request_id);
