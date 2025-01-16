@@ -67,6 +67,11 @@ int LuaConfigData::get_int_value(const std::string &table_name, const std::strin
     lua_pushstring(luastate_, key.c_str()); // Push the key onto the stack
     lua_gettable(luastate_, -2);           // Get the value associated with the key
 
+    if (lua_isnil(luastate_, -1)) {
+        lua_pop(luastate_, 2); // Remove value and table from stack
+        return 0;
+    }
+
     if (!lua_isinteger(luastate_, -1)) {
         logger_->error("Value from {} for key {} is not an integer.", table_name, key);
         lua_pop(luastate_, 2); // Remove value and table from stack
@@ -92,6 +97,11 @@ std::string LuaConfigData::get_string_value(const std::string &table_name, const
 
     lua_pushstring(luastate_, key.c_str()); // Push the key onto the stack
     lua_gettable(luastate_, -2);           // Get the value associated with the key
+
+    if (lua_isnil(luastate_, -1)) {
+        lua_pop(luastate_, 2); // Remove value and table from stack
+        return "";
+    }
 
     if (!lua_isstring(luastate_, -1)) {
         logger_->error("Value from {} for key {} is not a string.", table_name, key);
