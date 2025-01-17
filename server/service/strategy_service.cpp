@@ -55,11 +55,14 @@ void StrategyService::run_request(std::atomic<int> &tws_version) {
             break;
         }
 
-        auto request = std::make_shared<broker::GenericRequest>();
-        request_queue_.wait_dequeue_timed(request, wait_timeout_);
+        std::shared_ptr<broker::GenericRequest> request_ptr = nullptr;
+        request_queue_->wait_dequeue_timed(request_ptr, wait_timeout_);
 
-        if (request->request_type != 0) {
-
+        if (request_ptr) {
+            if (request_ptr->request_type == broker::RequestType::REQUEST_CURRENT_TIME) {
+                // request current time
+                client_->request_current_time();
+            }
         }
     }
 }
@@ -77,12 +80,7 @@ void StrategyService::run_response(std::atomic<int> &tws_version) {
             break;
         }
 
-        auto response = std::make_shared<broker::GenericResponse>();
-        response_queue_.wait_dequeue_timed(response, wait_timeout_);
-
-        if (response->response_type != 0) {
-
-        }
+        client_->process_messages();
     }
 }
 
@@ -141,6 +139,7 @@ void StrategyService::run_tws() {
 
     std::atomic<int> tws_version = 0;
     int last_tws_version = tws_version.load();
+    auto alive_interval = std::chrono::milliseconds(30000);
 
     std::shared_ptr<std::thread> process_request_thread = nullptr;
     std::shared_ptr<std::thread> process_response_thread = nullptr;
@@ -158,6 +157,7 @@ void StrategyService::run_tws() {
         }
     };
 
+    auto now = std::chrono::system_clock::now();
     while (true) {
         if (!client_->is_connected()) {
             // try connect to TWS
@@ -181,14 +181,25 @@ void StrategyService::run_tws() {
                 // wait for all threads
                 wait_all();
 
+                // init data before race condition
+                init_after_connected();
+
                 // start the threads
                 process_request_thread = std::make_shared<std::thread>(&StrategyService::run_request, this, std::ref(tws_version));
                 process_response_thread = std::make_shared<std::thread>(&StrategyService::run_response, this, std::ref(tws_version));
                 config_monitor_thread = std::make_shared<std::thread>(&StrategyService::run_monitor, this, std::ref(tws_version));
             }
 
-            // wait and check the connection
+            // wait and check the connection, keep alive with TWS
             std::this_thread::sleep_for(retry_interval_);
+            auto current = std::chrono::system_clock::now();
+            if (std::chrono::duration_cast<std::chrono::milliseconds>(current - now) > alive_interval) {
+                now = current;
+
+                auto GenericRequest = std::make_shared<broker::GenericRequest>();
+                GenericRequest->request_type = broker::RequestType::REQUEST_CURRENT_TIME;
+                send_request(GenericRequest);
+            }
         }
     }
 
@@ -237,7 +248,7 @@ bool StrategyService::prepare() {
         return false;
     }
 
-    client_ = std::make_shared<broker::TwsClient>(ip, port, clientid);
+    client_ = std::make_shared<broker::TwsClient>(ip, port, clientid, wait_timeout);
 
     logger_->info("Configuration: host {}, port {}, clientid {}, retry interval {}, wait timeout {}, update config interval {}",
         ip, port, clientid, retry_interval_, wait_timeout_, update_config_interval_);
@@ -308,6 +319,13 @@ bool StrategyService::update_config(std::atomic<int> &tws_version) {
     }
 
     return true;
+}
+
+void StrategyService::init_after_connected() {
+    // start the threads
+    request_queue_ = std::make_shared<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::GenericRequest>>>();
+    response_queue_ = std::make_shared<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::GenericResponse>>>();
+    client_->set_response_queue(response_queue_);
 }
 
 }

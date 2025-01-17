@@ -7,8 +7,13 @@
 namespace quanttrader {
 namespace broker {
 
+enum class RequestType {
+    NO_REQUEST = 0,
+    REQUEST_CURRENT_TIME = 1,
+};
+
 struct GenericRequest {
-    int request_type = 0;
+    RequestType request_type = RequestType::NO_REQUEST;
     TickerId request_id = 0;
     std::shared_ptr<void> request_data = nullptr;
 
@@ -17,12 +22,18 @@ struct GenericRequest {
 };
 
 struct GenericResponse {
-    int response_type = 0;
+    RequestType response_type = RequestType::NO_REQUEST;
     TickerId request_id;
     std::shared_ptr<void> response_data;
 
     GenericResponse() = default;
     GenericResponse(GenericResponse &&data) { response_type = data.response_type; request_id = data.request_id; response_data = std::move(data.response_data); };
+};
+
+struct ReqCurrentTime {
+};
+struct ResCurrentTime {
+    long time;
 };
 
 }

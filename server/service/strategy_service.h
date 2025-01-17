@@ -23,6 +23,10 @@ public:
     void stop() override;
     bool is_service_prepared() const override;
 
+    bool send_request(std::shared_ptr<broker::GenericRequest> &request) {
+        return request_queue_->enqueue(request);
+    }
+
 private:
     friend class Singleton<StrategyService>;
     StrategyService(const std::string_view config_path);
@@ -35,6 +39,10 @@ private:
     void run_monitor(std::atomic<int> &tws_version);
     bool update_config(std::atomic<int> &tws_version);
 
+    // init data
+    void init_after_connected();
+
+private:
     quanttrader::log::LoggerPtr logger_ = nullptr;
     std::shared_ptr<broker::TwsClient> client_ = nullptr;
     std::atomic<bool> stop_flag_ = false;
@@ -44,8 +52,8 @@ private:
     std::shared_ptr<std::thread> strategy_thread_ = nullptr;
 
     // request and response queue
-    moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::GenericRequest>> request_queue_;
-    moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::GenericResponse>> response_queue_;
+    std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::GenericRequest>>> request_queue_ = nullptr;
+    std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::GenericResponse>>> response_queue_ = nullptr;
     std::chrono::milliseconds retry_interval_{5000};
     std::chrono::milliseconds wait_timeout_{10};
     std::chrono::milliseconds update_config_interval_{60000};

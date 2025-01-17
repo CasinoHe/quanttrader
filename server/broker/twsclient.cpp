@@ -1,6 +1,8 @@
 #include "twsclient.h"
 #include "EReader.h"
 #include "EReaderOSSignal.h"
+#include "requests.h"
+#include <cstdio>
 #include <iostream>
 #include <chrono>
 #include <thread>
@@ -10,7 +12,7 @@ namespace broker {
 
 std::atomic<long> TwsClient::next_request_id_{0};
 
-TwsClient::TwsClient(const std::string_view ip, int port, int clientid) : signal_handler_(60000), client_socket_(this, &signal_handler_), mutex_() {
+TwsClient::TwsClient(const std::string_view ip, int port, int clientid, int wait_timeout) : signal_handler_(wait_timeout), client_socket_(this, &signal_handler_) {
     host_ = ip;
     port_ = port;
     clientid_ = clientid;
@@ -59,19 +61,22 @@ void TwsClient::disconnect() {
 }
 
 void TwsClient::process_messages() {
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-    // TODO: TEST
-    logger_->info("Process message");
+    signal_handler_.waitForSignal();
+    errno = 0;
+    reader_ptr_->processMsgs();
+}
+
+void TwsClient::request_current_time() {
+    client_socket_.reqCurrentTime();
+    logger_->info("Requested current time.");
 }
 
 void TwsClient::request_real_time_data(TickerId request_id, const Contract &contract) {
-    std::lock_guard<std::mutex> lock(mutex_);
     client_socket_.reqMktData(request_id, contract, "", false, false, {});
     logger_->info("Requested real-time data for request ID: {}", request_id);
 }
 
 void TwsClient::cancel_real_time_data(TickerId request_id) {
-    std::lock_guard<std::mutex> lock(mutex_);
     client_socket_.cancelMktData(request_id);
     logger_->info("Cancelled real-time data for request ID: {}", request_id);
 }
@@ -79,15 +84,24 @@ void TwsClient::cancel_real_time_data(TickerId request_id) {
 void TwsClient::request_historical_data(TickerId request_id, const Contract &contract, const std::string &end_time,
                                         const std::string &duration, const std::string &bar_size,
                                         const std::string &what_to_show, int use_rth) {
-    std::lock_guard<std::mutex> lock(mutex_);
     client_socket_.reqHistoricalData(request_id, contract, end_time, duration, bar_size, what_to_show, use_rth, 1, false, {});
     logger_->info("Requested historical data for request ID: {}", request_id);
 }
 
 void TwsClient::cancel_historical_data(TickerId request_id) {
-    std::lock_guard<std::mutex> lock(mutex_);
     client_socket_.cancelHistoricalData(request_id);
     logger_->info("Cancelled historical data for request ID: {}", request_id);
+}
+
+// Callbacks from TWS API
+void TwsClient::currentTime(long time) {
+    auto response = std::make_shared<ResCurrentTime>();
+    response->time = time;
+    auto generic_response = std::make_shared<GenericResponse>();
+    generic_response->response_type = RequestType::REQUEST_CURRENT_TIME;
+    generic_response->response_data = std::static_pointer_cast<void>(response);
+    response_queue_->enqueue(generic_response);
+    logger_->info("Current time: {}", time);
 }
 
 // EWrapper Callbacks

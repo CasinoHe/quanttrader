@@ -6,8 +6,8 @@
 #include "Decimal.h"
 #include "logger/quantlogger.h"
 #include "signalhandler.h"
+#include "concurrentqueue/blockingconcurrentqueue.h"
 
-#include <mutex>
 #include <string>
 #include <map>
 #include <functional>
@@ -21,10 +21,12 @@ namespace broker {
 
 namespace qlog = quanttrader::log;
 
+struct GenericResponse;
+
 class TwsClient : public EWrapper {
 public:
     TwsClient() = delete;
-    TwsClient(const std::string_view ip, int port, int clientid);
+    TwsClient(const std::string_view ip, int port, int clientid, int wait_timeout = 10);
     ~TwsClient();
 
     bool connect();
@@ -35,14 +37,17 @@ public:
     const std::string_view get_host() const { return host_; }
     int get_port() const { return port_; }
     int get_clientid() const { return clientid_; }
+    void set_response_queue(std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::shared_ptr<GenericResponse>>> response_queue) { response_queue_ = response_queue; };
 
+    // EClient requests
+    void request_current_time();
     void request_real_time_data(TickerId request_id, const Contract &contract);
     void cancel_real_time_data(TickerId request_id);
-
     void request_historical_data(TickerId request_id, const Contract &contract, const std::string &end_time,
                                   const std::string &duration, const std::string &bar_size,
                                   const std::string &what_to_show, int use_rth);
     void cancel_historical_data(TickerId request_id);
+
 
     // EWrapper callbacks
     void tickPrice(TickerId ticker_id, TickType field, double price, const TickAttrib &attrib) override;
@@ -51,6 +56,7 @@ public:
     void historicalDataEnd(int req_id, const std::string& start_date, const std::string& end_date) override;
     void error(int id, time_t error_time, int error_code, const std::string &error_string, const std::string& advancedOrderRejectJson) override;
     void connectionClosed() override;
+    void currentTime(long time) override;
 
     static TickerId next_request_id() { return next_request_id_.fetch_add(1, std::memory_order_relaxed); }
 
@@ -94,7 +100,6 @@ public:
     virtual void scannerDataEnd(int reqId) override {};
     virtual void realtimeBar(TickerId reqId, long time, double open, double high, double low, double close,
         Decimal volume, Decimal wap, int count) override {};
-    virtual void currentTime(long time) override {};
     virtual void fundamentalData(TickerId reqId, const std::string& data) override {};
     virtual void deltaNeutralValidation(int reqId, const DeltaNeutralContract& deltaNeutralContract) override {};
     virtual void tickSnapshotEnd( int reqId) override {};
@@ -156,14 +161,14 @@ private:
     SignalHandler signal_handler_; // Signal handler for EClientSocket
     EClientSocket client_socket_;
     std::unique_ptr<EReader> reader_ptr_;
-    std::mutex mutex_;
-    qlog::LoggerPtr logger_;
+    qlog::LoggerPtr logger_{nullptr};
 
-    std::string host_;
-    int port_;
-    int clientid_;
+    std::string host_{""};
+    int port_{0};
+    int clientid_{0};
 
     static std::atomic<TickerId> next_request_id_;
+    std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::GenericResponse>>> response_queue_{nullptr};
 };
 
 }
