@@ -80,7 +80,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE fmt::fmt
                                 )
 
 if (WIN32)
-    target_link_libraries(${PROJECT_NAME} PUBLIC ws2_32)
+    # target_link_libraries(${PROJECT_NAME} PUBLIC ws2_32)
     target_compile_options(${PROJECT_NAME} PRIVATE "/MT")
 endif()
 
