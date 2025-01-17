@@ -96,12 +96,10 @@ void TwsClient::cancel_historical_data(TickerId request_id) {
 // Callbacks from TWS API
 void TwsClient::currentTime(long time) {
     auto response = std::make_shared<ResCurrentTime>();
+    response->request_id = 0;
     response->time = time;
-    auto generic_response = std::make_shared<GenericResponse>();
-    generic_response->response_type = RequestType::REQUEST_CURRENT_TIME;
-    generic_response->response_data = std::static_pointer_cast<void>(response);
-    response_queue_->enqueue(generic_response);
-    logger_->info("Current time: {}", time);
+    response_queue_->enqueue(std::dynamic_pointer_cast<ResponseHeader>(response));
+    logger_->debug("Current time: {}", time);
 }
 
 // EWrapper Callbacks
@@ -123,7 +121,7 @@ void TwsClient::historicalDataEnd(int req_id, const std::string& start_date, con
 }
 
 void TwsClient::error(int id, time_t error_time, int error_code, const std::string &error_string, const std::string& advancedOrderRejectJson) {
-    logger_->debug("Error. Id: {}, Code: {}, Msg: {}", id, error_code, error_string);
+    logger_->error("Error. Id: {}, Code: {}, Msg: {}", id, error_code, error_string);
 }
 
 void TwsClient::connectionClosed() {

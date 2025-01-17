@@ -21,7 +21,7 @@ namespace broker {
 
 namespace qlog = quanttrader::log;
 
-struct GenericResponse;
+struct ResponseHeader;
 struct ResErrorMsg;
 
 class TwsClient : public EWrapper {
@@ -38,7 +38,7 @@ public:
     const std::string_view get_host() const { return host_; }
     int get_port() const { return port_; }
     int get_clientid() const { return clientid_; }
-    void set_response_queue(std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::shared_ptr<GenericResponse>>> response_queue) { response_queue_ = response_queue; };
+    void set_response_queue(std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::shared_ptr<ResponseHeader>>> response_queue) { response_queue_ = response_queue; };
     void set_error_queue(std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::shared_ptr<ResErrorMsg>>> error_queue) { error_queue_ = error_queue; };
 
     // EClient requests
@@ -170,7 +170,7 @@ private:
     int clientid_{0};
 
     static std::atomic<TickerId> next_request_id_;
-    std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::shared_ptr<GenericResponse>>> response_queue_{nullptr};
+    std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::shared_ptr<ResponseHeader>>> response_queue_{nullptr};
     std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::shared_ptr<ResErrorMsg>>> error_queue_{nullptr};
 };
 

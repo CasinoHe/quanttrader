@@ -54,7 +54,7 @@ void StockTradeService::run() {
         return;
     }
 
-    response_queue_ = std::make_shared<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::GenericResponse>>>();
+    response_queue_ = std::make_shared<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::ResponseHeader>>>();
     auto broker_service = std::static_pointer_cast<quanttrader::service::TwsService>(broker_service_);
     broker_service->set_response_queue(response_queue_);
 

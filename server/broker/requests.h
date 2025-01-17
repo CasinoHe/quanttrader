@@ -13,30 +13,37 @@ enum class RequestType {
     ERROR_MSG = 2,
 };
 
-struct GenericRequest {
-    RequestType request_type = RequestType::NO_REQUEST;
+struct RequestHeader {
     TickerId request_id = 0;
-    std::shared_ptr<void> request_data = nullptr;
+    RequestType request_type = RequestType::NO_REQUEST;
 };
 
-struct GenericResponse {
-    RequestType response_type = RequestType::NO_REQUEST;
+struct ResponseHeader {
     TickerId request_id;
-    std::shared_ptr<void> response_data;
+    RequestType response_type = RequestType::NO_REQUEST;
 };
 
-struct ReqCurrentTime {
+struct ReqCurrentTime : RequestHeader {
+    ReqCurrentTime() {
+        request_type = RequestType::REQUEST_CURRENT_TIME;
+    }
 };
-struct ResCurrentTime {
+struct ResCurrentTime : ResponseHeader {
     long time;
+    ResCurrentTime() {
+        response_type = RequestType::REQUEST_CURRENT_TIME;
+    }
 };
 
-struct ResErrorMsg {
-    int id;
+struct ResErrorMsg : ResponseHeader {
     time_t error_time;
     int error_code;
     std::string error_string;
     std::string advanced_order_reject_json;
+
+    ResErrorMsg() {
+        response_type = RequestType::ERROR_MSG;
+    }
 };
 
 }

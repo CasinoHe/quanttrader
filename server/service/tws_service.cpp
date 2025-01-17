@@ -55,7 +55,7 @@ void TwsService::run_request(std::atomic<int> &tws_version) {
             break;
         }
 
-        std::shared_ptr<broker::GenericRequest> request_ptr = nullptr;
+        std::shared_ptr<broker::RequestHeader> request_ptr = nullptr;
         request_queue_->wait_dequeue_timed(request_ptr, wait_timeout_);
 
         if (request_ptr) {
@@ -208,9 +208,9 @@ void TwsService::keep_alive() {
     auto current = std::chrono::system_clock::now();
     if (std::chrono::duration_cast<std::chrono::milliseconds>(current - now) > alive_interval) {
         now = current;
-        auto GenericRequest = std::make_shared<broker::GenericRequest>();
-        GenericRequest->request_type = broker::RequestType::REQUEST_CURRENT_TIME;
-        push_request(GenericRequest);
+        auto Request = std::make_shared<broker::ReqCurrentTime>();
+        Request->request_id = 0;  // current time doesn't check up the request id
+        push_request(std::dynamic_pointer_cast<broker::RequestHeader>(Request));
     }
 }
 
@@ -331,10 +331,10 @@ bool TwsService::update_config(std::atomic<int> &tws_version) {
 
 void TwsService::init_after_connected() {
     // start the threads
-    request_queue_ = std::make_shared<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::GenericRequest>>>();
-    // error_queue_ = std::make_shared<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::ResErrorMsg>>>();
+    request_queue_ = std::make_shared<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::RequestHeader>>>();
+    error_queue_ = std::make_shared<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::ResErrorMsg>>>();
     client_->set_response_queue(response_queue_);
-    // client_->set_error_queue(error_queue_);
+    client_->set_error_queue(error_queue_);
 }
 
 }

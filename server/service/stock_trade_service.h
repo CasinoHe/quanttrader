@@ -11,8 +11,8 @@ namespace quanttrader {
 
 namespace broker {
 class TwsClient;
-struct GenericRequest;
-struct GenericResponse;
+struct RequestHeader;
+struct ResponseHeader;
 }
 
 namespace service {
@@ -31,7 +31,7 @@ private:
 
 private:
     quanttrader::log::LoggerPtr logger_ {nullptr};
-    std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::GenericResponse>>> response_queue_ {nullptr};
+    std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::ResponseHeader>>> response_queue_ {nullptr};
     std::shared_ptr<void> broker_service_ {nullptr};  // broker service, defined by configuration file
 };
 

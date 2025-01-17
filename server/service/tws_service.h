@@ -11,8 +11,9 @@
 namespace quanttrader {
 namespace broker {
 class TwsClient;
-struct GenericRequest;
-struct GenericResponse;
+struct RequestHeader;
+struct ResponseHeader;
+struct ResErrorMsg;
 }
 namespace service {
 
@@ -23,10 +24,10 @@ public:
     void stop() override;
     bool is_service_prepared() const override;
 
-    bool push_request(std::shared_ptr<broker::GenericRequest> &request) {
+    bool push_request(std::shared_ptr<broker::RequestHeader> &&request) {
         return request_queue_->enqueue(request);
     }
-    void set_response_queue(std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::GenericResponse>>> response_queue) {
+    void set_response_queue(std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::ResponseHeader>>> response_queue) {
         response_queue_ = response_queue;
     }
 
@@ -56,9 +57,9 @@ private:
     std::shared_ptr<std::thread> client_thread_ = nullptr;
 
     // request and response queue
-    std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::GenericRequest>>> request_queue_ = nullptr;
-    std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::GenericResponse>>> response_queue_ = nullptr;
-    // std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::ResErrorMsg>>> error_queue_{nullptr};
+    std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::RequestHeader>>> request_queue_ = nullptr;
+    std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::ResponseHeader>>> response_queue_ = nullptr;
+    std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::ResErrorMsg>>> error_queue_{nullptr};
     std::chrono::milliseconds retry_interval_{5000};
     std::chrono::milliseconds wait_timeout_{10};
     std::chrono::milliseconds update_config_interval_{60000};
