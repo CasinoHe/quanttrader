@@ -332,7 +332,9 @@ bool TwsService::update_config(std::atomic<int> &tws_version) {
 void TwsService::init_after_connected() {
     // start the threads
     request_queue_ = std::make_shared<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::GenericRequest>>>();
+    // error_queue_ = std::make_shared<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::ResErrorMsg>>>();
     client_->set_response_queue(response_queue_);
+    // client_->set_error_queue(error_queue_);
 }
 
 }

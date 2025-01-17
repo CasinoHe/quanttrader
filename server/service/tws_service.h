@@ -58,6 +58,7 @@ private:
     // request and response queue
     std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::GenericRequest>>> request_queue_ = nullptr;
     std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::GenericResponse>>> response_queue_ = nullptr;
+    // std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::ResErrorMsg>>> error_queue_{nullptr};
     std::chrono::milliseconds retry_interval_{5000};
     std::chrono::milliseconds wait_timeout_{10};
     std::chrono::milliseconds update_config_interval_{60000};

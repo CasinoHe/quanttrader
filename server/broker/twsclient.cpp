@@ -123,7 +123,7 @@ void TwsClient::historicalDataEnd(int req_id, const std::string& start_date, con
 }
 
 void TwsClient::error(int id, time_t error_time, int error_code, const std::string &error_string, const std::string& advancedOrderRejectJson) {
-    logger_->error("Error. Id: {}, Code: {}, Msg: {}", id, error_code, error_string);
+    logger_->debug("Error. Id: {}, Code: {}, Msg: {}", id, error_code, error_string);
 }
 
 void TwsClient::connectionClosed() {
