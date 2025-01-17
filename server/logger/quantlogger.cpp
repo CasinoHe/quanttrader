@@ -19,8 +19,8 @@ std::unordered_map<std::string, LevelEnum> QuantLoggerMgr::log_level_map_ = {
 };
 
 // Global logger and manager
-QuantLoggerMgr g_logger_mgr = QuantLoggerMgr();
-LoggerPtr g_logger = g_logger_mgr.get_file_and_console_logger("quanttrader", "global");
+std::shared_ptr<QuantLoggerMgr> g_logger_mgr_ptr = QuantLoggerMgr::instance();
+LoggerPtr g_logger = g_logger_mgr_ptr->get_file_and_console_logger("quanttrader", "global");
 
 // Constructor: Initializes thread pool for async logging
 QuantLoggerMgr::QuantLoggerMgr() {
@@ -110,7 +110,7 @@ LoggerPtr get_common_rotation_logger(const std::string &name, const std::string 
         }
     );
 
-    auto logger = g_logger_mgr.get_file_logger(name, logfile, with_stdout, nullptr, rotation_data);
+    auto logger = g_logger_mgr_ptr->get_file_logger(name, logfile, with_stdout, nullptr, rotation_data);
     if (!logger)
     {
         std::cerr << "Failed to create logger: " << name << std::endl;

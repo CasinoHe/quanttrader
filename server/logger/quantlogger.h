@@ -1,5 +1,7 @@
 #pragma once
 
+#include "common/singleton.h"
+
 #include "spdlog/spdlog.h"
 #include "spdlog/async.h"
 #include "spdlog/sinks/basic_file_sink.h"
@@ -28,19 +30,15 @@ namespace log {
 using LevelEnum = spdlog::level::level_enum;
 using LoggerPtr = std::shared_ptr<spdlog::logger>;
 
-class QuantLoggerMgr {
-public:
+class QuantLoggerMgr : public Singleton<QuantLoggerMgr> {
+private:
+    friend class Singleton<QuantLoggerMgr>;
     // Constructor: Initializes thread pool on first creation
     QuantLoggerMgr();
-
     // Destructor: Ensures all loggers are shutdown properly
     ~QuantLoggerMgr();
 
-    // Deleted copy/move constructors and assignment operators
-    QuantLoggerMgr(const QuantLoggerMgr &other) = delete;
-    QuantLoggerMgr(QuantLoggerMgr &&other) = delete;
-    QuantLoggerMgr &operator=(const QuantLoggerMgr &other) = delete;
-
+public:
     // Sets the logging level dynamically based on input string
     bool set_log_level(std::string level);
 
@@ -121,7 +119,7 @@ private:
 };
 
 // Global logger manager and default logger instance
-extern QuantLoggerMgr g_logger_mgr;
+extern std::shared_ptr<QuantLoggerMgr> g_logger_mgr_ptr;
 extern LoggerPtr g_logger;
 
     // ---- Automatically script interface generation begin ----

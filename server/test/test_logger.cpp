@@ -15,9 +15,9 @@ public:
     }
 
     virtual void run() override {
-        auto test_file_logger = qlog::g_logger_mgr.get_file_logger("test", "test");
-        auto console_logger = qlog::g_logger_mgr.get_console_logger("console");
-        auto test_file_and_console_logger = qlog::g_logger_mgr.get_file_and_console_logger("test_console", "test_console");
+        auto test_file_logger = qlog::g_logger_mgr_ptr->get_file_logger("test", "test");
+        auto console_logger = qlog::g_logger_mgr_ptr->get_console_logger("console");
+        auto test_file_and_console_logger = qlog::g_logger_mgr_ptr->get_file_and_console_logger("test_console", "test_console");
 
         test_file_logger->info("Test file logger info");
         test_file_logger->warn("Test file logger warn");
