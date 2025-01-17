@@ -1,4 +1,4 @@
-#include "service/strategy_service.h"
+#include "service/tws_service.h"
 #include "broker/twsclient.h"
 #include "broker/requests.h"
 
@@ -8,18 +8,18 @@
 namespace quanttrader {
 namespace service {
 
-StrategyService::StrategyService(const std::string_view config_path) {
-    logger_ = quanttrader::log::get_common_rotation_logger("StrategyService", "service", false);
+TwsService::TwsService(const std::string_view config_path) : ServiceBase<TwsService>("tws_service") {
+    logger_ = quanttrader::log::get_common_rotation_logger("TwsService", "service", false);
 
     if (!set_config_path(config_path)) {
         logger_->error("Cannot set the configuration file path: {}, please check the existence of the file and the config file should be a regular lua file.", config_path);
     } else {
-        logger_->info("StrategyService instance created with config file: {}", config_path);
+        logger_->info("TwsService instance created with config file: {}", config_path);
     }
 }
 
-bool StrategyService::is_service_prepared() const {
-    bool result = ServiceBase<StrategyService>::is_service_prepared();
+bool TwsService::is_service_prepared() const {
+    bool result = ServiceBase<TwsService>::is_service_prepared();
     if (!result) {
         return false;
     }
@@ -31,18 +31,18 @@ bool StrategyService::is_service_prepared() const {
     return true;
 }
 
-void StrategyService::run() {
+void TwsService::run() {
     if (!is_service_prepared()) {
         logger_->error("Service is not prepared. Please prepare the service first.");
         return;
     }
 
     // start tws thread
-    tws_thread_ = std::make_shared<std::thread>(&StrategyService::run_tws, this);
-    tws_thread_->join();
+    client_thread_ = std::make_shared<std::thread>(&TwsService::run_tws, this);
+    client_thread_->join();
 }
 
-void StrategyService::run_request(std::atomic<int> &tws_version) {
+void TwsService::run_request(std::atomic<int> &tws_version) {
     int last_version = tws_version.load();
 
     while (true) {
@@ -68,7 +68,7 @@ void StrategyService::run_request(std::atomic<int> &tws_version) {
     }
 }
 
-void StrategyService::run_response(std::atomic<int> &tws_version) {
+void TwsService::run_response(std::atomic<int> &tws_version) {
     int last_version = tws_version.load();
 
     while (true) {
@@ -85,7 +85,7 @@ void StrategyService::run_response(std::atomic<int> &tws_version) {
     }
 }
 
-void StrategyService::run_monitor(std::atomic<int> &tws_version) {
+void TwsService::run_monitor(std::atomic<int> &tws_version) {
     int last_version = tws_version.load();
     auto now = std::chrono::system_clock::now();
 
@@ -116,7 +116,7 @@ void StrategyService::run_monitor(std::atomic<int> &tws_version) {
     }
 }
 
-void StrategyService::run_tws() {
+void TwsService::run_tws() {
     auto connect_func = [this]() {
         while (true) {
             if (stop_flag_.load()) {
@@ -140,7 +140,6 @@ void StrategyService::run_tws() {
 
     std::atomic<int> tws_version = 0;
     int last_tws_version = tws_version.load();
-    auto alive_interval = std::chrono::milliseconds(30000);
 
     std::shared_ptr<std::thread> process_request_thread = nullptr;
     std::shared_ptr<std::thread> process_response_thread = nullptr;
@@ -158,7 +157,6 @@ void StrategyService::run_tws() {
         }
     };
 
-    auto now = std::chrono::system_clock::now();
     while (true) {
         if (!client_->is_connected()) {
             // try connect to TWS
@@ -187,33 +185,42 @@ void StrategyService::run_tws() {
                 init_after_connected();
 
                 // start the threads
-                process_request_thread = std::make_shared<std::thread>(&StrategyService::run_request, this, std::ref(tws_version));
-                process_response_thread = std::make_shared<std::thread>(&StrategyService::run_response, this, std::ref(tws_version));
-                config_monitor_thread = std::make_shared<std::thread>(&StrategyService::run_monitor, this, std::ref(tws_version));
+                process_request_thread = std::make_shared<std::thread>(&TwsService::run_request, this, std::ref(tws_version));
+                process_response_thread = std::make_shared<std::thread>(&TwsService::run_response, this, std::ref(tws_version));
+                config_monitor_thread = std::make_shared<std::thread>(&TwsService::run_monitor, this, std::ref(tws_version));
             }
 
-            // wait and check the connection, keep alive with TWS
+            // avoid 100% cpu usage
             std::this_thread::sleep_for(retry_interval_);
-            auto current = std::chrono::system_clock::now();
-            if (std::chrono::duration_cast<std::chrono::milliseconds>(current - now) > alive_interval) {
-                now = current;
-                auto GenericRequest = std::make_shared<broker::GenericRequest>();
-                GenericRequest->request_type = broker::RequestType::REQUEST_CURRENT_TIME;
-                send_request(GenericRequest);
-            }
+
+            // keep alive
+            keep_alive();
         }
     }
 
     wait_all();
 }
 
-void StrategyService::stop() {
+void TwsService::keep_alive() {
+    static auto now = std::chrono::system_clock::now();
+
+    auto alive_interval = std::chrono::milliseconds(30000);
+    auto current = std::chrono::system_clock::now();
+    if (std::chrono::duration_cast<std::chrono::milliseconds>(current - now) > alive_interval) {
+        now = current;
+        auto GenericRequest = std::make_shared<broker::GenericRequest>();
+        GenericRequest->request_type = broker::RequestType::REQUEST_CURRENT_TIME;
+        push_request(GenericRequest);
+    }
+}
+
+void TwsService::stop() {
     stop_flag_.store(true);
     logger_->info("Set stop flag");
 }
 
-bool StrategyService::prepare() {
-    bool result = ServiceBase<StrategyService>::prepare();
+bool TwsService::prepare() {
+    bool result = ServiceBase<TwsService>::prepare();
     if (!result) {
         logger_->error("Cannot load configuration file: {}. Please check the existence of the file or try to run the file.", get_config_path());
         return false;
@@ -244,7 +251,7 @@ bool StrategyService::prepare() {
         return false;
     }
 
-    if (tws_thread_) {
+    if (client_thread_) {
         logger_->warn("Tws thread is already running.");
         return false;
     }
@@ -257,7 +264,7 @@ bool StrategyService::prepare() {
     return true;
 }
 
-bool StrategyService::update_config(std::atomic<int> &tws_version) {
+bool TwsService::update_config(std::atomic<int> &tws_version) {
     bool modified = false;
 
     // Get config information from config file
@@ -322,10 +329,9 @@ bool StrategyService::update_config(std::atomic<int> &tws_version) {
     return true;
 }
 
-void StrategyService::init_after_connected() {
+void TwsService::init_after_connected() {
     // start the threads
     request_queue_ = std::make_shared<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::GenericRequest>>>();
-    response_queue_ = std::make_shared<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::GenericResponse>>>();
     client_->set_response_queue(response_queue_);
 }
 

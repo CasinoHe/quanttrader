@@ -1,7 +1,7 @@
 #include "logger/quantlogger.h"
 #include "boost/program_options.hpp"
 #include "service/service_factory.h"
-#include "service/strategy_service.h"
+#include "service/stock_trade_service.h"
 
 #ifdef QUANTTRADER_BUILD_TEST
 #include "test/test_base.h"
@@ -86,7 +86,7 @@ int parse_strategy_command(const std::vector<std::string> &subargs) {
         std::string name = strategy_vm["name"].as<std::string>();
         std::string config_path = strategy_vm["config"].as<std::string>();
         std::cout << "Prepare to run strategy: " << name << "\n";
-        auto service = qservice::ServiceFactory::get_service<qservice::StrategyService>(config_path);
+        auto service = qservice::ServiceFactory::get_service<qservice::StockTradeService>(config_path);
         if (!service->prepare()) {
             std::cout << "Cannot prepare the service. Check log/service.log for more information." << std::endl;
         } else {

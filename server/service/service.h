@@ -54,7 +54,7 @@ public:
             throw std::runtime_error("Service is not prepared. Please prepare the service first.");
         }
 
-        return lua_config_->get_int_value("service", key);
+        return lua_config_->get_int_value(service_name_, key);
     }
 
     std::string get_string_value(const std::string &key) {
@@ -62,7 +62,7 @@ public:
             throw std::runtime_error("Service is not prepared. Please prepare the service first.");
         }
 
-        return lua_config_->get_string_value("service", key);
+        return lua_config_->get_string_value(service_name_, key);
     }
 
     // Run the service
@@ -71,8 +71,10 @@ public:
     virtual void stop() = 0;
 
 protected:
-    ServiceBase() = default;
+    ServiceBase(const std::string &&name) : service_name_(name) {};
     virtual ~ServiceBase() = default;
+    void set_service_name(const std::string_view name) { service_name_ = name; }
+    const std::string_view get_service_name() const { return service_name_; }
 
     bool load_config() {
         if (config_loaded_) {
@@ -113,9 +115,10 @@ protected:
     const std::string_view get_config_path() const { return config_path_; }
 
 private:
-    bool config_loaded_ = false;
-    std::string config_path_ = "";
-    std::shared_ptr<quanttrader::luascript::LuaConfigData> lua_config_ = nullptr;
+    bool config_loaded_ {false};
+    std::string config_path_ {""};
+    std::shared_ptr<quanttrader::luascript::LuaConfigData> lua_config_ {nullptr};
+    std::string service_name_ {""};
 };
 
 }
