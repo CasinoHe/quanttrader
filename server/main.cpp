@@ -13,6 +13,7 @@
 
 
 namespace po = boost::program_options;
+namespace qlog = quanttrader::log;
 
 int parse_test_command(const std::vector<std::string> &subargs) {
     po::options_description add_desc("Options for 'test' command");
@@ -53,7 +54,8 @@ int parse_strategy_command(const std::vector<std::string> &subargs) {
     add_desc.add_options()
         ("help,h", "Display help message")
         ("name", po::value<std::string>(), "The name of strategy to run")
-        ("config,c", po::value<std::string>(), "The configuration file for the strategy");
+        ("config,c", po::value<std::string>(), "The configuration file for the strategy")
+        ("loglevel", po::value<std::string>()->default_value("info"), "The log level for strategy");
 
     po::variables_map strategy_vm;
     po::store(po::command_line_parser(subargs).options(add_desc).run(), strategy_vm);
@@ -64,13 +66,22 @@ int parse_strategy_command(const std::vector<std::string> &subargs) {
         return EXIT_SUCCESS;
     }
 
+    if (strategy_vm.count("loglevel")) {
+        std::string loglevel = strategy_vm["loglevel"].as<std::string>();
+        if (!qlog::g_logger_mgr_ptr->set_log_level(loglevel)) {
+            std::cerr << "Error: Invalid log level specified for 'strategy'.\n";
+            std::cout << add_desc << "\n";
+            return EXIT_FAILURE;
+        }
+    }
+
     if (strategy_vm.count("name")) {
         namespace qservice = quanttrader::service;
 
         if (!strategy_vm.count("config")) {
             std::cerr << "Error: No configuration file specified for 'strategy'.\n";
             std::cout << add_desc << "\n";
-            return 1;
+            return EXIT_FAILURE;
         }
         std::string name = strategy_vm["name"].as<std::string>();
         std::string config_path = strategy_vm["config"].as<std::string>();
@@ -85,7 +96,7 @@ int parse_strategy_command(const std::vector<std::string> &subargs) {
     } else {
         std::cerr << "Error: No strategy specified for 'strategy'.\n";
         std::cout << add_desc << "\n";
-        return 1;
+        return EXIT_FAILURE;
     }
 
     return EXIT_SUCCESS;

@@ -68,17 +68,17 @@ void TwsClient::process_messages() {
 
 void TwsClient::request_current_time() {
     client_socket_.reqCurrentTime();
-    logger_->info("Requested current time.");
+    logger_->debug("Requested current time.");
 }
 
 void TwsClient::request_real_time_data(TickerId request_id, const Contract &contract) {
     client_socket_.reqMktData(request_id, contract, "", false, false, {});
-    logger_->info("Requested real-time data for request ID: {}", request_id);
+    logger_->debug("Requested real-time data for request ID: {}", request_id);
 }
 
 void TwsClient::cancel_real_time_data(TickerId request_id) {
     client_socket_.cancelMktData(request_id);
-    logger_->info("Cancelled real-time data for request ID: {}", request_id);
+    logger_->debug("Cancelled real-time data for request ID: {}", request_id);
 }
 
 void TwsClient::request_historical_data(TickerId request_id, const Contract &contract, const std::string &end_time,
