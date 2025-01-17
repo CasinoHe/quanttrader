@@ -59,6 +59,7 @@ void StrategyService::run_request(std::atomic<int> &tws_version) {
         request_queue_->wait_dequeue_timed(request_ptr, wait_timeout_);
 
         if (request_ptr) {
+            logger_->debug("Received request: {}", static_cast<int>(request_ptr->request_type));
             if (request_ptr->request_type == broker::RequestType::REQUEST_CURRENT_TIME) {
                 // request current time
                 client_->request_current_time();
@@ -178,6 +179,7 @@ void StrategyService::run_tws() {
             }
 
             if (tws_version.load() != last_tws_version) {
+                last_tws_version = tws_version.load();
                 // wait for all threads
                 wait_all();
 
@@ -195,7 +197,6 @@ void StrategyService::run_tws() {
             auto current = std::chrono::system_clock::now();
             if (std::chrono::duration_cast<std::chrono::milliseconds>(current - now) > alive_interval) {
                 now = current;
-
                 auto GenericRequest = std::make_shared<broker::GenericRequest>();
                 GenericRequest->request_type = broker::RequestType::REQUEST_CURRENT_TIME;
                 send_request(GenericRequest);
