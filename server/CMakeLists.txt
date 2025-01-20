@@ -50,6 +50,10 @@ list(REMOVE_ITEM LUA_SOURCES ${LUA_ROOT}/lua.c ${LUA_ROOT}/onelua.c)
 include_directories(${LUA_ROOT})
 # --------------------- build lua end ---------------------------
 
+# --------------------- build ta-lib start ---------------------------
+include(${SERVER_ROOT_DIR}/TALib.cmake)
+# --------------------- build ta-lib end ---------------------------
+
 # --------------------- build tws api start ---------------------------
 set(TWS_ROOT "${THIRDPARTY_DIR}/tws")
 file(GLOB TWS_SOURCES ${TWS_ROOT}/*.cpp)
@@ -62,7 +66,7 @@ source_group("lua" FILES ${LUA_SOURCES})
 source_group("tws" FILES ${TWS_SOURCES} ${TWS_HEADERS})
 source_group("server" FILES ${SERVER_SOURCES})
 
-add_executable(${PROJECT_NAME} ${SERVER_SOURCES} ${LUA_SOURCES} ${TWS_SOURCES})
+add_executable(${PROJECT_NAME} ${SERVER_SOURCES} ${LUA_SOURCES} ${TWS_SOURCES} ${TA_LIB_SOURCES})
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${THIRDPARTY_DIR}/fmt/include
                                                   ${THIRDPARTY_DIR}/spdlog/include
