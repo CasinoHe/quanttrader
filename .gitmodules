@@ -4,3 +4,6 @@
 [submodule "vcpkg"]
 	path = thirdparties/vcpkg
 	url = https://github.com/CasinoHe/vcpkg.git
+[submodule "talib"]
+	path = thirdparties/ta-lib
+	url = https://github.com/CasinoHe/ta-lib.git
