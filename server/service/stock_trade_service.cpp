@@ -1,5 +1,6 @@
 #include "stock_trade_service.h"
 #include "tws_service.h"
+#include "back_test_service.h"
 #include "service_factory.h"
 #include "broker/requests.h"
 
@@ -45,6 +46,20 @@ bool StockTradeService::prepare() {
         return false;
     }
 
+    // prepare back test service
+    std::string back_test_config = get_string_value("back_test_config");
+    if (back_test_config == "this") {
+        back_test_config = get_config_path();
+    }
+
+    std::shared_ptr<quanttrader::service::BackTestService> back_test_service = quanttrader::service::ServiceFactory::get_service<quanttrader::service::BackTestService>(back_test_config);
+    back_test_service_ = std::static_pointer_cast<void>(back_test_service);
+
+    if (!back_test_service->prepare()) {
+        logger_->error("Cannot prepare the back test service. Please check the service.log file for more information.");
+        return false;
+    }
+
     return true;
 }
 
@@ -58,10 +73,18 @@ void StockTradeService::run() {
     auto broker_service = std::static_pointer_cast<quanttrader::service::TwsService>(broker_service_);
     broker_service->set_response_queue(response_queue_);
 
+    auto back_test_service = std::static_pointer_cast<quanttrader::service::BackTestService>(back_test_service_);
+
     std::thread broker_thread([&broker_service]() {
         broker_service->run();
     });
+
+    std::thread back_test_thread([&back_test_service]() {
+        back_test_service->run();
+    });
+
     broker_thread.join();
+    back_test_thread.join();
 }
 
 void StockTradeService::stop() {
@@ -75,6 +98,11 @@ bool StockTradeService::is_service_prepared() const {
 
     auto broker_service = std::static_pointer_cast<quanttrader::service::TwsService>(broker_service_);
     if (!broker_service || !broker_service->is_service_prepared()) {
+        return false;
+    }
+
+    auto back_test_service = std::static_pointer_cast<quanttrader::service::BackTestService>(back_test_service_);
+    if (!back_test_service || !back_test_service->is_service_prepared()) {
         return false;
     }
 
