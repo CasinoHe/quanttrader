@@ -8,6 +8,7 @@
 #include <typeindex>
 #include <filesystem>
 #include <exception>
+#include <unordered_map>
 
 namespace quanttrader {
 namespace service {
@@ -119,6 +120,7 @@ private:
     std::string config_path_ {""};
     std::shared_ptr<quanttrader::luascript::LuaConfigData> lua_config_ {nullptr};
     std::string service_name_ {""};
+    std::unordered_map<std::string, std::string> config_cache_;
 };
 
 }
