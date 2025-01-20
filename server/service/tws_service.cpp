@@ -9,7 +9,7 @@ namespace quanttrader {
 namespace service {
 
 TwsService::TwsService(const std::string_view config_path) : ServiceBase<TwsService>("tws_service") {
-    logger_ = quanttrader::log::get_common_rotation_logger("TwsService", "service", false);
+    logger_ = quanttrader::log::get_common_rotation_logger("Tws", "service", false);
 
     if (!set_config_path(config_path)) {
         logger_->error("Cannot set the configuration file path: {}, please check the existence of the file and the config file should be a regular lua file.", config_path);
@@ -331,7 +331,6 @@ bool TwsService::update_config(std::atomic<int> &tws_version) {
 
 void TwsService::init_after_connected() {
     // start the threads
-    request_queue_ = std::make_shared<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::RequestHeader>>>();
     error_queue_ = std::make_shared<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::ResErrorMsg>>>();
     client_->set_response_queue(response_queue_);
     client_->set_error_queue(error_queue_);

@@ -8,7 +8,7 @@ namespace quanttrader {
 namespace service {
 
 StockTradeService::StockTradeService(const std::string_view config_path) : ServiceBase<StockTradeService>("stock_trade_service") {
-    logger_ = quanttrader::log::get_common_rotation_logger("StockTradeService", "service", false);
+    logger_ = quanttrader::log::get_common_rotation_logger("StockTrade", "service", false);
 
     if (!set_config_path(config_path)) {
         logger_->error("Cannot set the configuration file path: {}, please check the existence of the file and the config file should be a regular lua file.", config_path);
@@ -69,11 +69,15 @@ void StockTradeService::run() {
         return;
     }
 
+    request_queue_ = std::make_shared<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::RequestHeader>>>();
     response_queue_ = std::make_shared<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::ResponseHeader>>>();
     auto broker_service = std::static_pointer_cast<quanttrader::service::TwsService>(broker_service_);
     broker_service->set_response_queue(response_queue_);
+    broker_service->set_request_queue(request_queue_);
 
     auto back_test_service = std::static_pointer_cast<quanttrader::service::BackTestService>(back_test_service_);
+    back_test_service->set_response_queue(response_queue_);
+    back_test_service->set_request_queue(request_queue_);
 
     std::thread broker_thread([&broker_service]() {
         broker_service->run();
@@ -88,7 +92,17 @@ void StockTradeService::run() {
 }
 
 void StockTradeService::stop() {
+    auto broker_service = std::static_pointer_cast<quanttrader::service::TwsService>(broker_service_);
+    auto back_test_service = std::static_pointer_cast<quanttrader::service::BackTestService>(back_test_service_);
 
+    if (broker_service) {
+        broker_service->stop();
+    }
+
+    if (back_test_service) {
+        back_test_service->stop();
+    }
+    logger_->info("Stop broker and back test service.");
 }
 
 bool StockTradeService::is_service_prepared() const {

@@ -30,6 +30,9 @@ public:
     void set_response_queue(std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::ResponseHeader>>> response_queue) {
         response_queue_ = response_queue;
     }
+    void set_request_queue(std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::RequestHeader>>> request_queue) {
+        request_queue_ = request_queue;
+    }
 
 private:
     friend class Singleton<TwsService>;

@@ -15,4 +15,9 @@ tws_service = {
 stock_trade_service = {
 	broker_service = "tws",
 	broker_config = "this",
+	back_test_config = "this",
+}
+
+back_test_service = {
+	wait_new_strategy_interval = 1000,
 }
