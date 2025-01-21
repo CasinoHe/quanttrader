@@ -164,7 +164,49 @@ void BackTestService::handle_need_stop_process() {
 void BackTestService::handle_need_start_process() {
     // start back test process in the column "new_test" in the configuration file
     std::string need_start_process = get_string_value("new_test");
+    if (need_start_process.empty()) {
+        return;
+    }
 
+    // process key name is split by comma
+    std::vector<std::string> process_keys;
+    boost::split(process_keys, need_start_process, boost::is_any_of(","));
+
+    for (const auto& key : process_keys) {
+        // get the data, compare the version, if the version is the same, skip the process because it is already manipulated 
+        int version = get_int_value_in_table(key, "version");
+        if (version <= 0) {
+            logger_->warn("Cannot find the version for the process: {} version {}", key, version);
+            continue;
+        }
+
+        // manipulating the back_test_process_ map should be protected by mutex
+        std::lock_guard<std::mutex> lock(back_test_process_mutex_);
+        
+        // find the process in the back_test_process_ list
+        auto it = back_test_process_.find(key);
+        if (it != back_test_process_.end()) {
+            // if the process is already running and the version is the same, skip it
+            if (it->second && it->second->version == version) {
+                logger_->info("The process {} is already running with version {}.", key, version);
+                continue;
+            }
+        }
+
+        // create a new BackTestStruct and start the process
+        auto back_test_struct = std::make_shared<BackTestStruct>();
+        back_test_struct->config_key = key;
+        back_test_struct->version = version;
+        back_test_struct->state = BackTestState::INIT;
+        back_test_struct->expected_state = BackTestState::RUNNING;
+
+        // start the process (this is a placeholder, actual implementation needed)
+        back_test_struct->process = std::make_shared<std::thread>(&BackTestService::run_back_test, this);
+
+        // add the new process to the back_test_process_ map
+        back_test_process_[key] = back_test_struct;
+        logger_->info("Started new back test process: {} with version {}.", key, version);
+    }
 }
 
 void BackTestService::handle_need_restarting_process() {
