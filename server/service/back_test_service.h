@@ -37,6 +37,7 @@ struct BackTestStruct {
     std::string symbol;
     std::string start_date;
     std::string end_date;
+    std::string time_zone;
     std::shared_ptr<std::thread> process;
 };
 

@@ -118,20 +118,20 @@ void BackTestService::update_config() {
 
 void BackTestService::handle_need_stop_process() {
     // stop back test process in the column "stop_test" in the configuration file
-    std::string need_stop_process = get_string_value("stop_test");
+    std::string need_stop_process = get_string_value(STOP_BACK_TEST_VARIABLE);
     if (need_stop_process.empty()) {
         return;
     }
 
     // process key name is split by comma
     std::vector<std::string> process_keys;
-    boost::split(process_keys, need_stop_process, boost::is_any_of(","));
+    boost::split(process_keys, need_stop_process, boost::is_any_of(SPLIT_BACK_TEST_VARIABLE));
 
     for (auto &key : process_keys) {
         // update process data
 
         // get the data, compare the version, if the version is the same, skip the process because it is already manipulated 
-        int version = get_int_value_in_table(key, "version");
+        int version = get_int_value_in_table(key, VERSION_VARIABLE);
         if (version <= 0) {
             logger_->warn("Cannot find the version for the process: {} version {}", key, version);
             continue;
@@ -163,7 +163,7 @@ void BackTestService::handle_need_stop_process() {
 
 void BackTestService::handle_need_start_process() {
     // start back test process in the column "new_test" in the configuration file
-    std::string need_start_process = get_string_value("new_test");
+    std::string need_start_process = get_string_value(START_BACK_TEST_VARIABLE);
     if (need_start_process.empty()) {
         return;
     }
@@ -174,11 +174,18 @@ void BackTestService::handle_need_start_process() {
 
     for (const auto& key : process_keys) {
         // get the data, compare the version, if the version is the same, skip the process because it is already manipulated 
-        int version = get_int_value_in_table(key, "version");
+        int version = get_int_value_in_table(key, VERSION_VARIABLE);
         if (version <= 0) {
             logger_->warn("Cannot find the version for the process: {} version {}", key, version);
             continue;
         }
+
+        // get config data before mutex lock
+        std::string strategy_name = get_string_value_in_table(key, STRATEGY_NAME_VARIABLE);
+        std::string symbol = get_string_value_in_table(key, SYMBOL_VARIABLE);
+        std::string start_date = get_string_value_in_table(key, START_DATE_VARIABLE);
+        std::string end_date = get_string_value_in_table(key, END_DATE_VARIABLE);
+        std::string time_zone = get_string_value_in_table(key, TIME_ZONE_VARIABLE);
 
         // manipulating the back_test_process_ map should be protected by mutex
         std::lock_guard<std::mutex> lock(back_test_process_mutex_);
@@ -186,26 +193,24 @@ void BackTestService::handle_need_start_process() {
         // find the process in the back_test_process_ list
         auto it = back_test_process_.find(key);
         if (it != back_test_process_.end()) {
-            // if the process is already running and the version is the same, skip it
-            if (it->second && it->second->version == version) {
-                logger_->info("The process {} is already running with version {}.", key, version);
-                continue;
-            }
+            continue;
         }
 
-        // create a new BackTestStruct and start the process
+        // create a new BackTestStruct
         auto back_test_struct = std::make_shared<BackTestStruct>();
         back_test_struct->config_key = key;
         back_test_struct->version = version;
         back_test_struct->state = BackTestState::INIT;
         back_test_struct->expected_state = BackTestState::RUNNING;
-
-        // start the process (this is a placeholder, actual implementation needed)
-        back_test_struct->process = std::make_shared<std::thread>(&BackTestService::run_back_test, this);
+        back_test_struct->strategy_name = std::move(strategy_name);
+        back_test_struct->symbol = std::move(symbol);
+        back_test_struct->start_date = std::move(start_date);
+        back_test_struct->end_date = std::move(end_date);
+        back_test_struct->time_zone = std::move(time_zone);
 
         // add the new process to the back_test_process_ map
         back_test_process_[key] = back_test_struct;
-        logger_->info("Started new back test process: {} with version {}.", key, version);
+        logger_->info("Prepare new back test process: {} with version {}.", key, version);
     }
 }
 
