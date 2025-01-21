@@ -31,8 +31,10 @@ private:
 
 private:
     quanttrader::log::LoggerPtr logger_ {nullptr};
+    std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::RequestHeader>>> request_queue_ {nullptr};
     std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::ResponseHeader>>> response_queue_ {nullptr};
     std::shared_ptr<void> broker_service_ {nullptr};  // broker service, defined by configuration file
+    std::shared_ptr<void> back_test_service_ {nullptr};  // back test service, defined by configuration file
 };
 
 }
