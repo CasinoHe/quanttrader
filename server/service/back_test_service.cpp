@@ -52,8 +52,48 @@ void BackTestService::run() {
             break;
         }
 
+        // get the process keys from the back_test_process_ map
+        std::vector<std::string> process_keys;
+        {
+            std::lock_guard<std::mutex> lock(back_test_process_mutex_);
+            for (auto &process : back_test_process_) {
+                process_keys.push_back(process.first);
+            }
+        }
+
         // check if there is a back testing request
-        for (auto &back_test : back_test_process_) {
+        for (auto &key: process_keys) {
+            std::lock_guard<std::mutex> lock(back_test_process_mutex_);
+            auto it = back_test_process_.find(key);
+            if (it == back_test_process_.end()) {
+                continue;
+            }
+
+            auto process = it->second;
+            if (!process) {
+                // delete the process from the back_test_process_ map
+                back_test_process_.erase(it);
+                continue;
+            }
+
+            if (process->state == BackTestState::INIT) {
+                if (process->expected_state == BackTestState::RUNNING) {
+                    process->state = BackTestState::WAIT_STARTING;
+                    process->process = std::make_shared<std::thread>(&BackTestService::run_back_test, this, process);
+                }
+            } else if (process->state == BackTestState::RUNNING) {
+                if (process->expected_state == BackTestState::STOPPED) {
+                    process->state = BackTestState::WAIT_STOPPING;
+                    logger_->info("Start stopping back test process: {}", key);
+                }
+            } else if (process->state == BackTestState::STOPPED) {
+                if (process->expected_state == BackTestState::STOPPED) {
+                    process->process.reset();
+                    it->second.reset();
+                    back_test_process_.erase(it);
+                    logger_->info("Back test process removed: {}", key);
+                }
+            }
         }
 
         std::this_thread::sleep_for(wait_timeout_);
@@ -71,9 +111,10 @@ void BackTestService::stop() {
     logger_->info("Set stop flag");
 }
 
-void BackTestService::run_back_test() {
+void BackTestService::run_back_test(std::shared_ptr<BackTestStruct> back_test) {
 
 }
+
 
 void BackTestService::update_config() {
     auto update_time = std::chrono::system_clock::now();

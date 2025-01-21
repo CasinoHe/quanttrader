@@ -37,5 +37,9 @@ apple_daily = {
 
 msft_weekly = {
 	version = 1,
-
+	strategy_name = "slope_strategy",
+	symbol = "MSFT",
+	start_date = "2016-01-01 00:00:00",
+	end_date = "2024-12-31 23:59:59",
+	timezone = "America/New_York",
 }

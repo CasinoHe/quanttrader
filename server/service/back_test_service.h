@@ -55,7 +55,7 @@ private:
     BackTestService(const std::string_view config_path);
     ~BackTestService() = default;
 
-    void run_back_test();
+    void run_back_test(std::shared_ptr<BackTestStruct> back_test);
     void update_config();
     void handle_need_stop_process();
     void handle_need_start_process();
