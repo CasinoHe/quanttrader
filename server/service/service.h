@@ -65,6 +65,22 @@ public:
         return lua_config_->get_string_value(service_name_, key);
     }
 
+    int get_int_value_in_table(const std::string &table_name, const std::string &key) {
+        if (!config_loaded_) {
+            throw std::runtime_error("Service is not prepared. Please prepare the service first.");
+        }
+
+        return lua_config_->get_int_value(table_name, key);
+    }
+
+    std::string get_string_value_in_table(const std::string &table_name, const std::string &key) {
+        if (!config_loaded_) {
+            throw std::runtime_error("Service is not prepared. Please prepare the service first.");
+        }
+
+        return lua_config_->get_string_value(table_name, key);
+    }
+
     // Run the service
     virtual bool prepare() { return load_config(); }
     virtual void run() = 0;

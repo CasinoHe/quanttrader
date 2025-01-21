@@ -1,6 +1,7 @@
 #pragma once
 
-#include "service.h"
+#include "service/service.h"
+#include "service/service_consts.h"
 #include "logger/quantlogger.h"
 #include "concurrentqueue/blockingconcurrentqueue.h"
 #include <string>
@@ -63,9 +64,9 @@ private:
     std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::RequestHeader>>> request_queue_ = nullptr;
     std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::ResponseHeader>>> response_queue_ = nullptr;
     std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::ResErrorMsg>>> error_queue_{nullptr};
-    std::chrono::milliseconds retry_interval_{5000};
-    std::chrono::milliseconds wait_timeout_{10};
-    std::chrono::milliseconds update_config_interval_{60000};
+    std::chrono::milliseconds retry_interval_{kDefaultRetryInterval};
+    std::chrono::milliseconds wait_timeout_{kDefaultWaitTimeout};
+    std::chrono::milliseconds update_config_interval_{kDefaultUpdateConfigInterval};
 };
 
 }

@@ -1,6 +1,7 @@
 #include "service/tws_service.h"
 #include "broker/twsclient.h"
 #include "broker/requests.h"
+#include "service/service_consts.h"
 
 #include <chrono>
 
@@ -227,12 +228,12 @@ bool TwsService::prepare() {
     }
 
     // Get config information from config file
-    int port = get_int_value("port");
-    std::string ip = get_string_value("host");
-    int clientid = get_int_value("clientid");
-    int retry_interval = get_int_value("retry_interval");
-    int wait_timeout = get_int_value("wait_timeout");
-    int update_config_interval = get_int_value("update_config_interval");
+    int port = get_int_value(PORT_VARIABLE);
+    std::string ip = get_string_value(HOST_VARIABLE);
+    int clientid = get_int_value(CLIENTID_VARIABLE);
+    int retry_interval = get_int_value(RETRY_INTERVAL_VARIABLE);
+    int wait_timeout = get_int_value(WAIT_TIMEOUT_VARIABLE);
+    int update_config_interval = get_int_value(UPDATE_CONFIG_INTERVAL_VARIABLE);
 
     if (retry_interval > 0) {
         retry_interval_ = std::chrono::milliseconds(retry_interval);
@@ -268,16 +269,16 @@ bool TwsService::update_config(std::atomic<int> &tws_version) {
     bool modified = false;
 
     // Get config information from config file
-    int port = get_int_value("port");
-    std::string ip = get_string_value("host");
-    int clientid = get_int_value("clientid");
-    int retry_interval = get_int_value("retry_interval");
-    int wait_timeout = get_int_value("wait_timeout");
-    int update_config_interval = get_int_value("update_config_interval");
-    int record_log = get_int_value("record_log");
-    int version = get_int_value("version");
+    int port = get_int_value(PORT_VARIABLE);
+    std::string ip = get_string_value(HOST_VARIABLE);
+    int clientid = get_int_value(CLIENTID_VARIABLE);
+    int retry_interval = get_int_value(RETRY_INTERVAL_VARIABLE);
+    int wait_timeout = get_int_value(WAIT_TIMEOUT_VARIABLE);
+    int update_config_interval = get_int_value(UPDATE_CONFIG_INTERVAL_VARIABLE);
+    int record_log = get_int_value(RECORD_LOG_VARIABLE);
+    int version = get_int_value(VERSION_VARIABLE);
     // TODO: use signal to stop rather than set stop in config file
-    int stop_flag = get_int_value("stop_flag");
+    int stop_flag = get_int_value(STOP_FLAG_VARIABLE);
 
     const std::string_view old_ip = client_->get_host();
     const int old_port = client_->get_port();
