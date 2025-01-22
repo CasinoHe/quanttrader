@@ -26,13 +26,13 @@ bool BackTestService::prepare() {
     }
 
     // Load additional configuration specific to back testing
-    std::string historical_data_path = get_string_value("historical_data_path");
-    if (historical_data_path.empty()) {
-        logger_->error("Cannot find the historical data path in the configuration file.");
-        return false;
-    }
+    // std::string historical_data_path = get_string_value("historical_data_path");
+    // if (historical_data_path.empty()) {
+    //     logger_->error("Cannot find the historical data path in the configuration file.");
+    //     return false;
+    // }
 
-    logger_->info("BackTestService prepared with historical data path: {}", historical_data_path);
+    // logger_->info("BackTestService prepared with historical data path: {}", historical_data_path);
     return true;
 }
 
@@ -139,6 +139,11 @@ void BackTestService::run_back_test(std::shared_ptr<BackTestServiceStruct> back_
         }
 
         std::this_thread::sleep_for(wait_timeout_);
+
+        if (stop_flag_.load()) {
+            logger_->info("Stop flag is set, stop the back test process: {}", back_test->config_key);
+            break;
+        }
     }
 }
 
@@ -175,6 +180,11 @@ void BackTestService::update_config() {
                 handle_need_start_process();
                 handle_need_restarting_process();
 
+                // handle stop flag
+                int stop_flag = get_int_value(STOP_FLAG_VARIABLE);
+                if (stop_flag > 0) {
+                    stop_flag_.store(true);
+                }
                 logger_->info("Reloaded config.");
             }
         }
