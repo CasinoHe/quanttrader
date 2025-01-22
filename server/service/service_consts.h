@@ -9,16 +9,12 @@ constexpr char WAIT_TIMEOUT_VARIABLE[] = "wait_timeout";
 constexpr char RECORD_LOG_VARIABLE[] = "record_log";
 constexpr char VERSION_VARIABLE[] = "version";
 constexpr char STOP_FLAG_VARIABLE[] = "stop_flag";
-constexpr char STOP_BACK_TEST_VARIABLE[] = "stop_test";
-constexpr char START_BACK_TEST_VARIABLE[] = "new_test";
+constexpr char STOP_BACK_TEST_VARIABLE[] = "stop_runner";
+constexpr char START_BACK_TEST_VARIABLE[] = "new_runner";
 constexpr char SPLIT_BACK_TEST_VARIABLE[] = ",";
 
 // strategy variables
 constexpr char STRATEGY_NAME_VARIABLE[] = "strategy_name";
-constexpr char SYMBOL_VARIABLE[] = "symbol";
-constexpr char START_DATE_VARIABLE[] = "start_date";
-constexpr char END_DATE_VARIABLE[] = "end_date";
-constexpr char TIME_ZONE_VARIABLE[] = "time_zone";
 
 constexpr int kDefaultUpdateConfigInterval = 60000;  // interval to update the configuration file in milliseconds
 constexpr int kDefaultRetryInterval = 5000;          // retry interval to connect to TWS in milliseconds
