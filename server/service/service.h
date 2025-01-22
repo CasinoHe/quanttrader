@@ -81,6 +81,14 @@ public:
         return lua_config_->get_string_value(table_name, key);
     }
 
+    bool get_all_values_in_table(const std::string &table_name, std::unordered_map<std::string, std::any> &values) {
+        if (!config_loaded_) {
+            throw std::runtime_error("Service is not prepared. Please prepare the service first.");
+        }
+
+        return lua_config_->get_all_values(table_name, values);
+    }
+
     // Run the service
     virtual bool prepare() { return load_config(); }
     virtual void run() = 0;
