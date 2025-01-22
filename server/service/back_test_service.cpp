@@ -122,7 +122,23 @@ void BackTestService::stop() {
 
 void BackTestService::run_back_test(std::shared_ptr<BackTestServiceStruct> back_test) {
     // TODO: seperate the back test process to a dynamic library
-    logger_->info("Start back test process: {}", back_test->config_key);
+    {
+        std::lock_guard<std::mutex> lock(back_test_process_mutex_);
+        if (!back_test) {
+            logger_->error("The back test process is empty.");
+            return;
+        }
+        if (back_test->state != BackTestState::WAIT_STARTING) {
+            logger_->error("The back test process is not in the correct state to start: {}", back_test->state);
+            return;
+        }
+        if (back_test->expected_state != BackTestState::RUNNING) {
+            logger_->error("The back test process is not in the correct expected state to start: {}", back_test->expected_state);
+            return;
+        }
+        back_test->state = BackTestState::RUNNING;
+        logger_->info("Start back test process: {}", back_test->config_key);
+    }
 
     while(true) {
         BackTestState state {BackTestState::INIT};
@@ -150,7 +166,7 @@ void BackTestService::run_back_test(std::shared_ptr<BackTestServiceStruct> back_
 }
 
 void BackTestService::update_config() {
-    auto update_time = std::chrono::system_clock::now();
+    auto update_time = std::chrono::system_clock::now() - std::chrono::days(1);
 
     while(true) {
         if (stop_flag_.load()) {
