@@ -114,5 +114,44 @@ std::string LuaConfigData::get_string_value(const std::string &table_name, const
     return value;
 }
 
+bool LuaConfigData::get_all_values(const std::string &table_name, std::unordered_map<std::string, std::any> &values) {
+    if (table_name.empty()) {
+        logger_->error("Table name *{}* is empty.", table_name);
+        return false;
+    }
+
+    lua_getglobal(luastate_, table_name.c_str()); // Push the table onto the stack
+    if (!lua_istable(luastate_, -1)) {
+        logger_->error("{} is not a table.", table_name);
+        lua_pop(luastate_, 1); // Remove non-table from stack
+        return false;
+    }
+
+    lua_pushnil(luastate_); // Push the first key onto the stack
+    while (lua_next(luastate_, -2) != 0) {
+        // Uses 'key' (at index -2) and 'value' (at index -1)
+        if (lua_isstring(luastate_, -2)) {
+            std::string key = lua_tostring(luastate_, -2);
+            if (lua_isinteger(luastate_, -1)) {
+                // treat int as double
+                double value = static_cast<double>(lua_tointeger(luastate_, -1));
+                values[key] = value;
+            } else if (lua_isstring(luastate_, -1)) {
+                std::string value = lua_tostring(luastate_, -1);
+                values[key] = value;
+            } else if (lua_isnumber(luastate_, -1)) {
+                double value = lua_tonumber(luastate_, -1);
+                values[key] = value;
+            } else {
+                logger_->error("Value for key {} is not an integer, string or double.", key);
+            }
+        }
+        // Removes 'value'; keeps 'key' for next iteration
+        lua_pop(luastate_, 1);
+    }
+    lua_pop(luastate_, 1); // Remove table from stack
+    return true;
 }
-}
+
+} // namespace luascript
+} // namespace quanttrader

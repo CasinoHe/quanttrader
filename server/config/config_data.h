@@ -16,6 +16,8 @@ extern "C"
 
 #include <string>
 #include <iostream>
+#include <unordered_map>
+#include <any>
 
 namespace quanttrader {
 namespace luascript {
@@ -36,6 +38,9 @@ public:
 
     // Get a string value from a Lua table
     std::string get_string_value(const std::string &table_name, const std::string &key);
+
+    // Get all double values(treat int as double) and string values from a Lua table
+    bool get_all_values(const std::string &table_name, std::unordered_map<std::string, std::any> &values);
 
 private:
     bool inited_ = false;
