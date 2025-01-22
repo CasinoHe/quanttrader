@@ -10,6 +10,7 @@
 #include <thread>
 #include <atomic>
 #include <mutex>
+#include <any>
 
 namespace quanttrader {
 
@@ -28,16 +29,13 @@ enum class BackTestState {
     STOPPED = 4,
 };
 
-struct BackTestStruct {
+struct BackTestServiceStruct {
     std::string config_key;
     int version;
     BackTestState state;
     BackTestState expected_state;
     std::string strategy_name;
-    std::string symbol;
-    std::string start_date;
-    std::string end_date;
-    std::string time_zone;
+    std::shared_ptr<std::unordered_map<std::string, std::any>> strategy_data;
     std::shared_ptr<std::thread> process;
 };
 
@@ -55,7 +53,7 @@ private:
     BackTestService(const std::string_view config_path);
     ~BackTestService() = default;
 
-    void run_back_test(std::shared_ptr<BackTestStruct> back_test);
+    void run_back_test(std::shared_ptr<BackTestServiceStruct> back_test);
     void update_config();
     void handle_need_stop_process();
     void handle_need_start_process();
@@ -70,7 +68,7 @@ private:
     std::string config_path_ {};
     std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::ResponseHeader>>> response_queue_ {nullptr};
     std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::RequestHeader>>> request_queue_ = nullptr;
-    std::unordered_map<std::string, std::shared_ptr<BackTestStruct>> back_test_process_;
+    std::unordered_map<std::string, std::shared_ptr<BackTestServiceStruct>> back_test_process_;
     std::mutex back_test_process_mutex_;
 };
 

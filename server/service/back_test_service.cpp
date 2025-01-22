@@ -103,6 +103,15 @@ void BackTestService::run() {
         read_config_thread.join();
     }
 
+    // There should be no process possessed back_test_process_mutex_ lock
+    for (auto &process : back_test_process_) {
+        if (process.second && process.second->process) {
+            if (process.second->process->joinable()) {
+                process.second->process->join();
+            }
+        }
+    }
+
     logger_->info("BackTestService has completed running.");
 }
 
@@ -111,10 +120,27 @@ void BackTestService::stop() {
     logger_->info("Set stop flag");
 }
 
-void BackTestService::run_back_test(std::shared_ptr<BackTestStruct> back_test) {
+void BackTestService::run_back_test(std::shared_ptr<BackTestServiceStruct> back_test) {
+    // TODO: seperate the back test process to a dynamic library
+    logger_->info("Start back test process: {}", back_test->config_key);
 
+    while(true) {
+        BackTestState state {BackTestState::INIT};
+        BackTestState expected_state {BackTestState::INIT};
+        {
+            std::lock_guard<std::mutex> lock(back_test_process_mutex_);
+            state = back_test->state;
+            expected_state = back_test->expected_state;
+        }
+
+        if (expected_state == BackTestState::STOPPED) {
+            logger_->info("Stop back test process: {}", back_test->config_key);
+            break;
+        }
+
+        std::this_thread::sleep_for(wait_timeout_);
+    }
 }
-
 
 void BackTestService::update_config() {
     auto update_time = std::chrono::system_clock::now();
@@ -223,10 +249,15 @@ void BackTestService::handle_need_start_process() {
 
         // get config data before mutex lock
         std::string strategy_name = get_string_value_in_table(key, STRATEGY_NAME_VARIABLE);
-        std::string symbol = get_string_value_in_table(key, SYMBOL_VARIABLE);
-        std::string start_date = get_string_value_in_table(key, START_DATE_VARIABLE);
-        std::string end_date = get_string_value_in_table(key, END_DATE_VARIABLE);
-        std::string time_zone = get_string_value_in_table(key, TIME_ZONE_VARIABLE);
+        if (strategy_name.empty()) {
+            logger_->warn("Cannot find the strategy name for the process: {}", key);
+            continue;
+        }
+        auto strategy_data = std::make_shared<std::unordered_map<std::string, std::any>>();
+        if (!get_all_values_in_table(key, *strategy_data)) {
+            logger_->warn("Cannot find the strategy data for the process: {}", key);
+            continue;
+        }
 
         // manipulating the back_test_process_ map should be protected by mutex
         std::lock_guard<std::mutex> lock(back_test_process_mutex_);
@@ -238,17 +269,13 @@ void BackTestService::handle_need_start_process() {
         }
 
         // create a new BackTestStruct
-        auto back_test_struct = std::make_shared<BackTestStruct>();
+        auto back_test_struct = std::make_shared<BackTestServiceStruct>();
         back_test_struct->config_key = key;
         back_test_struct->version = version;
         back_test_struct->state = BackTestState::INIT;
         back_test_struct->expected_state = BackTestState::RUNNING;
         back_test_struct->strategy_name = std::move(strategy_name);
-        back_test_struct->symbol = std::move(symbol);
-        back_test_struct->start_date = std::move(start_date);
-        back_test_struct->end_date = std::move(end_date);
-        back_test_struct->time_zone = std::move(time_zone);
-
+        back_test_struct->strategy_data = std::move(strategy_data);
         // add the new process to the back_test_process_ map
         back_test_process_[key] = back_test_struct;
         logger_->info("Prepare new back test process: {} with version {}.", key, version);
