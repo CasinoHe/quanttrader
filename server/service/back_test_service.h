@@ -55,8 +55,8 @@ private:
 
     void run_back_test(std::shared_ptr<BackTestServiceStruct> back_test);
     void update_config();
-    void handle_need_stop_process();
-    void handle_need_start_process();
+    std::vector<std::string> handle_need_stop_process();
+    void handle_need_start_process(const std::vector<std::string> &exclude_processes);
     void handle_need_restarting_process();
     void update_process_data(const std::string_view key);
 

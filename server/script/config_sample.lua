@@ -24,6 +24,7 @@ back_test_service = {
 	new_runner = "apple_daily,msft_weekly",  -- config table name, split by comma
 	-- restart_runner = "apple_daily,msft_weekly", -- which test to restart
 	-- stop_runner = "apple_daily,msft_weekly",  -- which test to stop
+	stop_flag = 0,
 }
 
 apple_daily = {

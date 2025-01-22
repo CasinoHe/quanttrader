@@ -133,7 +133,9 @@ void BackTestService::run_back_test(std::shared_ptr<BackTestServiceStruct> back_
             expected_state = back_test->expected_state;
         }
 
-        if (expected_state == BackTestState::STOPPED) {
+        if (expected_state == BackTestState::STOPPED && state == BackTestState::WAIT_STOPPING) {
+            std::lock_guard<std::mutex> lock(back_test_process_mutex_);
+            back_test->state = BackTestState::STOPPED;
             logger_->info("Stop back test process: {}", back_test->config_key);
             break;
         }
@@ -176,8 +178,8 @@ void BackTestService::update_config() {
                 }
 
                 // handle the data change in back test
-                handle_need_stop_process();
-                handle_need_start_process();
+                const auto stoped_process = handle_need_stop_process();
+                handle_need_start_process(stoped_process);
                 handle_need_restarting_process();
 
                 // handle stop flag
@@ -193,15 +195,15 @@ void BackTestService::update_config() {
     }
 }
 
-void BackTestService::handle_need_stop_process() {
+std::vector<std::string> BackTestService::handle_need_stop_process() {
     // stop back test process in the column "stop_test" in the configuration file
     std::string need_stop_process = get_string_value(STOP_BACK_TEST_VARIABLE);
     if (need_stop_process.empty()) {
-        return;
+        return {};
     }
 
     // process key name is split by comma
-    std::vector<std::string> process_keys;
+    std::vector<std::string> process_keys {};
     boost::split(process_keys, need_stop_process, boost::is_any_of(SPLIT_BACK_TEST_VARIABLE));
 
     for (auto &key : process_keys) {
@@ -236,9 +238,11 @@ void BackTestService::handle_need_stop_process() {
             logger_->warn("Cannot find the process which need to be stopped: {}", key);
         }
     }
+
+    return process_keys;
 }
 
-void BackTestService::handle_need_start_process() {
+void BackTestService::handle_need_start_process(const std::vector<std::string> &exclude_processes) {
     // start back test process in the column "new_test" in the configuration file
     std::string need_start_process = get_string_value(START_BACK_TEST_VARIABLE);
     if (need_start_process.empty()) {
@@ -250,6 +254,11 @@ void BackTestService::handle_need_start_process() {
     boost::split(process_keys, need_start_process, boost::is_any_of(","));
 
     for (const auto& key : process_keys) {
+        // exclude the process in the exclude_processes list
+        if (std::find(exclude_processes.begin(), exclude_processes.end(), key) != exclude_processes.end()) {
+            continue;
+        }
+
         // get the data, compare the version, if the version is the same, skip the process because it is already manipulated 
         int version = get_int_value_in_table(key, VERSION_VARIABLE);
         if (version <= 0) {
