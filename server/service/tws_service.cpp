@@ -53,6 +53,7 @@ void TwsService::run_request(std::atomic<int> &tws_version) {
         }
 
         if (stop_flag_.load()) {
+            logger_->info("Stop flag is set, stop the request thread.");
             break;
         }
 
@@ -79,6 +80,7 @@ void TwsService::run_response(std::atomic<int> &tws_version) {
         }
 
         if (stop_flag_.load()) {
+            logger_->info("Stop flag is set, stop the response thread.");
             break;
         }
 
@@ -97,6 +99,7 @@ void TwsService::run_monitor(std::atomic<int> &tws_version) {
         }
 
         if (stop_flag_.load()) {
+            logger_->info("Stop flag is set, stop the monitor thread.");
             break;
         }
 
@@ -121,6 +124,7 @@ void TwsService::run_tws() {
     auto connect_func = [this]() {
         while (true) {
             if (stop_flag_.load()) {
+                logger_->info("Stop flag is set, exit the tws client thread.");
                 break;
             }
             // try connecting to TWS infinitely
@@ -167,6 +171,7 @@ void TwsService::run_tws() {
                 tws_version.fetch_add(1);
             } else {
                 if (stop_flag_.load()) {
+                    logger_->info("Stop flag is set, exit the tws client thread.");
                     break;
                 } else {
                     std::this_thread::sleep_for(retry_interval_);
@@ -174,6 +179,7 @@ void TwsService::run_tws() {
             }
         } else {
             if (stop_flag_.load()) {
+                logger_->info("Stop flag is set, exit the tws client thread.");
                 break;
             }
 
@@ -325,6 +331,7 @@ bool TwsService::update_config(std::atomic<int> &tws_version) {
 
     if (stop_flag > 0) {
         stop_flag_.store(true);
+        logger_->info("Stop flag is set from configuration file.");
     }
 
     return true;

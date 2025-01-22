@@ -88,10 +88,7 @@ void BackTestService::run() {
                 }
             } else if (process->state == BackTestState::STOPPED) {
                 if (process->expected_state == BackTestState::STOPPED) {
-                    process->process.reset();
-                    it->second.reset();
-                    back_test_process_.erase(it);
-                    logger_->info("Back test process removed: {}", key);
+                    release_one_process(it);
                 }
             }
         }
@@ -115,6 +112,21 @@ void BackTestService::run() {
     logger_->info("BackTestService has completed running.");
 }
 
+// not thread safe, it is guaranteed by caller
+void BackTestService::release_one_process(std::unordered_map<std::string, std::shared_ptr<BackTestServiceStruct>>::iterator &it) {
+    auto process = it->second;
+    process->strategy_data.reset();
+
+    // we should wait here to make sure the process is finished
+    if (process->process && process->process->joinable()) {
+        process->process->join();
+    }
+    process->process.reset();
+    process.reset();
+    back_test_process_.erase(it);
+    logger_->info("Back test process removed: {}", it->first);
+}
+
 void BackTestService::stop() {
     stop_flag_.store(true);
     logger_->info("Set stop flag");
@@ -129,11 +141,11 @@ void BackTestService::run_back_test(std::shared_ptr<BackTestServiceStruct> back_
             return;
         }
         if (back_test->state != BackTestState::WAIT_STARTING) {
-            logger_->error("The back test process is not in the correct state to start: {}", back_test->state);
+            logger_->error("The back test process is not in the correct state to start: {}", static_cast<int>(back_test->state));
             return;
         }
         if (back_test->expected_state != BackTestState::RUNNING) {
-            logger_->error("The back test process is not in the correct expected state to start: {}", back_test->expected_state);
+            logger_->error("The back test process is not in the correct expected state to start: {}", static_cast<int>(back_test->expected_state));
             return;
         }
         back_test->state = BackTestState::RUNNING;

@@ -59,6 +59,7 @@ private:
     void handle_need_start_process(const std::vector<std::string> &exclude_processes);
     void handle_need_restarting_process();
     void update_process_data(const std::string_view key);
+    void release_one_process(std::unordered_map<std::string, std::shared_ptr<BackTestServiceStruct>>::iterator &it);
 
 private:
     std::chrono::milliseconds update_config_interval_{kDefaultUpdateConfigInterval};
