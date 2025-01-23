@@ -60,8 +60,18 @@ public:
         logger_->info("Runner {} started.", runner_name_);
     }
 
+    // means that the thread is ending, and can join, and join will exit shortly
+    // but it not means that thread is already ended, it maybe cleaning the register, caution
+    bool is_ending() {
+        return ended_flag_.load();
+    }
+
 protected:
-    virtual void on_init() = 0;         // initialize the runner
+    // initialize the runner
+    virtual void on_init() {
+        initied_flag_.store(true);
+    }
+
     virtual void on_start() = 0;        // start the runner, there is data to process, all the data is prepared
 
     // run a frame

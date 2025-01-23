@@ -6,6 +6,7 @@ namespace runner {
 
 void StockRunner::on_init() {
     // initialize the runner
+    Runner::on_init();
 }
 
 void StockRunner::on_start() {
