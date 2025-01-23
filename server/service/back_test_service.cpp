@@ -4,6 +4,7 @@
 #include "ta_libc.h"
 #include "service/service_consts.h"
 #include "runner/runner_factory.h"
+#include "runner/runner_base.h"
 #include <boost/algorithm/string.hpp>
 
 namespace quanttrader {
@@ -170,6 +171,7 @@ void BackTestService::start_runner(std::shared_ptr<BackTestServiceStruct> back_t
         logger_->error("Cannot create the runner: {}", runner_name);
         return;
     }
+    runner->run();
 
     while(true) {
         BackTestState state {BackTestState::INIT};
@@ -181,6 +183,7 @@ void BackTestService::start_runner(std::shared_ptr<BackTestServiceStruct> back_t
         }
 
         if (expected_state == BackTestState::STOPPED && state == BackTestState::WAIT_STOPPING) {
+            runner->stop();
             std::lock_guard<std::mutex> lock(back_test_process_mutex_);
             back_test->state = BackTestState::STOPPED;
             logger_->info("Stop back test process: {}", back_test->config_key);
@@ -191,6 +194,7 @@ void BackTestService::start_runner(std::shared_ptr<BackTestServiceStruct> back_t
         std::this_thread::sleep_for(wait_timeout_);
 
         if (stop_flag_.load()) {
+            runner->stop();
             logger_->info("Stop flag is set, stop the back test process: {}", back_test->config_key);
             break;
         }

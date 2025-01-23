@@ -20,8 +20,6 @@ public:
     Runner(const std::string_view runner_name, RunnerParamsType params): runner_name_(runner_name), params_(params) {
         logger_ = quanttrader::log::get_common_rotation_logger(runner_name_, "runner", false);
         logger_->info("Create runner: {}", runner_name_);
-
-        run(); 
     };
 
     virtual ~Runner() {
@@ -59,6 +57,7 @@ public:
         };
 
         runner_thread_ = std::make_shared<std::thread>(run_func);
+        logger_->info("Runner {} started.", runner_name_);
     }
 
 protected:
