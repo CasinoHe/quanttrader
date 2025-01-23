@@ -3,6 +3,7 @@
 #include "back_test_service.h"
 #include "service_factory.h"
 #include "broker/requests.h"
+#include "runner/runner_prepare.h"
 
 namespace quanttrader {
 namespace service {
@@ -57,6 +58,17 @@ bool StockTradeService::prepare() {
 
     if (!back_test_service->prepare()) {
         logger_->error("Cannot prepare the back test service. Please check the service.log file for more information.");
+        return false;
+    }
+
+    // stock trade service should prepare the runners and all strategies
+    if (!quanttrader::runner::prepare_stock_runners()) {
+        logger_->error("Cannot prepare the stock runners.");
+        return false;
+    }
+
+    if (!quanttrader::runner::prepare_stock_stategies()) {
+        logger_->error("Cannot prepare the stock strategies.");
         return false;
     }
 

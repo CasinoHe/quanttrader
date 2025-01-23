@@ -7,7 +7,7 @@ namespace runner {
 
 class StockRunner : public Runner {
 public:
-    StockRunner(RunnerParamsType params): Runner("StockRunner", params) {
+    StockRunner(RunnerParamsType params): Runner(STOCK_RUNNER_NAME, params) {
     }
 
     virtual ~StockRunner() {};
