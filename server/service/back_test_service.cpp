@@ -79,7 +79,7 @@ void BackTestService::run() {
             if (process->state == BackTestState::INIT) {
                 if (process->expected_state == BackTestState::RUNNING) {
                     process->state = BackTestState::WAIT_STARTING;
-                    process->process = std::make_shared<std::thread>(&BackTestService::run_back_test, this, process);
+                    process->process = std::make_shared<std::thread>(&BackTestService::start_runner, this, process);
                 }
             } else if (process->state == BackTestState::RUNNING) {
                 if (process->expected_state == BackTestState::STOPPED) {
@@ -132,7 +132,7 @@ void BackTestService::stop() {
     logger_->info("Set stop flag");
 }
 
-void BackTestService::run_back_test(std::shared_ptr<BackTestServiceStruct> back_test) {
+void BackTestService::start_runner(std::shared_ptr<BackTestServiceStruct> back_test) {
     // TODO: seperate the back test process to a dynamic library
     {
         std::lock_guard<std::mutex> lock(back_test_process_mutex_);
