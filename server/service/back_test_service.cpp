@@ -3,10 +3,13 @@
 #include "broker/requests.h"
 #include "ta_libc.h"
 #include "service/service_consts.h"
+#include "runner/runner_factory.h"
 #include <boost/algorithm/string.hpp>
 
 namespace quanttrader {
 namespace service {
+
+namespace qrunner = quanttrader::runner;
 
 BackTestService::BackTestService(const std::string_view config_path) : ServiceBase<BackTestService>("back_test_service") {
     logger_ = quanttrader::log::get_common_rotation_logger("BackTest", "service", false);
@@ -133,9 +136,14 @@ void BackTestService::stop() {
 }
 
 void BackTestService::start_runner(std::shared_ptr<BackTestServiceStruct> back_test) {
+    std::shared_ptr<std::unordered_map<std::string, std::any>> strategy_data;
+    std::string strategy_name, runner_name;
     // TODO: seperate the back test process to a dynamic library
     {
         std::lock_guard<std::mutex> lock(back_test_process_mutex_);
+        strategy_data = back_test->strategy_data;
+        strategy_name = back_test->strategy_name;
+        runner_name = back_test->runner_name;
         if (!back_test) {
             logger_->error("The back test process is empty.");
             return;
@@ -150,6 +158,17 @@ void BackTestService::start_runner(std::shared_ptr<BackTestServiceStruct> back_t
         }
         back_test->state = BackTestState::RUNNING;
         logger_->info("Start back test process: {}", back_test->config_key);
+    }
+
+    // init runner with strategy data
+    if (!qrunner::RunnerFactory::instance()->has_runner(runner_name)) {
+        logger_->error("Cannot find the runner: {}", runner_name);
+        return;
+    }
+    auto runner = qrunner::RunnerFactory::instance()->create_runner(runner_name, strategy_data);
+    if (!runner) {
+        logger_->error("Cannot create the runner: {}", runner_name);
+        return;
     }
 
     while(true) {
@@ -168,6 +187,7 @@ void BackTestService::start_runner(std::shared_ptr<BackTestServiceStruct> back_t
             break;
         }
 
+        // TODO: runner should contains no timeout, it blocks when there is no data
         std::this_thread::sleep_for(wait_timeout_);
 
         if (stop_flag_.load()) {
@@ -295,6 +315,11 @@ void BackTestService::handle_need_start_process(const std::vector<std::string> &
         }
 
         // get config data before mutex lock
+        std::string runner_name = get_string_value_in_table(key, RUNNER_NAME_VARIABLE);
+        if (runner_name.empty()) {
+            logger_->warn("Cannot find the runner name for the process: {}", key);
+            continue;
+        }
         std::string strategy_name = get_string_value_in_table(key, STRATEGY_NAME_VARIABLE);
         if (strategy_name.empty()) {
             logger_->warn("Cannot find the strategy name for the process: {}", key);
@@ -322,6 +347,7 @@ void BackTestService::handle_need_start_process(const std::vector<std::string> &
         back_test_struct->state = BackTestState::INIT;
         back_test_struct->expected_state = BackTestState::RUNNING;
         back_test_struct->strategy_name = std::move(strategy_name);
+        back_test_struct->runner_name = std::move(runner_name);
         back_test_struct->strategy_data = std::move(strategy_data);
         // add the new process to the back_test_process_ map
         back_test_process_[key] = back_test_struct;

@@ -29,7 +29,7 @@ back_test_service = {
 
 apple_daily = {
 	version = 1,                            -- before each operation, increment the version number
-	runner = "stock_runner",
+	runner_name = "stock_runner",
 	strategy_name = "slope_strategy",
 	symbol = "AAPL",
 	start_date = "2016-01-01 00:00:00",
@@ -39,7 +39,7 @@ apple_daily = {
 
 msft_weekly = {
 	version = 1,                            -- before each operation, increment the version number
-	runner = "stock_runner",
+	runner_name = "stock_runner",
 	strategy_name = "slope_strategy",
 	symbol = "MSFT",
 	start_date = "2016-01-01 00:00:00",

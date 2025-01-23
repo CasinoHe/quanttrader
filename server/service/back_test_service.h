@@ -35,6 +35,7 @@ struct BackTestServiceStruct {
     BackTestState state;
     BackTestState expected_state;
     std::string strategy_name;
+    std::string runner_name;
     std::shared_ptr<std::unordered_map<std::string, std::any>> strategy_data;
     std::shared_ptr<std::thread> process;
 };
