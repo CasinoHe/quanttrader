@@ -31,11 +31,18 @@ apple_daily = {
 	version = 1,                            -- before each operation, increment the version number
 	runner_name = "stock_runner",
 	strategy_name = "slope_strategy",
-	data_series = "daily,realtime",
-	daily_start_date = "2016-01-01 00:00:00",
+	data_series = "daily",
+	daily_ticker = "AAPL",
+	daily_type = "historical",
+	daily_start_date = "2024-08-01 00:00:00",
 	daily_end_date = "now",
+	daily_security_type = "STK",
+	daily_exchange = "SMART",
+	daily_currency = "USD",
+	daily_use_rth = 0,
 	daily_timezone = "America/New_York",
-	symbol = "AAPL",
+	daily_what = "TRADES",
+	daily_bar_type = "1 D",
 }
 
 

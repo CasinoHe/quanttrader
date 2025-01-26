@@ -26,6 +26,8 @@ public:
     bool prepare_data();
     bool start_request_data();
 
+    std::string get_data_prefix() const { return data_prefix_; }
+
 protected:
     long subscribe_realtime_data();
     long fetch_historical_data();

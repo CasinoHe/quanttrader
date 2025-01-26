@@ -3,7 +3,7 @@
 namespace quanttrader {
 namespace data {
 
-constexpr const char *DATA_TICK_NAME = "_tick";
+constexpr const char *DATA_TICK_NAME = "_ticker";
 constexpr const char *DATA_TYPE_NAME = "_type";
 constexpr const char *DATA_START_DATE_NAME = "_start_date";
 constexpr const char *DATA_END_DATE_NAME = "_end_date";
@@ -21,7 +21,7 @@ constexpr const char *kDefaultCurrency = "USD";
 constexpr const char *kDefaultTimezone = "America/New_York";
 constexpr const char *kDefaultWhatToShow = "TRADES";
 constexpr const char *kDefaultDataType = "historical";
-constexpr const bool kDefaultUseRth = false;
+constexpr const int kDefaultUseRth = 0;
 
 }
 }

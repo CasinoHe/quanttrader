@@ -38,9 +38,13 @@ bool StockTradeService::prepare() {
     if (broker_config == "this") {
         broker_config = get_config_path();
     }
+    request_queue_ = std::make_shared<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::RequestHeader>>>();
+    response_queue_ = std::make_shared<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::ResponseHeader>>>();
 
     std::shared_ptr<quanttrader::service::TwsService> broker_service = quanttrader::service::ServiceFactory::get_service<quanttrader::service::TwsService>(broker_config);
     broker_service_ = std::static_pointer_cast<void>(broker_service);
+    broker_service->set_response_queue(response_queue_);
+    broker_service->set_request_queue(request_queue_);
 
     if (!broker_service->prepare()) {
         logger_->error("Cannot prepare the broker service. Please check the service.log file for more information.");
@@ -55,6 +59,8 @@ bool StockTradeService::prepare() {
 
     std::shared_ptr<quanttrader::service::BackTestService> back_test_service = quanttrader::service::ServiceFactory::get_service<quanttrader::service::BackTestService>(back_test_config);
     back_test_service_ = std::static_pointer_cast<void>(back_test_service);
+    back_test_service->set_response_queue(response_queue_);
+    back_test_service->set_request_queue(request_queue_);
 
     if (!back_test_service->prepare()) {
         logger_->error("Cannot prepare the back test service. Please check the service.log file for more information.");
@@ -81,15 +87,8 @@ void StockTradeService::run() {
         return;
     }
 
-    request_queue_ = std::make_shared<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::RequestHeader>>>();
-    response_queue_ = std::make_shared<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::ResponseHeader>>>();
     auto broker_service = std::static_pointer_cast<quanttrader::service::TwsService>(broker_service_);
-    broker_service->set_response_queue(response_queue_);
-    broker_service->set_request_queue(request_queue_);
-
     auto back_test_service = std::static_pointer_cast<quanttrader::service::BackTestService>(back_test_service_);
-    back_test_service->set_response_queue(response_queue_);
-    back_test_service->set_request_queue(request_queue_);
 
     std::thread broker_thread([&broker_service]() {
         broker_service->run();
