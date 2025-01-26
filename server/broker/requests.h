@@ -3,9 +3,13 @@
 #include "CommonDefs.h"
 #include <memory>
 #include <string>
+#include <variant>
+#include <functional>
 
 namespace quanttrader {
 namespace broker {
+
+struct RequestHeader;
 
 // -----------------------------  Request -------------------------------------------
 enum class RequestType {
@@ -20,11 +24,15 @@ enum class RequestType {
 struct RequestHeader {
     TickerId request_id = 0;
     RequestType request_type = RequestType::NO_REQUEST;
+
+    virtual ~RequestHeader() = default;
 };
 
 struct ResponseHeader {
     TickerId request_id;
     RequestType response_type = RequestType::NO_REQUEST;
+
+    virtual ~ResponseHeader() = default;
 };
 
 struct ReqCurrentTime : RequestHeader {
@@ -82,6 +90,30 @@ struct ResErrorMsg : ResponseHeader {
     ResErrorMsg() {
         response_type = RequestType::ERROR_MSG;
     }
+};
+
+struct ResHistoricalData: ResponseHeader {
+    ResHistoricalData() {
+        response_type = RequestType::REQUEST_HISTORICAL_DATA;
+    }
+
+    std::variant<int, std::string> date;
+    double high;
+    double low;
+    double open;
+    double close;
+    Decimal wap;
+    Decimal volume;
+    int count;
+};
+
+struct ResRealtimeData: ResponseHeader {
+    ResRealtimeData() {
+        response_type = RequestType::REQUEST_REALTIME_MKT_DATA;
+    }
+
+    double price;
+    Decimal size;
 };
 
 // ----------------------------------------------------------------------------------

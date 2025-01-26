@@ -9,6 +9,8 @@ namespace data {
 namespace qservice = quanttrader::service;
 namespace qbroker = quanttrader::broker;
 
+using ResponseCallBackType = std::function<void(std::shared_ptr<broker::ResponseHeader>)>;
+
 DataProvider::DataProvider(const std::string_view &data_prefix, DataParamsType params) : data_prefix_(data_prefix), params_(params) {
     logger_ = quanttrader::log::get_common_rotation_logger("DataProvider", "data", false);
     broker_service_ = qservice::ServiceFactory::get_exist_service<qservice::TwsService>();
@@ -62,7 +64,12 @@ long DataProvider::subscribe_realtime_data() {
     request->exchange = exchange_;
     request->security_type = security_type_;
 
-    return broker_service_->push_request(request);
+    auto callback = [this](std::shared_ptr<broker::ResponseHeader> response) {
+        // process the real time data
+        realtime_data_response(std::dynamic_pointer_cast<qbroker::ResRealtimeData>(response));
+    };
+
+    return broker_service_->push_request(request, callback);
 }
 
 long DataProvider::fetch_historical_data() {
@@ -84,7 +91,22 @@ long DataProvider::fetch_historical_data() {
                 use_rth_,
                 request->duration
                 );
-    return broker_service_->push_request(std::dynamic_pointer_cast<qbroker::RequestHeader>(request));
+    auto callback = [this](std::shared_ptr<broker::ResponseHeader> response) {
+        // process the historical data
+        historical_data_response(std::dynamic_pointer_cast<qbroker::ResHistoricalData>(response));
+    };
+
+    return broker_service_->push_request(std::dynamic_pointer_cast<qbroker::RequestHeader>(request), callback);
+}
+
+void DataProvider::historical_data_response(std::shared_ptr<broker::ResHistoricalData> response) {
+    // process the historical data
+    logger_->info("Historical data response for: {}", tick_name_);
+}
+
+void DataProvider::realtime_data_response(std::shared_ptr<broker::ResRealtimeData> response) {
+    // process the real time data
+    logger_->info("Realtime data response for: {}", tick_name_);
 }
 
 }

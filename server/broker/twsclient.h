@@ -60,7 +60,13 @@ public:
     void connectionClosed() override;
     void currentTime(long time) override;
 
-    static TickerId next_request_id() { return next_request_id_.fetch_add(1, std::memory_order_relaxed); }
+    static TickerId next_request_id() {
+        if (next_request_id_.load() >= LONG_MAX - 100) {
+            next_request_id_.store(0);
+        }
+
+        return next_request_id_.fetch_add(1, std::memory_order_relaxed); 
+    }
 
     // Not implemented EWrapper virtual functions
     virtual void tickOptionComputation( TickerId tickerId, TickType tickType, int tickAttrib, double impliedVol, double delta,

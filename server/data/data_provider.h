@@ -10,6 +10,12 @@
 
 namespace quanttrader {
 
+namespace broker {
+
+struct ResHistoricalData;
+struct ResRealtimeData;
+}
+
 namespace service {
 class TwsService;
 }
@@ -27,6 +33,9 @@ public:
     bool start_request_data();
 
     std::string get_data_prefix() const { return data_prefix_; }
+
+    void historical_data_response(std::shared_ptr<broker::ResHistoricalData> response);
+    void realtime_data_response(std::shared_ptr<broker::ResRealtimeData> response);
 
 protected:
     long subscribe_realtime_data();

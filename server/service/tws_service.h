@@ -10,9 +10,13 @@
 #include <memory>
 #include <thread>
 #include <atomic>
+#include <unordered_map>
+#include <optional>
 
 namespace quanttrader {
 namespace service {
+
+using ResponseCallBackType = std::function<void(std::shared_ptr<broker::ResponseHeader>)>;
 
 class TwsService : public ServiceBase<TwsService> {
 public:
@@ -21,9 +25,15 @@ public:
     void stop() override;
     bool is_service_prepared() const override;
 
-    long push_request(std::shared_ptr<broker::RequestHeader> request) {
+    long push_request(std::shared_ptr<broker::RequestHeader> request, std::optional<ResponseCallBackType> callback) {
         long request_id = broker::TwsClient::next_request_id();
         request->request_id = request_id;
+
+        // push callback to the map
+        if (callback.has_value()) {
+            response_callbacks_[request_id] = callback.value();
+        }
+
         bool result = request_queue_->enqueue(request);
         if (!result) {
             logger_->error("Cannot push the request to the queue.");
@@ -50,6 +60,7 @@ private:
     void run_request(std::atomic<int> &tws_version);
     void run_response(std::atomic<int> &tws_version);
     void run_monitor(std::atomic<int> &tws_version);
+    void distribute_response(std::atomic<int> &tws_version);
     bool update_config(std::atomic<int> &tws_version);
 
     void keep_alive();
@@ -61,6 +72,7 @@ private:
     quanttrader::log::LoggerPtr logger_ = nullptr;
     std::shared_ptr<broker::TwsClient> client_ = nullptr;
     std::atomic<bool> stop_flag_ = false;
+    std::unordered_map<TickerId, ResponseCallBackType> response_callbacks_;
 
     // all the threads
     std::shared_ptr<std::thread> client_thread_ = nullptr;

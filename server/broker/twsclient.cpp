@@ -112,6 +112,17 @@ void TwsClient::tickSize(TickerId ticker_id, TickType field, Decimal size) {
 }
 
 void TwsClient::historicalData(TickerId req_id, const Bar &bar) {
+    auto response = std::make_shared<ResHistoricalData>();
+    response->request_id = req_id;
+    response->date = bar.time;
+    response->open = bar.open;
+    response->high = bar.high;
+    response->low = bar.low;
+    response->close = bar.close;
+    response->wap = bar.wap;
+    response->volume = bar.volume;
+    response_queue_->enqueue(std::dynamic_pointer_cast<ResponseHeader>(response));
+
     logger_->info("Historical Data. ReqId: {}, Date: {}, Open: {}, High: {}, Low: {}, Close: {}, Volume: {}",
                   req_id, bar.time, bar.open, bar.high, bar.low, bar.close, bar.volume);
 }

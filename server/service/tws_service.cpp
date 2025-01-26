@@ -74,7 +74,7 @@ void TwsService::run_request(std::atomic<int> &tws_version) {
                 // request current time
                 client_->request_current_time();
             } else if (request_ptr->request_type == broker::RequestType::REQUEST_HISTORICAL_DATA) {
-                auto Request = std::static_pointer_cast<broker::ReqHistoricalData>(request_ptr);
+                auto Request = std::dynamic_pointer_cast<broker::ReqHistoricalData>(request_ptr);
                 if (Request) {
                     Contract contract;
                     contract.symbol = Request->symbol;
@@ -87,7 +87,7 @@ void TwsService::run_request(std::atomic<int> &tws_version) {
                     logger_->error("Cannot cast the request to ReqHistoricalData.");
                 }
             } else if (request_ptr->request_type == broker::RequestType::REQUEST_REALTIME_MKT_DATA) {
-                auto Request = std::static_pointer_cast<broker::ReqRealtimeMktData>(request_ptr);
+                auto Request = std::dynamic_pointer_cast<broker::ReqRealtimeMktData>(request_ptr);
                 if (Request) {
                     Contract contract;
                     contract.symbol = Request->symbol;
@@ -119,6 +119,41 @@ void TwsService::run_response(std::atomic<int> &tws_version) {
         }
 
         client_->process_messages();
+    }
+}
+
+void TwsService::distribute_response(std::atomic<int> &tws_version) {
+    int last_version = tws_version.load();
+
+    while (true) {
+        if (tws_version.load() != last_version) {
+            // exit the thread
+            break;
+        }
+
+        if (stop_flag_.load()) {
+            logger_->info("Stop flag is set, stop the response thread.");
+            break;
+        }
+
+        std::shared_ptr<broker::ResponseHeader> response_ptr = nullptr;
+        response_queue_->wait_dequeue_timed(response_ptr, wait_timeout_);
+        if (!response_ptr) {
+            continue;
+        }
+
+        logger_->debug("Received response: {}", static_cast<int>(response_ptr->response_type));
+        if (response_ptr->response_type == broker::RequestType::REQUEST_CURRENT_TIME) {
+            auto Response = std::dynamic_pointer_cast<broker::ResCurrentTime>(response_ptr);
+            if (Response) {
+                logger_->info("Current time: {}", Response->time);
+            }
+        } else if (response_ptr->response_type == broker::RequestType::REQUEST_HISTORICAL_DATA) {
+            auto Response = std::dynamic_pointer_cast<broker::ResHistoricalData>(response_ptr);
+            auto request_id = Response->request_id;
+        } else {
+            logger_->warn("Cannot find the response type: {}", static_cast<int>(response_ptr->response_type));
+        }
     }
 }
 
@@ -176,6 +211,7 @@ void TwsService::run_tws() {
     // 2. receive the data from TWS and process the data
     // 3. receive request from the strategy and send the request to TWS
     // 4. monitor the configuration file, update the configuration file when the file is changed
+    // 5. distribute response to certain handler
 
     std::atomic<int> tws_version = 0;
     int last_tws_version = tws_version.load();
@@ -183,8 +219,9 @@ void TwsService::run_tws() {
     std::shared_ptr<std::thread> process_request_thread = nullptr;
     std::shared_ptr<std::thread> process_response_thread = nullptr;
     std::shared_ptr<std::thread> config_monitor_thread = nullptr;
+    std::shared_ptr<std::thread> distribute_response_thread = nullptr;
 
-    auto wait_all = [&process_request_thread, &process_response_thread, &config_monitor_thread]() {
+    auto wait_all = [&process_request_thread, &process_response_thread, &config_monitor_thread, &distribute_response_thread]() {
         if (process_request_thread && process_request_thread->joinable()) {
             process_request_thread->join();
         }
@@ -193,6 +230,9 @@ void TwsService::run_tws() {
         }
         if (config_monitor_thread && config_monitor_thread->joinable()) {
             config_monitor_thread->join();
+        }
+        if (distribute_response_thread && distribute_response_thread->joinable()) {
+            distribute_response_thread->join();
         }
     };
 
@@ -229,6 +269,7 @@ void TwsService::run_tws() {
                 process_request_thread = std::make_shared<std::thread>(&TwsService::run_request, this, std::ref(tws_version));
                 process_response_thread = std::make_shared<std::thread>(&TwsService::run_response, this, std::ref(tws_version));
                 config_monitor_thread = std::make_shared<std::thread>(&TwsService::run_monitor, this, std::ref(tws_version));
+                distribute_response_thread = std::make_shared<std::thread>(&TwsService::distribute_response, this, std::ref(tws_version));
             }
 
             // avoid 100% cpu usage
@@ -251,7 +292,7 @@ void TwsService::keep_alive() {
         now = current;
         auto Request = std::make_shared<broker::ReqCurrentTime>();
         Request->request_id = 0;  // current time doesn't check up the request id
-        push_request(std::dynamic_pointer_cast<broker::RequestHeader>(Request));
+        push_request(std::dynamic_pointer_cast<broker::RequestHeader>(Request), std::nullopt);
     }
 }
 

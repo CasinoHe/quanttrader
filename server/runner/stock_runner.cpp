@@ -30,8 +30,6 @@ bool StockRunner::on_init() {
             logger_->error("Cannot prepare data for data provider: {}", data_provider->get_data_prefix());
             return false;
         }
-
-        data_provider->start_request_data();
     }
 
     // initialize the runner
@@ -40,6 +38,10 @@ bool StockRunner::on_init() {
 
 void StockRunner::on_start() {
     // start the runner, there is data to process, all the data is prepared
+    for (auto &data_provider : data_providers_) {
+        logger_->info("Data provider {} is started.", data_provider->get_data_prefix());
+        data_provider->start_request_data();
+    }
 }
 
 void StockRunner::on_finished() {
@@ -55,6 +57,8 @@ void StockRunner::on_bar() {
 }
 
 void StockRunner::run_frame() {
+    // fetch data from data_provider
+
     // run a frame
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
 }
