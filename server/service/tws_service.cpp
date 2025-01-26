@@ -143,16 +143,20 @@ void TwsService::distribute_response(std::atomic<int> &tws_version) {
         }
 
         logger_->debug("Received response: {}", static_cast<int>(response_ptr->response_type));
-        if (response_ptr->response_type == broker::RequestType::REQUEST_CURRENT_TIME) {
-            auto Response = std::dynamic_pointer_cast<broker::ResCurrentTime>(response_ptr);
-            if (Response) {
-                logger_->info("Current time: {}", Response->time);
-            }
-        } else if (response_ptr->response_type == broker::RequestType::REQUEST_HISTORICAL_DATA) {
-            auto Response = std::dynamic_pointer_cast<broker::ResHistoricalData>(response_ptr);
-            auto request_id = Response->request_id;
+        if (response_ptr->response_type == broker::RequestType::ERROR_MSG) {
+            // TODO:
+            continue;
+        } else if (response_ptr->response_type == broker::RequestType::REQUEST_CURRENT_TIME) {
+            // TODO: record current time
+            continue;
         } else {
-            logger_->warn("Cannot find the response type: {}", static_cast<int>(response_ptr->response_type));
+            TickerId request_id = response_ptr->request_id;
+            auto iter = response_callbacks_.find(request_id);
+            if (iter != response_callbacks_.end()) {
+                iter->second(response_ptr);
+            } else {
+                logger_->warn("Cannot find the callback for request id: {}", request_id);
+            }
         }
     }
 }

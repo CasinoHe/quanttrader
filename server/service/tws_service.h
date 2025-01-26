@@ -43,6 +43,15 @@ public:
         }
     }
 
+    bool remove_callback(long request_id) {
+        auto iter = response_callbacks_.find(request_id);
+        if (iter != response_callbacks_.end()) {
+            response_callbacks_.erase(iter);
+            return true;
+        }
+        return false;
+    }
+
     void set_response_queue(std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::ResponseHeader>>> response_queue) {
         response_queue_ = response_queue;
     }
