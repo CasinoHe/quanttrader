@@ -48,10 +48,14 @@ bool DataProvider::start_request_data() {
     if (is_realtime_) {
         subscribe_realtime_data();
     }
+
+    if (is_historical_) {
+        fetch_historical_data();
+    }
     return true;
 }
 
-bool DataProvider::subscribe_realtime_data() {
+long DataProvider::subscribe_realtime_data() {
     auto request = std::make_shared<qbroker::ReqRealtimeMktData>();
     request->symbol = tick_name_;
     request->currency = currency_;
@@ -59,6 +63,21 @@ bool DataProvider::subscribe_realtime_data() {
     request->security_type = security_type_;
 
     return broker_service_->push_request(request);
+}
+
+long DataProvider::fetch_historical_data() {
+    auto request = std::make_shared<qbroker::ReqHistoricalData>();
+    request->symbol = tick_name_;
+    request->currency = currency_;
+    request->exchange = exchange_;
+    request->security_type = security_type_;
+    request->bar_size = bar_type_;
+    request->what_to_show = what_type_;
+    request->use_rth = use_rth_;
+    request->format_date = true;
+    request->duration = "1 D";
+
+    return broker_service_->push_request(std::dynamic_pointer_cast<qbroker::RequestHeader>(request));
 }
 
 }

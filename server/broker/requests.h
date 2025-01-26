@@ -46,7 +46,7 @@ struct ReqHistoricalData: RequestHeader {
     std::string bar_size;
     std::string what_to_show;
     bool use_rth;
-    bool format_date = false;
+    bool format_date = true;
     std::string end_time;
     bool keep_up_to_date = false;
 };

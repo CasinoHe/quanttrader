@@ -27,7 +27,8 @@ public:
     bool start_request_data();
 
 protected:
-    bool subscribe_realtime_data();
+    long subscribe_realtime_data();
+    long fetch_historical_data();
 
 private:
     template<typename T>

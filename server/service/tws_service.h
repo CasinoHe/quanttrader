@@ -25,9 +25,18 @@ public:
     void stop() override;
     bool is_service_prepared() const override;
 
-    bool push_request(std::shared_ptr<broker::RequestHeader> &&request) {
-        return request_queue_->enqueue(request);
+    TickerId push_request(std::shared_ptr<broker::RequestHeader> &&request) {
+        TickerId request_id = broker::TwsClient::next_request_id();
+        request->request_id = request_id;
+        bool result = request_queue_->enqueue(request);
+        if (!result) {
+            logger_->error("Cannot push the request to the queue.");
+            return -1;
+        } else {
+            return request_id;
+        }
     }
+
     void set_response_queue(std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::ResponseHeader>>> response_queue) {
         response_queue_ = response_queue;
     }

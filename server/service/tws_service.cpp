@@ -73,6 +73,32 @@ void TwsService::run_request(std::atomic<int> &tws_version) {
             if (request_ptr->request_type == broker::RequestType::REQUEST_CURRENT_TIME) {
                 // request current time
                 client_->request_current_time();
+            } else if (request_ptr->request_type == broker::RequestType::REQUEST_HISTORICAL_DATA) {
+                auto Request = std::dynamic_pointer_cast<broker::ReqHistoricalData>(request_ptr);
+                if (Request) {
+                    Contract contract;
+                    contract.symbol = Request->symbol;
+                    contract.currency = Request->currency;
+                    contract.exchange = Request->exchange;
+                    contract.secType = Request->security_type;
+
+                    client_->request_historical_data(Request->request_id, contract, Request->end_time, Request->duration, Request->bar_size, Request->what_to_show, Request->use_rth);
+                } else {
+                    logger_->error("Cannot cast the request to ReqHistoricalData.");
+                }
+            } else if (request_ptr->request_type == broker::RequestType::REQUEST_REALTIME_MKT_DATA) {
+                auto Request = std::dynamic_pointer_cast<broker::ReqRealtimeMktData>(request_ptr);
+                if (Request) {
+                    Contract contract;
+                    contract.symbol = Request->symbol;
+                    contract.currency = Request->currency;
+                    contract.exchange = Request->exchange;
+                    contract.secType = Request->security_type;
+
+                    client_->request_real_time_data(Request->request_id, contract);
+                }
+            } else {
+                logger_->warn("Cannot find the request type: {}", static_cast<int>(request_ptr->request_type));
             }
         }
     }
