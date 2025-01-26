@@ -22,6 +22,16 @@ public:
         return std::static_pointer_cast<ServiceType>(it->second);
     }
 
+    template <typename ServiceType>
+    static std::shared_ptr<ServiceType> get_exist_service() {
+        auto type = std::type_index(typeid(ServiceType));
+        auto it = services_.find(type);
+        if (it == services_.end()) {
+            return nullptr;
+        }
+        return std::static_pointer_cast<ServiceType>(it->second);
+    }
+
 private:
     static inline std::unordered_map<std::type_index, std::shared_ptr<void>> services_;
 };

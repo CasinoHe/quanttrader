@@ -158,6 +158,8 @@ void BackTestService::start_runner(std::shared_ptr<BackTestServiceStruct> back_t
             return;
         }
         back_test->state = BackTestState::RUNNING;
+        // release strategy data to avoid race condition
+        back_test->strategy_data.reset();
         logger_->info("Start back test process: {}", back_test->config_key);
     }
 

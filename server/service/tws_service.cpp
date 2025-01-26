@@ -29,6 +29,14 @@ bool TwsService::is_service_prepared() const {
         return false;
     }
 
+    if (!request_queue_) {
+        return false;
+    }
+    
+    if (!response_queue_) {
+        return false;
+    }
+
     return true;
 }
 
