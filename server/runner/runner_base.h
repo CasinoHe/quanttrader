@@ -41,10 +41,16 @@ public:
 
     void run() {
         auto run_func = [this]() {
-            on_init();
-
             while (!initied_flag_.load()) {
+                if (!on_init()) {
+                    logger_->info("Initialization failed. Runner {} stoped without init.");
+                    return;
+                }
                 std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                if (stop_flag_.load()) {
+                    logger_->info("Runner {} stoped without init.");
+                    return;
+                }
             }
 
             on_start();
@@ -67,9 +73,10 @@ public:
     }
 
 protected:
-    // initialize the runner
-    virtual void on_init() {
+    // initialize the runner, it runs multiple times
+    virtual bool on_init() {
         initied_flag_.store(true);
+        return true;
     }
 
     virtual void on_start() = 0;        // start the runner, there is data to process, all the data is prepared

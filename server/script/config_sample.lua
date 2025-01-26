@@ -31,11 +31,13 @@ apple_daily = {
 	version = 1,                            -- before each operation, increment the version number
 	runner_name = "stock_runner",
 	strategy_name = "slope_strategy",
+	data_series = "daily,realtime",
+	daily_start_date = "2016-01-01 00:00:00",
+	daily_end_date = "now",
+	daily_timezone = "America/New_York",
 	symbol = "AAPL",
-	start_date = "2016-01-01 00:00:00",
-	end_date = "2024-12-31 23:59:59",
-	timezone = "America/New_York",
 }
+
 
 msft_weekly = {
 	version = 1,                            -- before each operation, increment the version number

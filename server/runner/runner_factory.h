@@ -18,6 +18,9 @@ public:
         if (!has_runner(runner_name)) {
             return nullptr;
         }
+        if (!params) {
+            return nullptr;
+        }
         return runner_creators_[runner_name](params);
     }
 

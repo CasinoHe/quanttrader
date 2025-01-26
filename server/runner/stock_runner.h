@@ -1,8 +1,14 @@
 #pragma once
 
 #include "runner_base.h"
+#include <memory>
+#include <vector>
 
 namespace quanttrader {
+namespace data {
+class DataProvider;
+}
+
 namespace runner {
 
 class StockRunner : public Runner {
@@ -17,11 +23,12 @@ public:
 
 protected:
     void on_finished() override;
-    void on_init() override;
+    bool on_init() override;
     void on_start() override;
     void run_frame() override;
 
 private:
+    std::vector<std::shared_ptr<quanttrader::data::DataProvider>> data_providers_;
 };
 
 }
