@@ -1,14 +1,64 @@
 #include "data_provider.h"
+#include "service/tws_service.h"
+#include "service/service_factory.h"
+#include "broker/requests.h"
 
 namespace quanttrader {
 namespace data {
 
-DataProvider::DataProvider(const std::string_view &data_prefix, DataParamsType params) {
-    tick_name_ = get_data_by_prefix(data_prefix, params);
+namespace qservice = quanttrader::service;
+namespace qbroker = quanttrader::broker;
+
+DataProvider::DataProvider(const std::string_view &data_prefix, DataParamsType params) : data_prefix_(data_prefix), params_(params) {
+    logger_ = quanttrader::log::get_common_rotation_logger("DataProvider", "data", false);
+    broker_service_ = qservice::ServiceFactory::get_exist_service<qservice::TwsService>();
 }
 
-std::string DataProvider::get_data_by_prefix(const std::string_view prefix, DataParamsType params) {
-    return {};
+bool DataProvider::prepare_data() {
+    // prepare data
+
+    tick_name_ = get_data_by_prefix<std::string>(DATA_TICK_NAME);
+    if (tick_name_.empty()) {
+        logger_->error("Cannot find the tick name for the data provider: {}", data_prefix_);
+        return false;
+    }
+    security_type_ = get_data_by_prefix<std::string>(DATA_SECURITY_TYPE_NAME, kDefaultSecurityType);
+    exchange_ = get_data_by_prefix<std::string>(DATA_EXCHANGE_NAME, kDefaultExchange);
+    currency_ = get_data_by_prefix<std::string>(DATA_CURRENCY_NAME, kDefaultCurrency);
+    use_rth_ = get_data_by_prefix<bool>(DATA_USE_RTH_NAME, kDefaultUseRth);
+    timezone_ = get_data_by_prefix<std::string>(DATA_TIMEZONE_NAME, kDefaultTimezone);
+    what_type_ = get_data_by_prefix<std::string>(DATA_TRADE_WHAT_NAME, kDefaultWhatToShow);
+
+    std::string data_type = get_data_by_prefix<std::string>(DATA_TYPE_NAME);
+    if (data_type == "historical") {
+        is_historical_ = true;
+        start_date_ = get_data_by_prefix<std::string>(DATA_START_DATE_NAME);
+        end_date_ = get_data_by_prefix<std::string>(DATA_END_DATE_NAME);
+        bar_type_ = get_data_by_prefix<std::string>(BAR_TYPE_NAME);
+    } else if (data_type == "realtime") {
+        is_realtime_ = true;
+    } else {
+
+    }
+
+    return true;
+}
+
+bool DataProvider::start_request_data() {
+    if (is_realtime_) {
+        subscribe_realtime_data();
+    }
+    return true;
+}
+
+bool DataProvider::subscribe_realtime_data() {
+    auto request = std::make_shared<qbroker::ReqRealtimeMktData>();
+    request->symbol = tick_name_;
+    request->currency = currency_;
+    request->exchange = exchange_;
+    request->security_type = security_type_;
+
+    return broker_service_->push_request(request);
 }
 
 }

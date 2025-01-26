@@ -12,6 +12,7 @@ enum class RequestType {
     NO_REQUEST = 0,
     REQUEST_CURRENT_TIME = 1,
     REQUEST_HISTORICAL_DATA = 2,
+    REQUEST_REALTIME_MKT_DATA = 3,
     ERROR_MSG = 999,
     END_REQUEST = 1000,
 };
@@ -37,17 +38,28 @@ struct ReqHistoricalData: RequestHeader {
         request_type = RequestType::REQUEST_HISTORICAL_DATA;
     }
 
-    std::string symbol = "AAPL";
-    std::string security_type = "STK";
-    std::string currency = "USD";
-    std::string exchange = "SMART";
-    std::string duration = "1 D";
-    std::string bar_size = "30 S";
-    std::string what_to_show = "TRADES";
-    bool use_rth = true;
+    std::string symbol;
+    std::string security_type;
+    std::string currency;
+    std::string exchange;
+    std::string duration;
+    std::string bar_size;
+    std::string what_to_show;
+    bool use_rth;
     bool format_date = false;
-    std::string end_time = "20220101 00:00:00";
+    std::string end_time;
     bool keep_up_to_date = false;
+};
+
+struct ReqRealtimeMktData: RequestHeader {
+    ReqRealtimeMktData() {
+        request_type = RequestType::REQUEST_REALTIME_MKT_DATA;
+    }
+
+    std::string symbol;
+    std::string security_type;
+    std::string currency;
+    std::string exchange;
 };
 
 // ----------------------------------------------------------------------------------
