@@ -74,7 +74,7 @@ void TwsService::run_request(std::atomic<int> &tws_version) {
                 // request current time
                 client_->request_current_time();
             } else if (request_ptr->request_type == broker::RequestType::REQUEST_HISTORICAL_DATA) {
-                auto Request = std::dynamic_pointer_cast<broker::ReqHistoricalData>(request_ptr);
+                auto Request = std::static_pointer_cast<broker::ReqHistoricalData>(request_ptr);
                 if (Request) {
                     Contract contract;
                     contract.symbol = Request->symbol;
@@ -87,7 +87,7 @@ void TwsService::run_request(std::atomic<int> &tws_version) {
                     logger_->error("Cannot cast the request to ReqHistoricalData.");
                 }
             } else if (request_ptr->request_type == broker::RequestType::REQUEST_REALTIME_MKT_DATA) {
-                auto Request = std::dynamic_pointer_cast<broker::ReqRealtimeMktData>(request_ptr);
+                auto Request = std::static_pointer_cast<broker::ReqRealtimeMktData>(request_ptr);
                 if (Request) {
                     Contract contract;
                     contract.symbol = Request->symbol;

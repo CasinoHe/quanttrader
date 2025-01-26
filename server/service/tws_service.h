@@ -3,6 +3,8 @@
 #include "service/service.h"
 #include "service/service_consts.h"
 #include "logger/quantlogger.h"
+#include "broker/twsclient.h"
+#include "broker/requests.h"
 #include "concurrentqueue/blockingconcurrentqueue.h"
 #include <string>
 #include <memory>
@@ -10,12 +12,6 @@
 #include <atomic>
 
 namespace quanttrader {
-namespace broker {
-class TwsClient;
-struct RequestHeader;
-struct ResponseHeader;
-struct ResErrorMsg;
-}
 namespace service {
 
 class TwsService : public ServiceBase<TwsService> {
@@ -25,8 +21,8 @@ public:
     void stop() override;
     bool is_service_prepared() const override;
 
-    TickerId push_request(std::shared_ptr<broker::RequestHeader> &&request) {
-        TickerId request_id = broker::TwsClient::next_request_id();
+    long push_request(std::shared_ptr<broker::RequestHeader> request) {
+        long request_id = broker::TwsClient::next_request_id();
         request->request_id = request_id;
         bool result = request_queue_->enqueue(request);
         if (!result) {

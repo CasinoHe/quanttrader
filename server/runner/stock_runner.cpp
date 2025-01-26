@@ -25,6 +25,15 @@ bool StockRunner::on_init() {
         data_providers_.emplace_back(data_provider);
     }
 
+    for (auto &data_provider : data_providers_) {
+        if (!data_provider->prepare_data()) {
+            logger_->error("Cannot prepare data for data provider: {}", data_provider->get_data_prefix());
+            return false;
+        }
+
+        data_provider->start_request_data();
+    }
+
     // initialize the runner
     return Runner::on_init();
 }
