@@ -132,6 +132,14 @@ void TwsClient::historicalDataEnd(int req_id, const std::string& start_date, con
 }
 
 void TwsClient::error(int id, time_t error_time, int error_code, const std::string &error_string, const std::string& advancedOrderRejectJson) {
+    auto response = std::make_shared<ResErrorMsg>();
+    response->request_id = id;
+    response->error_time = error_time;
+    response->error_code = error_code;
+    response->error_string = error_string;
+    response->advanced_order_reject_json = advancedOrderRejectJson;
+    response_queue_->enqueue(std::dynamic_pointer_cast<ResponseHeader>(response));
+
     logger_->error("Error. Id: {}, Code: {}, Msg: {}", id, error_code, error_string);
 }
 

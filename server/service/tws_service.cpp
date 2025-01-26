@@ -145,6 +145,7 @@ void TwsService::distribute_response(std::atomic<int> &tws_version) {
         logger_->debug("Received response: {}", static_cast<int>(response_ptr->response_type));
         if (response_ptr->response_type == broker::RequestType::ERROR_MSG) {
             // TODO:
+            logger_->error("Received error message.");
             continue;
         } else if (response_ptr->response_type == broker::RequestType::REQUEST_CURRENT_TIME) {
             // TODO: record current time
