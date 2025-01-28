@@ -142,6 +142,9 @@ bool LuaConfigData::get_all_values(const std::string &table_name, std::unordered
             } else if (lua_isnumber(luastate_, -1)) {
                 double value = lua_tonumber(luastate_, -1);
                 values[key] = value;
+            } else if (lua_isboolean(luastate_, -1)) {
+                bool value = lua_toboolean(luastate_, -1);
+                values[key] = value;
             } else {
                 logger_->error("Value for key {} is not an integer, string or double.", key);
             }

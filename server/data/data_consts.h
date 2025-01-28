@@ -21,7 +21,7 @@ constexpr const char *kDefaultCurrency = "USD";
 constexpr const char *kDefaultTimezone = "America/New_York";
 constexpr const char *kDefaultWhatToShow = "TRADES";
 constexpr const char *kDefaultDataType = "historical";
-constexpr const int kDefaultUseRth = 0;
+constexpr const bool kDefaultUseRth = false;
 
 }
 }

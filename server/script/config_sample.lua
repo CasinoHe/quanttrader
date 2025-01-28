@@ -29,7 +29,7 @@ back_test_service = {
 
 apple_daily = {
 	version = 1,                            -- before each operation, increment the version number
-	runner_name = "stock_runner",
+	runner_name = "StockRunner",
 	strategy_name = "slope_strategy",
 	data_series = "daily",
 	daily_ticker = "AAPL",
@@ -39,7 +39,7 @@ apple_daily = {
 	daily_security_type = "STK",
 	daily_exchange = "SMART",
 	daily_currency = "USD",
-	daily_use_rth = 0,
+	daily_use_rth = false,
 	daily_timezone = "America/New_York",
 	daily_what = "TRADES",
 	daily_bar_type = "1 D",
@@ -48,7 +48,7 @@ apple_daily = {
 
 msft_weekly = {
 	version = 1,                            -- before each operation, increment the version number
-	runner_name = "stock_runner",
+	runner_name = "StockRunner",
 	strategy_name = "slope_strategy",
 	symbol = "MSFT",
 	start_date = "2016-01-01 00:00:00",
