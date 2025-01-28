@@ -10,7 +10,7 @@
 namespace quanttrader {
 namespace broker {
 
-std::atomic<long> TwsClient::next_request_id_{0};
+std::atomic<long> TwsClient::next_request_id_{1};
 
 TwsClient::TwsClient(const std::string_view ip, int port, int clientid, int wait_timeout) : signal_handler_(wait_timeout), client_socket_(this, &signal_handler_) {
     host_ = ip;

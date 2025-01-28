@@ -61,8 +61,8 @@ public:
     void currentTime(long time) override;
 
     static TickerId next_request_id() {
-        if (next_request_id_.load() >= LONG_MAX - 100) {
-            next_request_id_.store(0);
+        if (next_request_id_.load() >= LONG_MAX - 1000) {
+            next_request_id_.store(1);
         }
 
         return next_request_id_.fetch_add(1, std::memory_order_relaxed); 
