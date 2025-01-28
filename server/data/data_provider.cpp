@@ -72,6 +72,32 @@ long DataProvider::subscribe_realtime_data() {
     return broker_service_->push_request(request, callback);
 }
 
+std::string DataProvider::get_duration() {
+    const std::string &start_date = start_date_;
+    const std::string &end_date = end_date_;
+
+    auto date_parser = [](const std::string &date) {
+        std::istringstream iss(date);
+        std::chrono::sys_days tp;
+        std::string abbrev;
+
+        if (iss >> std::chrono::parse("%F %T", tp)) {
+            return tp;
+        } else {
+            throw std::runtime_error("Cannot parse the date string: " + date);
+        }
+    };
+
+    std::chrono::sys_days start_tp = date_parser(start_date);
+    std::chrono::sys_days end_tp;
+    if (end_date == "now") {
+    } else {
+        end_tp = date_parser(end_date);
+    }
+
+    return {};
+}
+
 long DataProvider::fetch_historical_data() {
     auto request = std::make_shared<qbroker::ReqHistoricalData>();
     request->symbol = tick_name_;
@@ -81,7 +107,7 @@ long DataProvider::fetch_historical_data() {
     request->bar_size = bar_type_;
     request->what_to_show = what_type_;
     request->use_rth = use_rth_;
-    request->duration = "120 D";
+    request->duration = "1 Y";
 
     logger_->info("Request historical data for: {} security {} bar size {} rth {} duration {}", 
                 tick_name_,

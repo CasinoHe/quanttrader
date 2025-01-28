@@ -32,6 +32,9 @@ public:
     std::string to_string_with_offset() const;
     std::string to_string_with_name() const;
 
+    static std::optional<TimeWithZone> from_now() {
+        return TimeWithZone(std::chrono::zoned_time<std::chrono::nanoseconds>(std::chrono::current_zone(), std::chrono::system_clock::now()));
+    }
     // parse from a time string contains time zone offset like "2025-01-10 11:30:19.5094586+0800"
     static std::optional<TimeWithZone> from_offset_string(const std::string& data);
     // parse from a time string contains time zone name like "20240510 09:29:30 US/Eastern"

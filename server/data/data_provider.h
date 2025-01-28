@@ -40,6 +40,7 @@ public:
 protected:
     long subscribe_realtime_data();
     long fetch_historical_data();
+    std::string get_duration();
 
 private:
     template<typename T>
