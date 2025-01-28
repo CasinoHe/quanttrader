@@ -81,7 +81,6 @@ long DataProvider::fetch_historical_data() {
     request->bar_size = bar_type_;
     request->what_to_show = what_type_;
     request->use_rth = use_rth_;
-    request->format_date = true;
     request->duration = "120 D";
 
     logger_->info("Request historical data for: {} security {} bar size {} rth {} duration {}", 
