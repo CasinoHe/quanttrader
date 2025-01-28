@@ -14,7 +14,7 @@ class Runner;
 using RunnerParamsType = std::shared_ptr<std::unordered_map<std::string, std::any>>;
 using RunnerCreatorFuncType = std::function<std::shared_ptr<Runner>(RunnerParamsType)>;
 
-constexpr const char* STOCK_RUNNER_NAME = "StockRunner";
+constexpr const char* STOCK_RUNNER_NAME = "stock_runner";
 
 }
 }
