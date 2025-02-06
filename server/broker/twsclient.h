@@ -47,7 +47,7 @@ public:
     void cancel_real_time_data(TickerId request_id);
     void request_historical_data(TickerId request_id, const Contract &contract, const std::string &end_time,
                                   const std::string &duration, const std::string &bar_size,
-                                  const std::string &what_to_show, int use_rth);
+                                  const std::string &what_to_show, int use_rth, bool keep_up_to_date);
     void cancel_historical_data(TickerId request_id);
 
 

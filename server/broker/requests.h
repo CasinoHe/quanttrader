@@ -17,6 +17,8 @@ enum class RequestType {
     REQUEST_CURRENT_TIME = 1,
     REQUEST_HISTORICAL_DATA = 2,
     REQUEST_REALTIME_MKT_DATA = 3,
+    CANCEL_REQUEST_HISTORICAL_DATA = 4,
+    CANCEL_REAL_TIME_MKT_DATA = 5,
     ERROR_MSG = 999,
     END_REQUEST = 1000,
 };
@@ -58,6 +60,12 @@ struct ReqHistoricalData: RequestHeader {
     bool keep_up_to_date = false;
 };
 
+struct ReqCancelHistoricalData: RequestHeader {
+    ReqCancelHistoricalData() {
+        request_type = RequestType::CANCEL_REQUEST_HISTORICAL_DATA;
+    }
+};
+
 struct ReqRealtimeMktData: RequestHeader {
     ReqRealtimeMktData() {
         request_type = RequestType::REQUEST_REALTIME_MKT_DATA;
@@ -67,6 +75,12 @@ struct ReqRealtimeMktData: RequestHeader {
     std::string security_type;
     std::string currency;
     std::string exchange;
+};
+
+struct ReqCancelRealtimeMktData: RequestHeader {
+    ReqCancelRealtimeMktData() {
+        request_type = RequestType::CANCEL_REAL_TIME_MKT_DATA;
+    }
 };
 
 // ----------------------------------------------------------------------------------

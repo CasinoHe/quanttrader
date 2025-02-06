@@ -83,8 +83,8 @@ void TwsClient::cancel_real_time_data(TickerId request_id) {
 
 void TwsClient::request_historical_data(TickerId request_id, const Contract &contract, const std::string &end_time,
                                         const std::string &duration, const std::string &bar_size,
-                                        const std::string &what_to_show, int use_rth) {
-    client_socket_.reqHistoricalData(request_id, contract, end_time, duration, bar_size, what_to_show, use_rth, 1, false, {});
+                                        const std::string &what_to_show, int use_rth, bool keep_up_to_date) {
+    client_socket_.reqHistoricalData(request_id, contract, end_time, duration, bar_size, what_to_show, use_rth, 1, keep_up_to_date, {});
     logger_->info("Requested historical data for request ID: {}", request_id);
 }
 
