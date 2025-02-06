@@ -2,6 +2,7 @@
 
 #include "data_struct.h"
 #include "logger/quantlogger.h"
+#include <shared_mutex>
 
 namespace quanttrader {
 namespace data {
@@ -20,6 +21,7 @@ public:
     }
 
     void emplace_back(const BarStruct &bar) {
+        std::unique_lock lock(bar_mutex_);
         bars_.start_time.emplace_back(bar.time);
         bars_.open.emplace_back(bar.open);
         bars_.high.emplace_back(bar.high);
@@ -31,6 +33,7 @@ public:
     }
 
     void emplace_back(uint64_t time, double open, double high, double low, double close, Decimal vol, Decimal swap, int count) {
+        std::unique_lock lock(bar_mutex_);
         bars_.start_time.emplace_back(time);
         bars_.open.emplace_back(open);
         bars_.high.emplace_back(high);
@@ -69,6 +72,8 @@ private:
     unsigned int bar_size_ = 0;
     BarSeries bars_;
     quanttrader::log::LoggerPtr logger_ {nullptr};
+
+    std::shared_mutex bar_mutex_;
 };
 
 }
