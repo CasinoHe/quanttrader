@@ -43,8 +43,9 @@ apple_slope = {
 	daily_timezone = "America/New_York",
 	daily_what = "TRADES",
 	-- Legal bar type are: 1 secs, 5 secs, 10 secs, 15 secs, 30 secs, 1 min, 2 mins, 3 mins, 5 mins, 10 mins, 15 mins
-	-- 20 mins, 30 mins, 1 hour, 2 hours, 3 hours, 4 hours, 8 hours, 1 day, 1W, 1M
+	-- 20 mins, 30 mins, 1 hrs, 2 hrs, 3 hrs, 4 hrs, 8 hrs, 1 days, 1 weeks, 1 months
 	daily_bar_type = "1 day",
+	daily_up_to_date = false,
 
 	min_ticker = "AAPL",
 	min_type = "historical",
@@ -57,8 +58,9 @@ apple_slope = {
 	min_timezone = "America/New_York",
 	min_what = "TRADES",
 	-- Legal bar type are: 1 secs, 5 secs, 10 secs, 15 secs, 30 secs, 1 min, 2 mins, 3 mins, 5 mins, 10 mins, 15 mins
-	-- 20 mins, 30 mins, 1 hour, 2 hours, 3 hours, 4 hours, 8 hours, 1 day, 1W, 1M
+	-- 20 mins, 30 mins, 1 hrs, 2 hrs, 3 hrs, 4 hrs, 8 hrs, 1 days, 1 weeks, 1 months
 	min_bar_type = "15 mins",
+	min_up_to_date = false,
 }
 
 

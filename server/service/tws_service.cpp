@@ -82,7 +82,9 @@ void TwsService::run_request(std::atomic<int> &tws_version) {
                     contract.exchange = Request->exchange;
                     contract.secType = Request->security_type;
 
-                    client_->request_historical_data(Request->request_id, contract, Request->end_time, Request->duration, Request->bar_size, Request->what_to_show, Request->use_rth);
+                    client_->request_historical_data(Request->request_id, contract, Request->end_time, Request->duration,
+                                                     Request->bar_size, Request->what_to_show, Request->use_rth,
+                                                     Request->keep_up_to_date);
                 } else {
                     logger_->error("Cannot cast the request to ReqHistoricalData.");
                 }
@@ -96,6 +98,16 @@ void TwsService::run_request(std::atomic<int> &tws_version) {
                     contract.secType = Request->security_type;
 
                     client_->request_real_time_data(Request->request_id, contract);
+                }
+            } else if (request_ptr->request_type == broker::RequestType::CANCEL_REQUEST_HISTORICAL_DATA) {
+                auto Request = std::dynamic_pointer_cast<broker::ReqCancelHistoricalData>(request_ptr);
+                if (Request) {
+                    client_->cancel_historical_data(Request->request_id);
+                }
+            } else if (request_ptr->request_type == broker::RequestType::CANCEL_REAL_TIME_MKT_DATA) {
+                auto Request = std::dynamic_pointer_cast<broker::ReqCancelRealtimeMktData>(request_ptr);
+                if (Request) {
+                    client_->cancel_real_time_data(Request->request_id);
                 }
             } else {
                 logger_->warn("Cannot find the request type: {}", static_cast<int>(request_ptr->request_type));

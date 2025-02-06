@@ -2,9 +2,11 @@
 #include "service/tws_service.h"
 #include "service/service_factory.h"
 #include "broker/requests.h"
+#include "data_consts.h"
 #include "time/time_with_zone.h"
 #include <chrono>
 #include <cmath>
+#include <array>
 
 namespace quanttrader {
 namespace data {
@@ -34,6 +36,7 @@ bool DataProvider::prepare_data() {
     use_rth_ = get_data_by_prefix<bool>(DATA_USE_RTH_NAME, kDefaultUseRth);
     timezone_ = get_data_by_prefix<std::string>(DATA_TIMEZONE_NAME, kDefaultTimezone);
     what_type_ = get_data_by_prefix<std::string>(DATA_TRADE_WHAT_NAME, kDefaultWhatToShow);
+    keep_up_to_date_ = get_data_by_prefix<bool>(KEEP_UP_TO_DATE_NAME, false);
 
     std::string data_type = get_data_by_prefix<std::string>(DATA_TYPE_NAME);
     if (data_type == "historical") {
@@ -41,6 +44,15 @@ bool DataProvider::prepare_data() {
         start_date_ = get_data_by_prefix<std::string>(DATA_START_DATE_NAME);
         end_date_ = get_data_by_prefix<std::string>(DATA_END_DATE_NAME);
         bar_type_ = get_data_by_prefix<std::string>(BAR_TYPE_NAME);
+
+        // get bar type and bar size
+        auto bar_type_size = get_bar_type_from_string(bar_type_);
+        if (bar_type_size.first == BarType::NONE) {
+            logger_->error("Cannot parse the bar type: {}", bar_type_);
+            return false;
+        } else {
+            bar_line_ = std::make_shared<BarLine>(0, bar_type_size.first, bar_type_size.second);
+        }
     } else if (data_type == "realtime") {
         is_realtime_ = true;
     } else {
@@ -50,13 +62,43 @@ bool DataProvider::prepare_data() {
     return true;
 }
 
-bool DataProvider::start_request_data() {
-    if (is_realtime_) {
-        subscribe_realtime_data();
+bool DataProvider::terminate_request_data() {
+    if (is_historical_) {
+        if (keep_up_to_date_) {
+            // cancel the keep up to date
+            auto request = std::make_shared<qbroker::ReqCancelHistoricalData>();
+            request->request_id = request_id_;
+            auto cancel_id = broker_service_->push_request(request, std::nullopt);
+            logger_->info("Cancel up-to-date historical data request {}, cancel id {}", request_id_, cancel_id);
+        } else {
+            // cancel the historical data
+            if (!is_historical_completed()) {
+                auto request = std::make_shared<qbroker::ReqCancelHistoricalData>();
+                request->request_id = request_id_;
+                auto cancel_id = broker_service_->push_request(request, std::nullopt);
+                logger_->info("Cancel historical data request {}, cancel id {}", request_id_, cancel_id);
+            }
+        }
     }
 
+    if (is_realtime_) {
+        // cancel the real time data
+        auto request = std::make_shared<qbroker::ReqCancelRealtimeMktData>();
+        request->request_id = request_id_;
+        auto cancel_id = broker_service_->push_request(request, std::nullopt);
+        logger_->info("Cancel real time data request {}, cancel id {}", request_id_, cancel_id);
+    }
+
+    return true;
+}
+
+bool DataProvider::start_request_data() {
     if (is_historical_) {
-        fetch_historical_data();
+        request_id_ = fetch_historical_data();
+    }
+
+    if (is_realtime_) {
+        request_id_ = subscribe_realtime_data();
     }
     return true;
 }
@@ -123,6 +165,8 @@ std::optional<std::string> DataProvider::get_duration() {
 }
 
 long DataProvider::fetch_historical_data() {
+    historical_fetch_completed_.store(false);
+
     auto request = std::make_shared<qbroker::ReqHistoricalData>();
     request->symbol = tick_name_;
     request->currency = currency_;
@@ -131,6 +175,7 @@ long DataProvider::fetch_historical_data() {
     request->bar_size = bar_type_;
     request->what_to_show = what_type_;
     request->use_rth = use_rth_;
+    request->keep_up_to_date = keep_up_to_date_;
     auto duration = get_duration();
     if (!duration.has_value()) {
         logger_->error("Cannot get the duration for the historical data.");
@@ -138,12 +183,13 @@ long DataProvider::fetch_historical_data() {
     }
     request->duration = duration.value();
 
-    logger_->info("Request historical data for: {} security {} bar size {} rth {} duration {}", 
+    logger_->info("Request historical data for: {} security {} bar size {} rth {} duration {} up to date {}", 
                 tick_name_,
                 security_type_,
                 bar_type_,
                 use_rth_,
-                request->duration
+                request->duration,
+                request->keep_up_to_date
                 );
     auto callback = [this](std::shared_ptr<broker::ResponseHeader> response) {
         // process the historical data
@@ -153,9 +199,37 @@ long DataProvider::fetch_historical_data() {
     return broker_service_->push_request(std::dynamic_pointer_cast<qbroker::RequestHeader>(request), callback);
 }
 
+std::pair<BarType, unsigned int> DataProvider::get_bar_type_from_string(const std::string &bar_type) {
+    if (std::find(kSecondsBarType, kSecondsBarType + sizeof(kSecondsBarType) / sizeof(kSecondsBarType[0]), bar_type) != kSecondsBarType + sizeof(kSecondsBarType) / sizeof(kSecondsBarType[0])) {
+        return std::make_pair(BarType::Second, std::stoi(bar_type.substr(0, bar_type.size() - 5)));
+    } else if (std::find(kMinutesBarType, kMinutesBarType + sizeof(kMinutesBarType) / sizeof(kMinutesBarType[0]), bar_type) != kMinutesBarType + sizeof(kMinutesBarType) / sizeof(kMinutesBarType[0])) {
+        return std::make_pair(BarType::Minute, std::stoi(bar_type.substr(0, bar_type.size() - 5)));
+    } else if (std::find(kHoursBarType, kHoursBarType + sizeof(kHoursBarType) / sizeof(kHoursBarType[0]), bar_type) != kHoursBarType + sizeof(kHoursBarType) / sizeof(kHoursBarType[0])) {
+        return std::make_pair(BarType::Hour, std::stoi(bar_type.substr(0, bar_type.size() - 4)));
+    } else if (std::find(kDaysBarType, kDaysBarType + sizeof(kDaysBarType) / sizeof(kDaysBarType[0]), bar_type) != kDaysBarType + sizeof(kDaysBarType) / sizeof(kDaysBarType[0])) {
+        return std::make_pair(BarType::Day, std::stoi(bar_type.substr(0, bar_type.size() - 5)));
+    } else if (std::find(kWeekBarType, kWeekBarType + sizeof(kWeekBarType) / sizeof(kWeekBarType[0]), bar_type) != kWeekBarType + sizeof(kWeekBarType) / sizeof(kWeekBarType[0])) {
+        return std::make_pair(BarType::Week, std::stoi(bar_type.substr(0, bar_type.size() - 6)));
+    } else if (std::find(kMonthBarType, kMonthBarType + sizeof(kMonthBarType) / sizeof(kMonthBarType[0]), bar_type) != kMonthBarType + sizeof(kMonthBarType) / sizeof(kMonthBarType[0])) {
+        return std::make_pair(BarType::Month, std::stoi(bar_type.substr(0, bar_type.size() - 7)));
+    } else {
+        return std::make_pair(BarType::NONE, 0);
+    }
+}
+
 void DataProvider::historical_data_response(std::shared_ptr<broker::ResHistoricalData> response) {
-    // process the historical data
-    logger_->info("Historical data response for: {}", tick_name_);
+    uint64_t start_time = 0;
+    // push historical bar data into the bar line
+    try {
+        auto time_str = std::get<std::string>(response->date);
+        auto time_with_zone = qtime::TimeWithZone::from_ibapi_string(time_str, timezone_);
+        start_time = time_with_zone.value().get_nano_epoch();
+    } catch (std::bad_variant_access) {
+        auto time = std::get<int>(response->date);
+        start_time = time * kSecondsToNano;
+    }
+
+    bar_line_->emplace_back(start_time, response->open, response->high, response->low, response->close, response->volume, response->wap, response->count);
 }
 
 void DataProvider::realtime_data_response(std::shared_ptr<broker::ResRealtimeData> response) {

@@ -14,6 +14,7 @@ constexpr const char *DATA_USE_RTH_NAME = "_use_rth";
 constexpr const char *DATA_TIMEZONE_NAME = "_timezone";
 constexpr const char *DATA_TRADE_WHAT_NAME = "_what";
 constexpr const char *BAR_TYPE_NAME = "_bar_type";
+constexpr const char *KEEP_UP_TO_DATE_NAME = "_up_to_date";
 
 constexpr const char *kDefaultSecurityType = "STK";
 constexpr const char *kDefaultExchange = "SMART";
@@ -23,5 +24,13 @@ constexpr const char *kDefaultWhatToShow = "TRADES";
 constexpr const char *kDefaultDataType = "historical";
 constexpr const bool kDefaultUseRth = false;
 
+constexpr const char *kSecondsBarType[] = {"1 secs", "5 secs", "10 secs", "15 secs", "30 secs"};
+constexpr const char *kMinutesBarType[] = {"1 mins", "2 mins", "3 mins", "5 mins", "10 mins", "15 mins", "20 mins", "30 mins"};
+constexpr const char *kHoursBarType[] = {"1 hrs", "2 hrs", "3 hrs", "4 hrs", "8 hrs"};
+constexpr const char *kDaysBarType[] = {"1 days"};
+constexpr const char *kWeekBarType[] = {"1 weeks"};
+constexpr const char *kMonthBarType[] = {"1 months"};
+
+constexpr unsigned long kSecondsToNano = 1000000000;
 }
 }
