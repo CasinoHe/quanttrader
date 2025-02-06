@@ -25,11 +25,11 @@ constexpr const char *kDefaultDataType = "historical";
 constexpr const bool kDefaultUseRth = false;
 
 constexpr const char *kSecondsBarType[] = {"1 secs", "5 secs", "10 secs", "15 secs", "30 secs"};
-constexpr const char *kMinutesBarType[] = {"1 mins", "2 mins", "3 mins", "5 mins", "10 mins", "15 mins", "20 mins", "30 mins"};
-constexpr const char *kHoursBarType[] = {"1 hrs", "2 hrs", "3 hrs", "4 hrs", "8 hrs"};
-constexpr const char *kDaysBarType[] = {"1 days"};
-constexpr const char *kWeekBarType[] = {"1 weeks"};
-constexpr const char *kMonthBarType[] = {"1 months"};
+constexpr const char *kMinutesBarType[] = {"1 min", "2 mins", "3 mins", "5 mins", "10 mins", "15 mins", "20 mins", "30 mins"};
+constexpr const char *kHoursBarType[] = {"1 hour", "2 hours", "3 hours", "4 hours", "8 hours"};
+constexpr const char *kDaysBarType[] = {"1 day"};
+constexpr const char *kWeekBarType[] = {"1 W"};
+constexpr const char *kMonthBarType[] = {"1 M"};
 
 constexpr unsigned long kSecondsToNano = 1000000000;
 }

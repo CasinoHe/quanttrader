@@ -57,6 +57,13 @@ void StockRunner::on_bar() {
 }
 
 void StockRunner::run_frame() {
+    // check the availability of data
+    for (auto &data_provider : data_providers_) {
+        if (!data_provider->is_data_ready()) {
+            return;
+        }
+    }
+
     // fetch data from data_provider
 
     // run a frame

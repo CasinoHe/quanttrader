@@ -121,6 +121,8 @@ void TwsClient::historicalData(TickerId req_id, const Bar &bar) {
     response->close = bar.close;
     response->wap = bar.wap;
     response->volume = bar.volume;
+    response->count = bar.count;
+    response->is_end = false;
     response_queue_->enqueue(std::dynamic_pointer_cast<ResponseHeader>(response));
 
     logger_->info("Historical Data. ReqId: {}, Date: {}, Open: {}, High: {}, Low: {}, Close: {}, Volume: {}",
@@ -128,6 +130,12 @@ void TwsClient::historicalData(TickerId req_id, const Bar &bar) {
 }
 
 void TwsClient::historicalDataEnd(int req_id, const std::string& start_date, const std::string& end_date) {
+    auto response = std::make_shared<ResHistoricalData>();
+    response->request_id = req_id;
+    response->is_end = true;
+    response->start_date = start_date;
+    response->end_date = end_date;
+    response_queue_->enqueue(std::dynamic_pointer_cast<ResponseHeader>(response));
     logger_->info("Historical Data End. ReqId: {}, Start Date: {}, End Date: {}", req_id, start_date, end_date);
 }
 

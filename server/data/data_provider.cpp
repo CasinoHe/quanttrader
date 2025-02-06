@@ -200,24 +200,40 @@ long DataProvider::fetch_historical_data() {
 }
 
 std::pair<BarType, unsigned int> DataProvider::get_bar_type_from_string(const std::string &bar_type) {
-    if (std::find(kSecondsBarType, kSecondsBarType + sizeof(kSecondsBarType) / sizeof(kSecondsBarType[0]), bar_type) != kSecondsBarType + sizeof(kSecondsBarType) / sizeof(kSecondsBarType[0])) {
-        return std::make_pair(BarType::Second, std::stoi(bar_type.substr(0, bar_type.size() - 5)));
-    } else if (std::find(kMinutesBarType, kMinutesBarType + sizeof(kMinutesBarType) / sizeof(kMinutesBarType[0]), bar_type) != kMinutesBarType + sizeof(kMinutesBarType) / sizeof(kMinutesBarType[0])) {
-        return std::make_pair(BarType::Minute, std::stoi(bar_type.substr(0, bar_type.size() - 5)));
-    } else if (std::find(kHoursBarType, kHoursBarType + sizeof(kHoursBarType) / sizeof(kHoursBarType[0]), bar_type) != kHoursBarType + sizeof(kHoursBarType) / sizeof(kHoursBarType[0])) {
-        return std::make_pair(BarType::Hour, std::stoi(bar_type.substr(0, bar_type.size() - 4)));
-    } else if (std::find(kDaysBarType, kDaysBarType + sizeof(kDaysBarType) / sizeof(kDaysBarType[0]), bar_type) != kDaysBarType + sizeof(kDaysBarType) / sizeof(kDaysBarType[0])) {
-        return std::make_pair(BarType::Day, std::stoi(bar_type.substr(0, bar_type.size() - 5)));
-    } else if (std::find(kWeekBarType, kWeekBarType + sizeof(kWeekBarType) / sizeof(kWeekBarType[0]), bar_type) != kWeekBarType + sizeof(kWeekBarType) / sizeof(kWeekBarType[0])) {
-        return std::make_pair(BarType::Week, std::stoi(bar_type.substr(0, bar_type.size() - 6)));
-    } else if (std::find(kMonthBarType, kMonthBarType + sizeof(kMonthBarType) / sizeof(kMonthBarType[0]), bar_type) != kMonthBarType + sizeof(kMonthBarType) / sizeof(kMonthBarType[0])) {
-        return std::make_pair(BarType::Month, std::stoi(bar_type.substr(0, bar_type.size() - 7)));
-    } else {
+    auto pos = bar_type.find(" ");
+    int size = 0;
+
+    BarType bar_type_enum = BarType::NONE;
+    if (pos == std::string::npos) {
         return std::make_pair(BarType::NONE, 0);
+    } else {
+        size = std::stoi(bar_type.substr(0, pos));
     }
+
+    if (std::find(kSecondsBarType, kSecondsBarType + sizeof(kSecondsBarType) / sizeof(kSecondsBarType[0]), bar_type) != kSecondsBarType + sizeof(kSecondsBarType) / sizeof(kSecondsBarType[0])) {
+        bar_type_enum = BarType::Second;
+    } else if (std::find(kMinutesBarType, kMinutesBarType + sizeof(kMinutesBarType) / sizeof(kMinutesBarType[0]), bar_type) != kMinutesBarType + sizeof(kMinutesBarType) / sizeof(kMinutesBarType[0])) {
+        bar_type_enum = BarType::Minute;
+    } else if (std::find(kHoursBarType, kHoursBarType + sizeof(kHoursBarType) / sizeof(kHoursBarType[0]), bar_type) != kHoursBarType + sizeof(kHoursBarType) / sizeof(kHoursBarType[0])) {
+        bar_type_enum = BarType::Hour;
+    } else if (std::find(kDaysBarType, kDaysBarType + sizeof(kDaysBarType) / sizeof(kDaysBarType[0]), bar_type) != kDaysBarType + sizeof(kDaysBarType) / sizeof(kDaysBarType[0])) {
+        bar_type_enum = BarType::Day;
+    } else if (std::find(kWeekBarType, kWeekBarType + sizeof(kWeekBarType) / sizeof(kWeekBarType[0]), bar_type) != kWeekBarType + sizeof(kWeekBarType) / sizeof(kWeekBarType[0])) {
+        bar_type_enum = BarType::Week;
+    } else if (std::find(kMonthBarType, kMonthBarType + sizeof(kMonthBarType) / sizeof(kMonthBarType[0]), bar_type) != kMonthBarType + sizeof(kMonthBarType) / sizeof(kMonthBarType[0])) {
+        bar_type_enum = BarType::Month;
+    }
+    
+    return std::make_pair(bar_type_enum, size);
 }
 
 void DataProvider::historical_data_response(std::shared_ptr<broker::ResHistoricalData> response) {
+    if (response->is_end) {
+        historical_fetch_completed_.store(true);
+        logger_->info("Historical data response for: {} is completed. start_date {}, end_date {}", tick_name_, response->start_date, response->end_date);
+        return;
+    }
+
     uint64_t start_time = 0;
     // push historical bar data into the bar line
     try {
@@ -235,6 +251,18 @@ void DataProvider::historical_data_response(std::shared_ptr<broker::ResHistorica
 void DataProvider::realtime_data_response(std::shared_ptr<broker::ResRealtimeData> response) {
     // process the real time data
     logger_->info("Realtime data response for: {}", tick_name_);
+}
+
+bool DataProvider::is_data_ready() {
+    if (is_historical_) {
+        return is_historical_completed();
+    }
+
+    if (is_realtime_) {
+        return true;
+    }
+
+    return false;
 }
 
 }

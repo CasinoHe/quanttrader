@@ -34,7 +34,7 @@ public:
     bool prepare_data();
     bool start_request_data();
     bool terminate_request_data();
-    bool is_historical_completed() { return historical_fetch_completed_.load(); }
+    bool is_data_ready();
 
     std::string get_data_prefix() const { return data_prefix_; }
 
@@ -42,6 +42,7 @@ public:
     void realtime_data_response(std::shared_ptr<broker::ResRealtimeData> response);
 
 protected:
+    bool is_historical_completed() { return historical_fetch_completed_.load(); }
     long subscribe_realtime_data();
     long fetch_historical_data();
     std::optional<std::string> get_duration();

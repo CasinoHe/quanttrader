@@ -118,6 +118,9 @@ struct ResHistoricalData: ResponseHeader {
     Decimal wap;
     Decimal volume;
     int count;
+    bool is_end;
+    std::string start_date;
+    std::string end_date;
 };
 
 struct ResRealtimeData: ResponseHeader {
