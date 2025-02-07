@@ -9,6 +9,10 @@ namespace data {
 class DataProvider;
 }
 
+namespace strategy {
+class Strategy;
+}
+
 namespace runner {
 
 class StockRunner : public Runner {
@@ -26,10 +30,12 @@ protected:
     void on_finished() override;
     bool on_init() override;
     void on_start() override;
+    void on_history() override;
     void run_frame() override;
 
 private:
     std::vector<std::shared_ptr<quanttrader::data::DataProvider>> data_providers_;
+    std::shared_ptr<quanttrader::strategy::Strategy> strategy_;
 };
 
 }

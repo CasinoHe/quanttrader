@@ -1,6 +1,7 @@
 #include "stock_runner.h"
 #include "data/data_provider.h"
 #include "runner_const.h"
+#include "strategy/strategy_factory.h"
 #include <boost/algorithm/string.hpp>
 #include <thread>
 
@@ -8,12 +9,19 @@ namespace quanttrader {
 namespace runner {
 
 namespace qdata = quanttrader::data;
+namespace qstrategy = quanttrader::strategy;
 
 bool StockRunner::on_init() {
     // prepare data request or read data
     auto series_iter = params_->find(DATA_SERIES_VARIABLE_NAME);
     if (series_iter == params_->end()) {
         logger_->error("Cannot find {} column", DATA_SERIES_VARIABLE_NAME);
+        return false;
+    }
+
+    const std::string &strategy_name = std::any_cast<std::string>(params_->at(STRATEGY_NAME_VARIABLE));
+    if (strategy_name.empty()) {
+        logger_->error("Cannot find the strategy name in the runner params.");
         return false;
     }
 
@@ -30,6 +38,12 @@ bool StockRunner::on_init() {
             logger_->error("Cannot prepare data for data provider: {}", data_provider->get_data_prefix());
             return false;
         }
+    }
+
+    strategy_ = qstrategy::StrategyFactory::create_strategy(strategy_name, *params_);
+    if (!strategy_) {
+        logger_->error("Cannot create the strategy: {}", strategy_name);
+        return false;
     }
 
     // initialize the runner
@@ -57,6 +71,10 @@ void StockRunner::on_bar() {
 }
 
 void StockRunner::on_trade() {
+
+}
+
+void StockRunner::on_history() {
 
 }
 

@@ -16,7 +16,7 @@ using StrategyCreateFuncType = std::function<std::shared_ptr<Strategy>(StrategyC
 
 class StrategyFactory {
 public:
-    static bool register_strategy(const std::string &&name, StrategyCreateFuncType create_func) {
+    static bool register_strategy(const std::string &name, StrategyCreateFuncType create_func) {
         if (strategies_.find(name) != strategies_.end()) {
             return false;
         } else {
@@ -25,7 +25,7 @@ public:
         }
     }
 
-    static bool unregister_strategy(const std::string &&name) {
+    static bool unregister_strategy(const std::string &name) {
         auto it = strategies_.find(name);
         if (it != strategies_.end()) {
             strategies_.erase(it);
@@ -34,7 +34,7 @@ public:
         return false;
     }
 
-    static bool replace_strategy(const std::string &&name, StrategyCreateFuncType create_func) {
+    static bool replace_strategy(const std::string &name, StrategyCreateFuncType create_func) {
         auto it = strategies_.find(name);
         if (it != strategies_.end()) {
             strategies_[name] = create_func;
@@ -43,11 +43,11 @@ public:
         return false;
     }
 
-    static bool has_strategy(const std::string &&name) {
+    static bool has_strategy(const std::string &name) {
         return strategies_.find(name) != strategies_.end();
     }
 
-    static std::shared_ptr<Strategy> create_strategy(const std::string &&name, StrategyCreateFuncParemType &params) {
+    static std::shared_ptr<Strategy> create_strategy(const std::string &name, StrategyCreateFuncParemType &params) {
         auto it = strategies_.find(name);
         if (it != strategies_.end()) {
             return it->second(params);
