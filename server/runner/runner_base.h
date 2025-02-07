@@ -2,6 +2,7 @@
 
 #include "runner_types.h"
 #include "logger/quantlogger.h"
+#include "service/service_consts.h"
 
 #include <string>
 #include <any>
@@ -19,15 +20,30 @@ class Runner {
 public:
     Runner(const std::string_view runner_name, RunnerParamsType params): runner_name_(runner_name), params_(params) {
         logger_ = quanttrader::log::get_common_rotation_logger(runner_name_, "runner", false);
-        logger_->info("Create runner: {}", runner_name_);
+
+        try {
+            auto name = params_->find(STRATEGY_NAME_VARIABLE);
+            if (name != params_->end()) {
+                strategy_name_ = std::any_cast<std::string>(name->second);
+            }
+        } catch (std::exception &e) {
+            logger_->error("Cannot find the strategy name in the runner params. error: {}", e.what());
+            return;
+        }
+
+        logger_->info("Create runner: {}, strategy: {}", runner_name_, strategy_name_);
     };
 
     virtual ~Runner() {
         stop();
     }
 
+    std::string get_runner_name() const noexcept { return runner_name_; }
+    std::string get_strategy_name() const noexcept { return strategy_name_; }
+
     virtual void on_tick() = 0;         // process the tick data
     virtual void on_bar() = 0;          // process the bar data
+    virtual void on_trade() = 0;        // process the trade data
 
     void stop() {
         stop_flag_.store(true);
@@ -94,6 +110,7 @@ protected:
     std::atomic<bool> initied_flag_ {false};
     RunnerParamsType params_ {nullptr};
     std::string runner_name_ {""};
+    std::string strategy_name_ {""};
     quanttrader::log::LoggerPtr logger_ {nullptr};
 
 private:

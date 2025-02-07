@@ -20,6 +20,7 @@ public:
 
     void on_tick() override;
     void on_bar() override;
+    void on_trade() override;
 
 protected:
     void on_finished() override;

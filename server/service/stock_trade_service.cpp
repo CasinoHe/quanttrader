@@ -4,6 +4,7 @@
 #include "service_factory.h"
 #include "broker/requests.h"
 #include "runner/runner_prepare.h"
+#include "strategy/strategy_prepare.h"
 
 namespace quanttrader {
 namespace service {
@@ -73,7 +74,7 @@ bool StockTradeService::prepare() {
         return false;
     }
 
-    if (!quanttrader::runner::prepare_stock_stategies()) {
+    if (!quanttrader::strategy::prepare_stategies()) {
         logger_->error("Cannot prepare the stock strategies.");
         return false;
     }

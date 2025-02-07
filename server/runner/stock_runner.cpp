@@ -56,6 +56,10 @@ void StockRunner::on_bar() {
     // process the bar data
 }
 
+void StockRunner::on_trade() {
+
+}
+
 void StockRunner::run_frame() {
     // check the availability of data
     for (auto &data_provider : data_providers_) {

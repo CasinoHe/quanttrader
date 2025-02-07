@@ -4,7 +4,6 @@ namespace quanttrader {
 namespace runner {
 
 extern bool prepare_stock_runners();
-extern bool prepare_stock_stategies();
 
 }
 }

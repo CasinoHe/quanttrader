@@ -18,9 +18,5 @@ bool prepare_stock_runners() {
     }
 }
 
-bool prepare_stock_stategies() {
-    return true;
-}
-
 }
 }

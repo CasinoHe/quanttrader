@@ -3,22 +3,30 @@
 #include <string>
 #include <unordered_map>
 #include <any>
+#include <functional>
+#include <memory>
 
 namespace quanttrader {
 namespace strategy {
 
+class Strategy;
 
-struct StrategyConfig {
-    std::string strategy_name;
-    std::string symbol;
-    std::string start_date;
-    std::string end_date;
-    std::string time_zone;
-    std::unordered_map<std::string, std::any> addtionals;
-};
+using StrategyCreateFuncParemType = std::unordered_map<std::string, std::any>;
+using StrategyCreateFuncType = std::function<std::shared_ptr<Strategy>(StrategyCreateFuncParemType &)>;
+
 
 class Strategy {
+public:
+    Strategy(StrategyCreateFuncParemType params) {
+    }
 
+    virtual ~Strategy() = default;
+
+    virtual void on_tick() = 0;
+    virtual void on_bar() = 0;
+    virtual void on_trade() = 0;
+
+private:
 };
 
 }
