@@ -243,6 +243,9 @@ void DataProvider::historical_data_response(std::shared_ptr<broker::ResHistorica
     } catch (std::bad_variant_access) {
         auto time = std::get<int>(response->date);
         start_time = time * kSecondsToNano;
+    } catch (std::exception &e) {
+        logger_->error("Cannot parse the Historical data: {}", e.what());
+        return;
     }
 
     bar_line_->emplace_back(start_time, response->open, response->high, response->low, response->close, response->volume, response->wap, response->count);

@@ -102,8 +102,14 @@ namespace time {
             if (iss >> std::chrono::parse("%Y%m%d %T", tp)) {
                 return TimeWithZone(zone_name, tp);
             } else {
-                quanttrader::log::Error(std::format("Failed to parse offset time string: {}, Underlying error: {}", data, iss.fail()));
-                return std::nullopt;
+                iss.clear();
+                iss.seekg(0, std::ios::beg);
+                if (iss >> std::chrono::parse("%Y%m%d", tp)) {
+                    return TimeWithZone(zone_name, tp);
+                } else {
+                    quanttrader::log::Error(std::format("Failed to parse offset time string: {}, Underlying error: {}", data, iss.fail()));
+                    return std::nullopt;
+                }
             }
         }
     }
