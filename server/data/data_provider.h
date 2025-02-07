@@ -37,6 +37,7 @@ public:
     bool is_data_ready();
 
     std::string get_data_prefix() const { return data_prefix_; }
+    std::string get_ticker_name() const { return tick_name_; }
 
     void historical_data_response(std::shared_ptr<broker::ResHistoricalData> response);
     void realtime_data_response(std::shared_ptr<broker::ResRealtimeData> response);

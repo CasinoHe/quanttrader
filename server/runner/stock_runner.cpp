@@ -39,7 +39,7 @@ bool StockRunner::on_init() {
 void StockRunner::on_start() {
     // start the runner, there is data to process, all the data is prepared
     for (auto &data_provider : data_providers_) {
-        logger_->info("Data provider {} is started.", data_provider->get_data_prefix());
+        logger_->info("Data provider {} {} is started.", data_provider->get_ticker_name(), data_provider->get_data_prefix());
         data_provider->start_request_data();
     }
 }
