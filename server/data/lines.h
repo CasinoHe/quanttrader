@@ -3,6 +3,8 @@
 #include "data_struct.h"
 #include "logger/quantlogger.h"
 #include <shared_mutex>
+#include <optional>
+#include <array>
 
 namespace quanttrader {
 namespace data {
@@ -20,29 +22,8 @@ public:
         // }
     }
 
-    void emplace_back(const BarStruct &bar) {
-        std::unique_lock lock(bar_mutex_);
-        bars_.start_time.emplace_back(bar.time);
-        bars_.open.emplace_back(bar.open);
-        bars_.high.emplace_back(bar.high);
-        bars_.low.emplace_back(bar.low);
-        bars_.close.emplace_back(bar.close);
-        bars_.wap.emplace_back(bar.swap);
-        bars_.volume.emplace_back(bar.volume);
-        bars_.count.emplace_back(bar.count);
-    }
-
-    void emplace_back(uint64_t time, double open, double high, double low, double close, Decimal vol, Decimal swap, int count) {
-        std::unique_lock lock(bar_mutex_);
-        bars_.start_time.emplace_back(time);
-        bars_.open.emplace_back(open);
-        bars_.high.emplace_back(high);
-        bars_.low.emplace_back(low);
-        bars_.close.emplace_back(close);
-        bars_.wap.emplace_back(swap);
-        bars_.volume.emplace_back(vol);
-        bars_.count.emplace_back(count);
-    }
+    bool push_data(uint64_t time, double open, double high, double low, double close, Decimal vol, Decimal swap, int count);
+    bool push_data(const BarStruct &bar);
 
     bool set_capacity(unsigned int capacity) {
         if (capacity <= 0) {
@@ -62,6 +43,67 @@ public:
 
         capacity_ = capacity;
         return true;
+    }
+
+    const BarType get_bar_type() const {
+        return bar_type_;
+    }
+
+    const unsigned int get_bar_size() const {
+        return bar_size_;
+    }
+
+    std::optional<BarStruct> next();
+
+    template<typename T, size_t N>
+    std::optional<std::array<T, N>> get_bar_data(const std::string &data_name) {
+        std::shared_lock lock(bar_mutex_);
+        if (data_name == "start_time") {
+            return &bars_.start_time;
+        } else if (data_name == "open") {
+            return &bars_.open;
+        } else if (data_name == "high") {
+            return &bars_.high;
+        } else if (data_name == "low") {
+            return &bars_.low;
+        } else if (data_name == "close") {
+            return &bars_.close;
+        } else if (data_name == "wap") {
+            return &bars_.wap;
+        } else if (data_name == "volume") {
+            return &bars_.volume;
+        } else if (data_name == "count") {
+            return &bars_.count;
+        } else {
+            return std::nullopt;
+        }
+    }
+
+protected:
+    std::optional<int> find_bar_position(uint64_t time);  // should lock the mutex outside
+    bool emplace_back(const BarStruct &bar);
+    bool emplace_back(uint64_t time, double open, double high, double low, double close, Decimal vol, Decimal swap, int count);
+
+    inline void insert_data(int index, uint64_t time, double open, double high, double low, double close, Decimal vol, Decimal swap, int count) {
+        bars_.start_time.insert(bars_.start_time.begin() + index, time);
+        bars_.open.insert(bars_.open.begin() + index, open);
+        bars_.high.insert(bars_.high.begin() + index, high);
+        bars_.low.insert(bars_.low.begin() + index, low);
+        bars_.close.insert(bars_.close.begin() + index, close);
+        bars_.wap.insert(bars_.wap.begin() + index, swap);
+        bars_.volume.insert(bars_.volume.begin() + index, vol);
+        bars_.count.insert(bars_.count.begin() + index, count);
+    }
+
+    inline void replace_data(int index, uint64_t time, double open, double high, double low, double close, Decimal vol, Decimal swap, int count) {
+        bars_.start_time[index] = time;
+        bars_.open[index] = open;
+        bars_.high[index] = high;
+        bars_.low[index] = low;
+        bars_.close[index] = close;
+        bars_.wap[index] = swap;
+        bars_.volume[index] = vol;
+        bars_.count[index] = count;
     }
 
 private:

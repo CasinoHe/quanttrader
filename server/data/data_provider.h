@@ -1,3 +1,4 @@
+// TODO: morph this into a generic data provider
 #pragma once
 
 #include "data_consts.h"
@@ -35,6 +36,9 @@ public:
     bool start_request_data();
     bool terminate_request_data();
     bool is_data_ready();
+
+    // fetch data interface
+    virtual std::optional<BarStruct> next();
 
     std::string get_data_prefix() const { return data_prefix_; }
     std::string get_ticker_name() const { return tick_name_; }
@@ -87,6 +91,7 @@ private:
     bool is_historical_ {false};
     std::atomic<bool> historical_fetch_completed_ {false};
     long request_id_ = 0;
+    int historical_data_length_ = 0;
 
     quanttrader::log::LoggerPtr logger_ {nullptr};
 };

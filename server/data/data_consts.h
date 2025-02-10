@@ -32,5 +32,8 @@ constexpr const char *kWeekBarType[] = {"1 W"};
 constexpr const char *kMonthBarType[] = {"1 M"};
 
 constexpr unsigned long kSecondsToNano = 1000000000;
+
+constexpr const int kLastBarIndex = -1;
+
 }
 }

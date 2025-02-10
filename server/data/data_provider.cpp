@@ -248,7 +248,9 @@ void DataProvider::historical_data_response(std::shared_ptr<broker::ResHistorica
         return;
     }
 
-    bar_line_->emplace_back(start_time, response->open, response->high, response->low, response->close, response->volume, response->wap, response->count);
+    if (bar_line_->push_data(start_time, response->open, response->high, response->low, response->close, response->volume, response->wap, response->count)) {
+        historical_data_length_++;
+    }
 }
 
 void DataProvider::realtime_data_response(std::shared_ptr<broker::ResRealtimeData> response) {
@@ -266,6 +268,15 @@ bool DataProvider::is_data_ready() {
     }
 
     return false;
+}
+
+// fetch data interface
+std::optional<BarStruct> DataProvider::next() {
+    if (bar_line_ == nullptr) {
+        return std::nullopt;
+    }
+
+    return bar_line_->next();
 }
 
 }
