@@ -106,8 +106,6 @@ protected:
         ended_flag_.store(true);
     };
 
-    virtual void on_history() = 0;      // when historical data loaded, calculate all historical data
-
     std::atomic<bool> ended_flag_ {false};
     std::atomic<bool> initied_flag_ {false};
     RunnerParamsType params_ {nullptr};

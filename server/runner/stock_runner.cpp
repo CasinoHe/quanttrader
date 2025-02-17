@@ -4,6 +4,7 @@
 #include "strategy/strategy_factory.h"
 #include <boost/algorithm/string.hpp>
 #include <thread>
+#include <vector>
 
 namespace quanttrader {
 namespace runner {
@@ -74,10 +75,6 @@ void StockRunner::on_trade() {
 
 }
 
-void StockRunner::on_history() {
-
-}
-
 void StockRunner::run_frame() {
     // check the availability of data
     for (auto &data_provider : data_providers_) {
@@ -87,6 +84,9 @@ void StockRunner::run_frame() {
     }
 
     // fetch data from data_provider
+    for (auto &data_providers : data_providers_) {
+        auto bar = data_providers->next();
+    }
 
     // run a frame
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
