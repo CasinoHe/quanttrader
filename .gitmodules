@@ -7,3 +7,6 @@
 [submodule "talib"]
 	path = thirdparties/ta-lib
 	url = https://github.com/CasinoHe/ta-lib.git
+[submodule "wonder"]
+	path = thirdparties/wonder
+	url = https://github.com/CasinoHe/wondertrader.git
