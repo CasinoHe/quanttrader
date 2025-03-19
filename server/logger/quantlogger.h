@@ -48,6 +48,7 @@ public:
     static LoggerPtr get_glogger() { return g_logger_; }
 
     static void print_message(const std::string &&msg);
+    static bool has_init() { return init_flag_; }
 
 private:
     // Initializes the thread pool used for asynchronous logging
@@ -70,31 +71,55 @@ extern LoggerPtr get_common_rotation_logger(const std::string &name, const std::
 
 template <typename... Args>
 void Trace(spdlog::format_string_t<Args...> fmt, Args &&...args) {
+    if (!QuantLogger::has_init()) {
+        QuantLogger::print_message(fmt::format(fmt, std::forward<Args>(args)...));
+        return;
+    }
     QuantLogger::g_logger_->trace(fmt, std::forward<Args>(args)...);
 }
 
 template <typename... Args>
-void Debug(const std::string &msg) {
+void Debug(spdlog::format_string_t<Args...> fmt, Args &&...args) {
+    if (!QuantLogger::has_init()) {
+        QuantLogger::print_message(fmt::format(fmt, std::forward<Args>(args)...));
+        return;
+    }
     QuantLogger::g_logger_->debug(fmt, std::forward<Args>(args)...);
 }
 
 template <typename... Args>
-void Info(const std::string &msg)  {
+void Info(spdlog::format_string_t<Args...> fmt, Args &&...args) {
+    if (!QuantLogger::has_init()) {
+        QuantLogger::print_message(fmt::format(fmt, std::forward<Args>(args)...));
+        return;
+    }
     QuantLogger::g_logger_->info(fmt, std::forward<Args>(args)...);
 }
 
 template <typename... Args>
-void Warn(const std::string &msg)  {
+void Warn(spdlog::format_string_t<Args...> fmt, Args &&...args) {
+    if (!QuantLogger::has_init()) {
+        QuantLogger::print_message(fmt::format(fmt, std::forward<Args>(args)...));
+        return;
+    }
     QuantLogger::g_logger_->warn(fmt, std::forward<Args>(args)...);
 }
 
 template <typename... Args>
-void Error(const std::string &msg)  {
+void Error(spdlog::format_string_t<Args...> fmt, Args &&...args) {
+    if (!QuantLogger::has_init()) {
+        QuantLogger::print_message(fmt::format(fmt, std::forward<Args>(args)...));
+        return;
+    }
     QuantLogger::g_logger_->error(fmt, std::forward<Args>(args)...);
 }
 
 template <typename... Args>
-void Critical(const std::string &msg)  {
+void Critical(spdlog::format_string_t<Args...> fmt, Args &&...args) {
+    if (!QuantLogger::has_init()) {
+        QuantLogger::print_message(fmt::format(fmt, std::forward<Args>(args)...));
+        return;
+    }
     QuantLogger::g_logger_->critical(fmt, std::forward<Args>(args)...);
 }
 

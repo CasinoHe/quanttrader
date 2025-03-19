@@ -213,7 +213,7 @@ void QuantLogger::print_message(const std::string &&msg) {
 
     tm * tNow = localtime(&t);
     fmt::print("[{}.{:02d}.{:02d} {:02d}:{:02d}:{:02d}] ", tNow->tm_year + 1900, tNow->tm_mon + 1, tNow->tm_mday, tNow->tm_hour, tNow->tm_min, tNow->tm_sec);
-    fmt::print("{}", msg);
+    fmt::print("NOT INIT! {}", msg);
     #ifdef _WIN32
         fmt::print("\r\n");
     #else

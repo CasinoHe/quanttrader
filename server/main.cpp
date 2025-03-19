@@ -105,6 +105,9 @@ int parse_strategy_command(const std::vector<std::string> &subargs) {
 
 int main(int argc, const char* argv[]) {
     try {
+        // init logger first
+        quanttrader::log::QuantLogger::init();
+
         // Top-level options
         po::options_description global_desc("QuantTrader options");
         global_desc.add_options()
