@@ -165,7 +165,7 @@ std::string_view TimeWithZone::get_canonical_zone_name(std::string_view time_zon
 
 std::chrono::local_time<std::chrono::nanoseconds> TimeWithZone::get_zone_time(const std::string &zone_name) const {
     if (!is_valid_time_zone(zone_name)) {
-        qlog::Warn(std::format("Invalid time zone: '{}'", zone_name));
+        qlog::Warn("Invalid time zone: '{}'", zone_name);
         return zoned_time_.get_local_time(); // Fallback to current local time
     }
     auto dest_time = std::chrono::zoned_time{zone_name, zoned_time_.get_sys_time()};
@@ -213,7 +213,7 @@ std::chrono::zoned_time<std::chrono::nanoseconds> TimeWithZone::get_zoned_time(u
     // to avoid send a millisecond epoch or seconds epoch by mistake, we check the nano_epoch value
     // if the value is smaller than 10^18, we assume it is not a nanoseconds epoch
     if (nano_epoch < kMinimumNanosecondsEpoch) {
-        qlog::Error(std::format("The nanoseconds epoch value is too small: {}, it maybe milliseconds or seconds", nano_epoch));
+        qlog::Error("The nanoseconds epoch value is too small: {}, it maybe milliseconds or seconds", nano_epoch);
     }
 
     std::chrono::nanoseconds duration_since_epoch(nano_epoch);
