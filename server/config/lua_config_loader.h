@@ -22,13 +22,13 @@ extern "C"
 namespace quanttrader {
 namespace luascript {
 
-class LuaConfigData {
+class LuaConfigLoader {
 
 public:
     // Constructor: initializes the Lua state
-    LuaConfigData(const std::string &script_path);
+    LuaConfigLoader(const std::string &script_path);
     // Destructor: closes the Lua state
-    ~LuaConfigData();
+    ~LuaConfigLoader();
 
     // Run a Lua script file
     bool run_lua_script();

@@ -1,4 +1,4 @@
-#include "config_data.h"
+#include "lua_config_loader.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -19,17 +19,17 @@ extern "C"
 namespace quanttrader {
 namespace luascript {
 
-LuaConfigData::LuaConfigData(const std::string &script_path): script_path_(script_path) {
-    logger_ = quanttrader::log::get_common_rotation_logger("LuaConfigData", "config");
+LuaConfigLoader::LuaConfigLoader(const std::string &script_path): script_path_(script_path) {
+    logger_ = quanttrader::log::get_common_rotation_logger("LuaConfigLoader", "config");
 }
 
-LuaConfigData::~LuaConfigData() {
+LuaConfigLoader::~LuaConfigLoader() {
     if (luastate_) {
         lua_close(luastate_);
     }
 }
 
-bool LuaConfigData::run_lua_script() {
+bool LuaConfigLoader::run_lua_script() {
     if (!inited_) {
         luastate_ = luaL_newstate();
         luaL_openlibs(luastate_); // Load Lua libraries
@@ -53,7 +53,7 @@ bool LuaConfigData::run_lua_script() {
 }
 
 // Helper function to traverse nested tables using dot notation
-bool LuaConfigData::traverse_nested_tables(const std::string &table_name, const std::string &key_path) {
+bool LuaConfigLoader::traverse_nested_tables(const std::string &table_name, const std::string &key_path) {
     if (table_name.empty()) {
         logger_->error("Table name is empty.");
         return false;
@@ -106,7 +106,7 @@ bool LuaConfigData::traverse_nested_tables(const std::string &table_name, const 
 }
 
 // Recursive helper function to extract all values from a table and its nested tables
-void LuaConfigData::extract_table_values(std::unordered_map<std::string, std::any> &values, 
+void LuaConfigLoader::extract_table_values(std::unordered_map<std::string, std::any> &values, 
                                         const std::string &prefix) {
     // lua_gettop returns the index of the top element
     // The table to process should be at the top of the stack
@@ -152,7 +152,7 @@ void LuaConfigData::extract_table_values(std::unordered_map<std::string, std::an
     }
 }
 
-int LuaConfigData::get_int_value(const std::string &table_name, const std::string &key_path) {
+int LuaConfigLoader::get_int_value(const std::string &table_name, const std::string &key_path) {
     if (table_name.empty() || key_path.empty()) {
         logger_->error("Table name *{}* or key path *{}* is empty.", table_name, key_path);
         return 0;
@@ -193,7 +193,7 @@ int LuaConfigData::get_int_value(const std::string &table_name, const std::strin
     return value;
 }
 
-std::string LuaConfigData::get_string_value(const std::string &table_name, const std::string &key_path) {
+std::string LuaConfigLoader::get_string_value(const std::string &table_name, const std::string &key_path) {
     if (table_name.empty() || key_path.empty()) {
         logger_->error("Table name *{}* or key path *{}* is empty.", table_name, key_path);
         return "";
@@ -234,7 +234,7 @@ std::string LuaConfigData::get_string_value(const std::string &table_name, const
     return value;
 }
 
-bool LuaConfigData::get_all_values(const std::string &table_name, std::unordered_map<std::string, std::any> &values) {
+bool LuaConfigLoader::get_all_values(const std::string &table_name, std::unordered_map<std::string, std::any> &values) {
     if (table_name.empty()) {
         logger_->error("Table name *{}* is empty.", table_name);
         return false;

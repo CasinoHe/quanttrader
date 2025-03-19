@@ -1,7 +1,7 @@
 #pragma once
 
 #include "common/singleton.h"
-#include "config/config_data.h"
+#include "config/lua_config_loader.h"
 #include <string>
 #include <memory>
 #include <unordered_map>
@@ -126,7 +126,7 @@ protected:
         }
 
         // Load the configuration file
-        lua_config_ = std::make_shared<quanttrader::luascript::LuaConfigData>(config_path_);
+        lua_config_ = std::make_shared<quanttrader::luascript::LuaConfigLoader>(config_path_);
         if (!lua_config_->run_lua_script())
         {
             return false;
@@ -141,7 +141,7 @@ protected:
 private:
     bool config_loaded_ {false};
     std::string config_path_ {""};
-    std::shared_ptr<quanttrader::luascript::LuaConfigData> lua_config_ {nullptr};
+    std::shared_ptr<quanttrader::luascript::LuaConfigLoader> lua_config_ {nullptr};
     std::string service_name_ {""};
 };
 
