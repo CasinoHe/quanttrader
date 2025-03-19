@@ -105,6 +105,53 @@ bool LuaConfigData::traverse_nested_tables(const std::string &table_name, const 
     return true;
 }
 
+// Recursive helper function to extract all values from a table and its nested tables
+void LuaConfigData::extract_table_values(std::unordered_map<std::string, std::any> &values, 
+                                        const std::string &prefix) {
+    // lua_gettop returns the index of the top element
+    // The table to process should be at the top of the stack
+    lua_pushnil(luastate_);  // Push the first key
+    while (lua_next(luastate_, -2) != 0) {
+        // Now key is at index -2 and value is at index -1
+        std::string key;
+        if (lua_isstring(luastate_, -2)) {
+            key = lua_tostring(luastate_, -2);
+        } else if (lua_isnumber(luastate_, -2)) {
+            // Convert numeric keys to string
+            key = std::to_string(lua_tonumber(luastate_, -2));
+        } else {
+            // Skip keys that are not strings or numbers
+            lua_pop(luastate_, 1);  // Pop value, keep key for next iteration
+            continue;
+        }
+
+        // Create the full key path
+        std::string fullKey = prefix.empty() ? key : prefix + "." + key;
+
+        if (lua_istable(luastate_, -1)) {
+            // Recursively process nested table
+            extract_table_values(values, fullKey);
+        } else if (lua_isinteger(luastate_, -1)) {
+            int value = static_cast<int>(lua_tointeger(luastate_, -1));
+            values[fullKey] = value;
+        } else if (lua_isnumber(luastate_, -1)) {
+            double value = lua_tonumber(luastate_, -1);
+            values[fullKey] = value;
+        } else if (lua_isstring(luastate_, -1)) {
+            std::string value = lua_tostring(luastate_, -1);
+            values[fullKey] = value;
+        } else if (lua_isboolean(luastate_, -1)) {
+            bool value = lua_toboolean(luastate_, -1);
+            values[fullKey] = value;
+        } else {
+            logger_->debug("Skipping unsupported type for key {}", fullKey);
+        }
+
+        // Pop value, keep key for next iteration
+        lua_pop(luastate_, 1);
+    }
+}
+
 int LuaConfigData::get_int_value(const std::string &table_name, const std::string &key_path) {
     if (table_name.empty() || key_path.empty()) {
         logger_->error("Table name *{}* or key path *{}* is empty.", table_name, key_path);
@@ -200,31 +247,9 @@ bool LuaConfigData::get_all_values(const std::string &table_name, std::unordered
         return false;
     }
 
-    lua_pushnil(luastate_); // Push the first key onto the stack
-    while (lua_next(luastate_, -2) != 0) {
-        // Uses 'key' (at index -2) and 'value' (at index -1)
-        if (lua_isstring(luastate_, -2)) {
-            std::string key = lua_tostring(luastate_, -2);
-            if (lua_isinteger(luastate_, -1)) {
-                // treat int as double
-                double value = static_cast<double>(lua_tointeger(luastate_, -1));
-                values[key] = value;
-            } else if (lua_isstring(luastate_, -1)) {
-                std::string value = lua_tostring(luastate_, -1);
-                values[key] = value;
-            } else if (lua_isnumber(luastate_, -1)) {
-                double value = lua_tonumber(luastate_, -1);
-                values[key] = value;
-            } else if (lua_isboolean(luastate_, -1)) {
-                bool value = lua_toboolean(luastate_, -1);
-                values[key] = value;
-            } else {
-                logger_->error("Value for key {} is not an integer, string or double.", key);
-            }
-        }
-        // Removes 'value'; keeps 'key' for next iteration
-        lua_pop(luastate_, 1);
-    }
+    // Process the table recursively
+    extract_table_values(values, "");
+
     lua_pop(luastate_, 1); // Remove table from stack
     return true;
 }

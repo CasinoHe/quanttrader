@@ -41,12 +41,16 @@ public:
     // Support nested table access with dot notation, e.g., "a.b.c.d"
     std::string get_string_value(const std::string &table_name, const std::string &key_path);
 
-    // Get all double values(treat int as double) and string values from a Lua table
+    // Get all values from a Lua table and its nested tables
+    // Results are stored with dot notation keys, e.g., "a.b.c.d" = 1
     bool get_all_values(const std::string &table_name, std::unordered_map<std::string, std::any> &values);
 
 private:
     // Helper function to traverse nested tables using dot notation
     bool traverse_nested_tables(const std::string &table_name, const std::string &key_path);
+    
+    // Recursive helper function to extract all values from a table and its nested tables
+    void extract_table_values(std::unordered_map<std::string, std::any> &values, const std::string &prefix);
     
     bool inited_ = false;
     lua_State *luastate_ = NULL;
