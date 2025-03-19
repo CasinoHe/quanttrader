@@ -68,7 +68,7 @@ int parse_strategy_command(const std::vector<std::string> &subargs) {
 
     if (strategy_vm.count("loglevel")) {
         std::string loglevel = strategy_vm["loglevel"].as<std::string>();
-        if (!qlog::g_logger_mgr_ptr->set_log_level(loglevel)) {
+        if (!qlog::QuantLogger::set_default_log_level(loglevel)) {
             std::cerr << "Error: Invalid log level specified for 'strategy'.\n";
             std::cout << add_desc << "\n";
             return EXIT_FAILURE;
@@ -106,7 +106,7 @@ int parse_strategy_command(const std::vector<std::string> &subargs) {
 int main(int argc, const char* argv[]) {
     try {
         // init logger first
-        quanttrader::log::QuantLogger::init();
+        qlog::QuantLogger::init();
 
         // Top-level options
         po::options_description global_desc("QuantTrader options");

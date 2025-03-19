@@ -211,8 +211,10 @@ void QuantLogger::print_message(const std::string &&msg) {
     uint64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     time_t t = now / 1000;
 
-    tm * tNow = localtime(&t);
-    fmt::print("[{}.{:02d}.{:02d} {:02d}:{:02d}:{:02d}] ", tNow->tm_year + 1900, tNow->tm_mon + 1, tNow->tm_mday, tNow->tm_hour, tNow->tm_min, tNow->tm_sec);
+    tm timeInfo;
+    localtime_s(&timeInfo, &t);
+    fmt::print("[{}.{:02d}.{:02d} {:02d}:{:02d}:{:02d}] ", timeInfo.tm_year + 1900, timeInfo.tm_mon + 1, timeInfo.tm_mday, 
+              timeInfo.tm_hour, timeInfo.tm_min, timeInfo.tm_sec);
     fmt::print("NOT INIT! {}", msg);
     #ifdef _WIN32
         fmt::print("\r\n");

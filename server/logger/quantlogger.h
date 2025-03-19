@@ -75,7 +75,7 @@ void Trace(spdlog::format_string_t<Args...> fmt, Args &&...args) {
         QuantLogger::print_message(fmt::format(fmt, std::forward<Args>(args)...));
         return;
     }
-    QuantLogger::g_logger_->trace(fmt, std::forward<Args>(args)...);
+    QuantLogger::get_glogger()->trace(fmt, std::forward<Args>(args)...);
 }
 
 template <typename... Args>
@@ -84,7 +84,7 @@ void Debug(spdlog::format_string_t<Args...> fmt, Args &&...args) {
         QuantLogger::print_message(fmt::format(fmt, std::forward<Args>(args)...));
         return;
     }
-    QuantLogger::g_logger_->debug(fmt, std::forward<Args>(args)...);
+    QuantLogger::get_glogger()->debug(fmt, std::forward<Args>(args)...);
 }
 
 template <typename... Args>
@@ -93,7 +93,7 @@ void Info(spdlog::format_string_t<Args...> fmt, Args &&...args) {
         QuantLogger::print_message(fmt::format(fmt, std::forward<Args>(args)...));
         return;
     }
-    QuantLogger::g_logger_->info(fmt, std::forward<Args>(args)...);
+    QuantLogger::get_glogger()->info(fmt, std::forward<Args>(args)...);
 }
 
 template <typename... Args>
@@ -102,7 +102,7 @@ void Warn(spdlog::format_string_t<Args...> fmt, Args &&...args) {
         QuantLogger::print_message(fmt::format(fmt, std::forward<Args>(args)...));
         return;
     }
-    QuantLogger::g_logger_->warn(fmt, std::forward<Args>(args)...);
+    QuantLogger::get_glogger()->warn(fmt, std::forward<Args>(args)...);
 }
 
 template <typename... Args>
@@ -111,7 +111,7 @@ void Error(spdlog::format_string_t<Args...> fmt, Args &&...args) {
         QuantLogger::print_message(fmt::format(fmt, std::forward<Args>(args)...));
         return;
     }
-    QuantLogger::g_logger_->error(fmt, std::forward<Args>(args)...);
+    QuantLogger::get_glogger()->error(fmt, std::forward<Args>(args)...);
 }
 
 template <typename... Args>
@@ -120,7 +120,7 @@ void Critical(spdlog::format_string_t<Args...> fmt, Args &&...args) {
         QuantLogger::print_message(fmt::format(fmt, std::forward<Args>(args)...));
         return;
     }
-    QuantLogger::g_logger_->critical(fmt, std::forward<Args>(args)...);
+    QuantLogger::get_glogger()->critical(fmt, std::forward<Args>(args)...);
 }
 
 } // namespace logger
