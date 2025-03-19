@@ -14,6 +14,7 @@ extern "C"
 #endif
 
 #include <filesystem>
+#include <sstream>
 
 namespace quanttrader {
 namespace luascript {
@@ -51,64 +52,136 @@ bool LuaConfigData::run_lua_script() {
     return true;
 }
 
-int LuaConfigData::get_int_value(const std::string &table_name, const std::string &key) {
-    if (table_name.empty() || key.empty()) {
-        logger_->error("Table name *{}* or key *{}* is empty.", table_name, key);
-        return 0;
+// Helper function to traverse nested tables using dot notation
+bool LuaConfigData::traverse_nested_tables(const std::string &table_name, const std::string &key_path) {
+    if (table_name.empty()) {
+        logger_->error("Table name is empty.");
+        return false;
     }
-
-    lua_getglobal(luastate_, table_name.c_str()); // Push the table onto the stack
+    
+    // Push the base table onto the stack
+    lua_getglobal(luastate_, table_name.c_str());
     if (!lua_istable(luastate_, -1)) {
         logger_->error("{} is not a table.", table_name);
         lua_pop(luastate_, 1); // Remove non-table from stack
+        return false;
+    }
+    
+    if (key_path.empty()) {
+        return true; // The base table is already on the stack
+    }
+    
+    // Split the key path by dots
+    std::stringstream ss(key_path);
+    std::string key;
+    std::string current_path = table_name;
+    
+    while (std::getline(ss, key, '.')) {
+        if (key.empty()) continue;
+        
+        current_path += "." + key;
+        
+        // For all but the last key, we expect tables
+        lua_pushstring(luastate_, key.c_str());
+        lua_gettable(luastate_, -2);
+        
+        // If not the last key and not a table, error
+        if (ss.peek() != EOF && !lua_istable(luastate_, -1)) {
+            if (lua_isnil(luastate_, -1)) {
+                logger_->error("Table {} does not have a nested table at key {}", current_path, key);
+            } else {
+                logger_->error("Value at {} is not a table but trying to access it as one", current_path);
+            }
+            lua_pop(luastate_, 2); // Remove value and parent table
+            return false;
+        }
+        
+        // Replace the parent table with the nested table for the next iteration
+        if (ss.peek() != EOF) {
+            lua_remove(luastate_, -2); // Remove the parent table, leaving the nested one
+        }
+    }
+    
+    return true;
+}
+
+int LuaConfigData::get_int_value(const std::string &table_name, const std::string &key_path) {
+    if (table_name.empty() || key_path.empty()) {
+        logger_->error("Table name *{}* or key path *{}* is empty.", table_name, key_path);
         return 0;
     }
 
-    lua_pushstring(luastate_, key.c_str()); // Push the key onto the stack
-    lua_gettable(luastate_, -2);           // Get the value associated with the key
-
+    // Split the key_path to get the last key
+    size_t last_dot = key_path.find_last_of('.');
+    std::string parent_path = "";
+    std::string last_key = key_path;
+    
+    if (last_dot != std::string::npos) {
+        parent_path = key_path.substr(0, last_dot);
+        last_key = key_path.substr(last_dot + 1);
+    }
+    
+    // Traverse to the parent table
+    if (!traverse_nested_tables(table_name, parent_path)) {
+        return 0;
+    }
+    
+    // Now get the value from the final table
+    lua_pushstring(luastate_, last_key.c_str());
+    lua_gettable(luastate_, -2);
+    
     if (lua_isnil(luastate_, -1)) {
-        lua_pop(luastate_, 2); // Remove value and table from stack
+        lua_pop(luastate_, 2); // Remove nil value and table from stack
         return 0;
     }
-
+    
     if (!lua_isinteger(luastate_, -1)) {
-        logger_->error("Value from {} for key {} is not an integer.", table_name, key);
+        logger_->error("Value from {}.{} is not an integer.", table_name, key_path);
         lua_pop(luastate_, 2); // Remove value and table from stack
         return 0;
     }
-
+    
     int value = static_cast<int>(lua_tointeger(luastate_, -1));
     lua_pop(luastate_, 2); // Remove value and table from stack
     return value;
 }
 
-std::string LuaConfigData::get_string_value(const std::string &table_name, const std::string &key) {
-    if (table_name.empty() || key.empty()) {
-        logger_->error("Table name *{}* or key *{}* is empty.", table_name, key);
+std::string LuaConfigData::get_string_value(const std::string &table_name, const std::string &key_path) {
+    if (table_name.empty() || key_path.empty()) {
+        logger_->error("Table name *{}* or key path *{}* is empty.", table_name, key_path);
         return "";
     }
-    lua_getglobal(luastate_, table_name.c_str()); // Push the table onto the stack
-    if (!lua_istable(luastate_, -1)) {
-        logger_->error("{} is not a table.", table_name);
-        lua_pop(luastate_, 1); // Remove non-table from stack
+    
+    // Split the key_path to get the last key
+    size_t last_dot = key_path.find_last_of('.');
+    std::string parent_path = "";
+    std::string last_key = key_path;
+    
+    if (last_dot != std::string::npos) {
+        parent_path = key_path.substr(0, last_dot);
+        last_key = key_path.substr(last_dot + 1);
+    }
+    
+    // Traverse to the parent table
+    if (!traverse_nested_tables(table_name, parent_path)) {
         return "";
     }
-
-    lua_pushstring(luastate_, key.c_str()); // Push the key onto the stack
-    lua_gettable(luastate_, -2);           // Get the value associated with the key
-
+    
+    // Now get the value from the final table
+    lua_pushstring(luastate_, last_key.c_str());
+    lua_gettable(luastate_, -2);
+    
     if (lua_isnil(luastate_, -1)) {
-        lua_pop(luastate_, 2); // Remove value and table from stack
+        lua_pop(luastate_, 2); // Remove nil value and table from stack
         return "";
     }
-
+    
     if (!lua_isstring(luastate_, -1)) {
-        logger_->error("Value from {} for key {} is not a string.", table_name, key);
+        logger_->error("Value from {}.{} is not a string.", table_name, key_path);
         lua_pop(luastate_, 2); // Remove value and table from stack
         return "";
     }
-
+    
     std::string value = lua_tostring(luastate_, -1);
     lua_pop(luastate_, 2); // Remove value and table from stack
     return value;
