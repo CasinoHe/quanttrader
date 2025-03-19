@@ -12,11 +12,12 @@ extern "C"
 #endif
 
 #include "common/consts.h"
-#include "logger/quantlogger.h"
+#include "spdlog/logger.h"
 
 #include <string>
 #include <iostream>
 #include <unordered_map>
+#include <memory>
 #include <any>
 
 namespace quanttrader {
@@ -31,6 +32,7 @@ public:
     ~LuaConfigLoader();
 
     // Run a Lua script file
+    inline bool load_config() { return run_lua_script(); }
     bool run_lua_script();
 
     // Get an integer value from a Lua table
@@ -40,6 +42,10 @@ public:
     // Get a string value from a Lua table
     // Support nested table access with dot notation, e.g., "a.b.c.d"
     std::string get_string_value(const std::string &table_name, const std::string &key_path);
+
+    // Get a bool value from a Lua table
+    // Support nested table access with dot notation, e.g., "a.b.c.d"
+    bool get_bool_value(const std::string &table_name, const std::string &key_path);
 
     // Get all values from a Lua table and its nested tables
     // Results are stored with dot notation keys, e.g., "a.b.c.d" = 1
@@ -55,7 +61,7 @@ private:
     bool inited_ = false;
     lua_State *luastate_ = NULL;
     std::string script_path_ = "";
-    quanttrader::log::LoggerPtr logger_ = nullptr;
+    std::shared_ptr<spdlog::logger> logger_ = nullptr;
 };
 
 } // namespace luascript

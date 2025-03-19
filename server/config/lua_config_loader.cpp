@@ -1,4 +1,5 @@
 #include "lua_config_loader.h"
+#include "logger/quantlogger.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -230,6 +231,47 @@ std::string LuaConfigLoader::get_string_value(const std::string &table_name, con
     }
     
     std::string value = lua_tostring(luastate_, -1);
+    lua_pop(luastate_, 2); // Remove value and table from stack
+    return value;
+}
+
+bool LuaConfigLoader::get_bool_value(const std::string &table_name, const std::string &key_path) {
+    if (table_name.empty() || key_path.empty()) {
+        logger_->error("Table name *{}* or key path *{}* is empty.", table_name, key_path);
+        return false;
+    }
+
+    // Split the key_path to get the last key
+    size_t last_dot = key_path.find_last_of('.');
+    std::string parent_path = "";
+    std::string last_key = key_path;
+    
+    if (last_dot != std::string::npos) {
+        parent_path = key_path.substr(0, last_dot);
+        last_key = key_path.substr(last_dot + 1);
+    }
+    
+    // Traverse to the parent table
+    if (!traverse_nested_tables(table_name, parent_path)) {
+        return false;
+    }
+    
+    // Now get the value from the final table
+    lua_pushstring(luastate_, last_key.c_str());
+    lua_gettable(luastate_, -2);
+    
+    if (lua_isnil(luastate_, -1)) {
+        lua_pop(luastate_, 2); // Remove nil value and table from stack
+        return false;
+    }
+    
+    if (!lua_isboolean(luastate_, -1)) {
+        logger_->error("Value from {}.{} is not an integer.", table_name, key_path);
+        lua_pop(luastate_, 2); // Remove value and table from stack
+        return false;
+    }
+    
+    bool value = static_cast<bool>(lua_toboolean(luastate_, -1));
     lua_pop(luastate_, 2); // Remove value and table from stack
     return value;
 }

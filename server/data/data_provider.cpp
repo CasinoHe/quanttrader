@@ -18,7 +18,7 @@ namespace qtime = quanttrader::time;
 using ResponseCallBackType = std::function<void(std::shared_ptr<broker::ResponseHeader>)>;
 
 DataProvider::DataProvider(const std::string_view &data_prefix, DataParamsType params) : data_prefix_(data_prefix), params_(params) {
-    logger_ = quanttrader::log::get_common_rotation_logger("DataProvider", "data", false);
+    logger_ = quanttrader::log::get_common_rotation_logger("DataProvider", "data");
     broker_service_ = qservice::ServiceFactory::get_exist_service<qservice::TwsService>();
 }
 

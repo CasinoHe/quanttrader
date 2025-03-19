@@ -19,7 +19,7 @@ class RunnerFactory;
 class Runner {
 public:
     Runner(const std::string_view runner_name, RunnerParamsType params): runner_name_(runner_name), params_(params) {
-        logger_ = quanttrader::log::get_common_rotation_logger(runner_name_, "runner", false);
+        logger_ = quanttrader::log::get_common_rotation_logger(runner_name_, "runner");
 
         try {
             auto name = params_->find(STRATEGY_NAME_VARIABLE);

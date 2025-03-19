@@ -13,7 +13,7 @@ namespace service {
 namespace qrunner = quanttrader::runner;
 
 BackTestService::BackTestService(const std::string_view config_path) : ServiceBase<BackTestService>("back_test_service") {
-    logger_ = quanttrader::log::get_common_rotation_logger("BackTest", "service", false);
+    logger_ = quanttrader::log::get_common_rotation_logger("BackTest", "service");
 
     if (!set_config_path(config_path)) {
         logger_->error("Cannot set the configuration file path: {}, please check the existence of the file and the config file should be a regular lua file.", config_path);

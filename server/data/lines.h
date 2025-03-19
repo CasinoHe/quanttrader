@@ -12,7 +12,7 @@ namespace data {
 class BarLine {
 public:
     BarLine(unsigned int capacity, BarType bar_type, unsigned int bar_size) : bars_() {
-        logger_ = quanttrader::log::get_common_rotation_logger("BarLine", "data", false);
+        logger_ = quanttrader::log::get_common_rotation_logger("BarLine", "data");
 
         bar_type_ = bar_type;
         bar_size_ = bar_size;

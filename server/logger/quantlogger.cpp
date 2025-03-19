@@ -1,49 +1,52 @@
 #include <fmt/core.h>
 
 #include "quantlogger.h"
+#include "logger/logger_consts.h"
+#include "config/lua_config_loader.h"
 #include "spdlog/async.h"
 
 #include <filesystem>
+#include <sstream>
+#include <chrono>
 
 namespace quanttrader {
 namespace log {
 
 // Static member initialization
-LevelEnum QuantLoggerMgr::log_level_ = LevelEnum::info; // Default log level
-std::once_flag QuantLoggerMgr::thread_pool_flag_; // Ensures single thread pool initialization
-std::mutex QuantLoggerMgr::logger_mutex_; // Mutex for thread-safe access
-std::unordered_map<std::string, LevelEnum> QuantLoggerMgr::log_level_map_ = {
+LevelEnum QuantLogger::default_log_level_ = LevelEnum::info; // Default log level
+std::once_flag QuantLogger::init_pool_flag_; // Ensures single thread pool initialization
+bool QuantLogger::init_flag_ = false; // Flag to check if logger is initialized
+std::mutex QuantLogger::logger_mutex_; // Mutex for thread-safe access
+std::unordered_map<std::string, LevelEnum> QuantLogger::log_level_map_ = {
     {"trace", LevelEnum::trace}, {"debug", LevelEnum::debug},
     {"info", LevelEnum::info}, {"warn", LevelEnum::warn},
     {"error", LevelEnum::err}, {"critical", LevelEnum::critical}
 };
 
-// Global logger and manager
-std::shared_ptr<QuantLoggerMgr> g_logger_mgr_ptr = QuantLoggerMgr::instance();
-LoggerPtr g_logger = g_logger_mgr_ptr->get_file_and_console_logger("quanttrader", "global");
-
-// Constructor: Initializes thread pool for async logging
-QuantLoggerMgr::QuantLoggerMgr() {
-    std::lock_guard<std::mutex> lock(QuantLoggerMgr::logger_mutex_);
-    std::call_once(QuantLoggerMgr::thread_pool_flag_, [this] { init_thread_pool(); });
+void QuantLogger::init_thread_pool() {
+    std::call_once(QuantLogger::init_pool_flag_, [] { spdlog::init_thread_pool(quanttrader::kSpdLogQueueSize, quanttrader::kSpdLogThreadsCount); });
 }
 
-// Destructor: Ensures proper cleanup of loggers
-QuantLoggerMgr::~QuantLoggerMgr() {
-    spdlog::shutdown();
-}
+void QuantLogger::init() {
+    if (init_flag_) {
+        return;
+    }
 
-// Initializes the thread pool with predefined constants
-void QuantLoggerMgr::init_thread_pool() {
-    spdlog::init_thread_pool(quanttrader::kSpdLogQueueSize, quanttrader::kSpdLogThreadsCount);
-    spdlog::flush_on(spdlog::level::info);
+    g_logger_ = get_logger("Global", "global");
+    if (!g_logger_) {
+        std::cerr << "Failed to create global logger" << std::endl;
+        return;
+    }
+    spdlog::set_default_logger(g_logger_);
+    spdlog::flush_every(std::chrono::seconds(2));
+    init_flag_ = true;
 }
 
 // Sets the logging level dynamically based on string input
-bool QuantLoggerMgr::set_log_level(std::string level) {
+bool QuantLogger::set_default_log_level(std::string level) {
     auto it = log_level_map_.find(level);
     if (it != log_level_map_.end()) {
-        log_level_ = it->second;
+        default_log_level_ = it->second;
         return true;
     } else {
         std::cerr << "Invalid log level: " << level << std::endl;
@@ -51,99 +54,175 @@ bool QuantLoggerMgr::set_log_level(std::string level) {
     }
 }
 
+bool QuantLogger::set_logger_level(const std::string &name, const std::string &level) {
+    auto it = log_level_map_.find(level);
+    if (it != log_level_map_.end()) {
+        return set_logger_level(name, it->second);
+    } else {
+        std::cerr << "Invalid log level: " << level << std::endl;
+        return false;
+    }
+}
+
+bool QuantLogger::set_logger_level(const std::string &name, const LevelEnum &level) {
+    std::lock_guard<std::mutex> lock(logger_mutex_);
+    if (logger_names_.find(name) == logger_names_.end()) {
+        std::cerr << "Logger not found: " << name << std::endl;
+        return false;
+    }
+    auto logger = spdlog::get(name);
+    if (logger) {
+        logger->set_level(level);
+        return true;
+    } else {
+        std::cerr << "Failed to set log level for logger: " << name << std::endl;
+        return false;
+    }
+}
+
+bool QuantLogger::set_all_logger_level(const LevelEnum &level) {
+    std::lock_guard<std::mutex> lock(logger_mutex_);
+    for (const auto &name : logger_names_) {
+        auto logger = spdlog::get(name);
+        if (logger) {
+            logger->set_level(level);
+        } else {
+            std::cerr << "Failed to set log level for logger: " << name << std::endl;
+        }
+    }
+    return true;
+}
+
+bool QuantLogger::set_all_logger_level(const std::string &level) {
+    auto it = log_level_map_.find(level);
+    if (it != log_level_map_.end()) {
+        return set_all_logger_level(it->second);
+    } else {
+        std::cerr << "Invalid log level: " << level << std::endl;
+        return false;
+    }
+}
+
 // Generates the log file path based on the provided name
-const std::string QuantLoggerMgr::get_log_path(const std::string &logname) {
+const std::string QuantLogger::get_log_path(const std::string &logname) {
     if (!std::filesystem::exists(quanttrader::kDefaultLogDir)) {
         std::filesystem::create_directories(quanttrader::kDefaultLogDir);
     }
     return logname.empty()
-        ? fmt::format("{}/running.log", quanttrader::kDefaultLogDir)
+        ? fmt::format("{}/global.log", quanttrader::kDefaultLogDir)
         : fmt::format("{}/{}.log", quanttrader::kDefaultLogDir, logname);
 }
 
-// Retrieves or creates a file logger based on specified parameters
-LoggerPtr QuantLoggerMgr::get_file_logger(const std::string &name, const std::string &logfile, bool with_stdout,
-                                          std::shared_ptr<std::map<std::string, size_t>> max_size_map,
-                                          std::shared_ptr<std::map<std::string, int>> rotation_hour_map) {
-    const std::string &path = get_log_path(logfile);
-
-    if (max_size_map && max_size_map->find("max_size") != max_size_map->end())
-    {
-        size_t max_size = max_size_map->at("max_size");
-        uint16_t max_files = static_cast<uint16_t>(get_map_value<std::string, size_t>(max_size_map, "max_files", quanttrader::kSpdLogMaxRotatingFiles));
-        std::cout << fmt::format("Create rotating file logger: {} path: {} max_size: {} max_files: {}", name, path, max_size, max_files) << std::endl;
-        return get_logger<spdlog::sinks::rotating_file_sink_mt>(name, with_stdout, path, max_size, max_files);
+LoggerPtr QuantLogger::get_logger(const std::string &name, const std::string &logname, const std::string &config_path) {
+    auto logger = spdlog::get(name);
+    if (logger) {
+        return logger;
     }
-    else if (rotation_hour_map && rotation_hour_map->find("rotation_hour") != rotation_hour_map->end())
-    {
-        int rotation_hour = rotation_hour_map->at("rotation_hour");
-        int rotation_min = get_map_value<std::string, int>(rotation_hour_map, "rotation_min", 0);
-        uint16_t max_files = static_cast<uint16_t>(get_map_value<std::string, int>(rotation_hour_map, "max_files", quanttrader::kSpdLogMaxRotatingFiles));
-        std::cout << fmt::format("Create daily file logger: {} path: {} rotation_hour: {} rotation_min: {} max_files: {}", name, path, rotation_hour, rotation_min, max_files) << std::endl;
-        return get_logger<spdlog::sinks::daily_file_sink_mt>(name, with_stdout, path, rotation_hour, rotation_min, false, max_files);
-    }
-    else
-    {
-        std::cout << "Create common file logger" << name << " path: " << path << std::endl;
-        return get_logger<spdlog::sinks::basic_file_sink_mt>(name, with_stdout, path);
-    }
-}
 
-// Retrieves or creates a console-only logger
-LoggerPtr QuantLoggerMgr::get_console_logger(const std::string &name) {
-    return get_logger<spdlog::sinks::stdout_color_sink_mt>(name, false);
-}
+    bool use_sync_config = false;
+    LevelEnum level_config = default_log_level_;
+    std::string sinks_config = quanttrader::logger::LOGGER_SINK_DAILY_FILE_TYPE;
 
-// Retrieves or creates a logger that outputs to both file and console
-LoggerPtr QuantLoggerMgr::get_file_and_console_logger(const std::string &name, const std::string &logfile,
-                                                      std::shared_ptr<std::map<std::string, size_t>> max_size_map,
-                                                      std::shared_ptr<std::map<std::string, int>> rotation_hour_map) {
-    return get_file_logger(name, logfile, true, max_size_map, rotation_hour_map);
-}
-
-LoggerPtr get_common_rotation_logger(const std::string &name, const std::string &logfile, bool with_stdout) {
-    auto rotation_data = std::make_shared<std::map<std::string, int>>(
-        std::map<std::string, int> {
-            {"rotation_hour", 0},
-            {"rotation_min", 0},
-            {"max_files", quanttrader::kSpdLogMaxRotatingFiles}
+    if (!config_path.empty()) {
+        auto config_loader = std::make_shared<quanttrader::luascript::LuaConfigLoader>(config_path);
+        if (!config_loader->load_config())
+        {
+            std::cerr << "Failed to load logger config from: " << config_path << std::endl;
+            return nullptr;
         }
-    );
 
-    auto logger = g_logger_mgr_ptr->get_file_logger(name, logfile, with_stdout, nullptr, rotation_data);
-    if (!logger)
-    {
-        std::cerr << "Failed to create logger: " << name << std::endl;
-        return nullptr;
+        std::string level_str = config_loader->get_string_value(name, quanttrader::logger::LOGGER_LEVEL_FIELD);
+        if (!level_str.empty()) {
+            for (const auto &pair : log_level_map_) {
+                if (pair.first == level_str) {
+                    level_config = pair.second;
+                    break;
+                }
+            }
+        }
+
+        use_sync_config = config_loader->get_bool_value(name, quanttrader::logger::LOGGER_USE_SYNC_FIELD);
+        sinks_config = config_loader->get_string_value(name, quanttrader::logger::LOGGER_SINKS_FIELD);
     }
-    else
-    {
+
+    std::stringstream ss(sinks_config);
+    std::string key;
+    std::string log_path = get_log_path(logname);
+    std::vector<spdlog::sink_ptr> sinks;
+
+    while (std::getline(ss, key, '.')) {
+        if (key == quanttrader::logger::LOGGER_SINK_DAILY_FILE_TYPE) {
+            auto sink = std::make_shared<spdlog::sinks::daily_file_sink_mt>(log_path, 0, 0);
+            sink->set_pattern(quanttrader::kSpdLogPattern);
+            sinks.push_back(sink);
+        }
+        else if (key == quanttrader::logger::LOGGER_SINK_BASIC_FILE_TYPE) {
+            auto sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(log_path, false);
+            sink->set_pattern(quanttrader::kSpdLogPattern);
+            sinks.emplace_back(sink);
+        }
+        else if (key == quanttrader::logger::LOGGER_SINK_CONSOLE_TYPE) {
+            auto sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+            sink->set_pattern(quanttrader::kSpdLogPattern);
+            sinks.emplace_back(sink);
+        }
+        else if (key == quanttrader::logger::LOGGER_SINK_OSTREAM_TYPE) {
+            auto sink = std::make_shared<spdlog::sinks::ostream_sink_mt>(std::cout, true);
+            sink->set_pattern(quanttrader::kSpdLogPattern);
+            sinks.emplace_back(sink);
+        }
+        else {
+            std::cerr << "Create logger" << name << " log file path " << logname << " Unknown sink type: " << key << std::endl;
+        }
+    }
+
+    if (use_sync_config) {
+        auto logger = std::make_shared<spdlog::logger>(name, sinks.begin(), sinks.end());
+        logger->set_level(level_config);
+        spdlog::register_logger(logger);
+        std::lock_guard<std::mutex> lock(logger_mutex_);
+        logger_names_.insert(name);
+        return logger;
+    } else {
+        init_thread_pool();
+        auto logger = std::make_shared<spdlog::async_logger>(name, sinks.begin(), sinks.end(), spdlog::thread_pool(), spdlog::async_overflow_policy::block);
+        logger->set_level(level_config);
+        spdlog::register_logger(logger);
+        std::lock_guard<std::mutex> lock(logger_mutex_);
+        logger_names_.insert(name);
         return logger;
     }
 }
 
-void Trace(const std::string &msg) {
-    g_logger->trace(msg);
+bool QuantLogger::remove_logger(const std::string &name) {
+    std::lock_guard<std::mutex> lock(logger_mutex_);
+    auto it = logger_names_.find(name);
+    if (it != logger_names_.end()) {
+        spdlog::drop(name);
+        logger_names_.erase(it);
+        return true;
+    } else {
+        std::cerr << "Logger not found: " << name << std::endl;
+        return false;
+    }
 }
 
-void Debug(const std::string &msg) {
-    g_logger->debug(msg);
+void QuantLogger::print_message(const std::string &&msg) {
+    uint64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+    time_t t = now / 1000;
+
+    tm * tNow = localtime(&t);
+    fmt::print("[{}.{:02d}.{:02d} {:02d}:{:02d}:{:02d}] ", tNow->tm_year + 1900, tNow->tm_mon + 1, tNow->tm_mday, tNow->tm_hour, tNow->tm_min, tNow->tm_sec);
+    fmt::print("{}", msg);
+    #ifdef _WIN32
+        fmt::print("\r\n");
+    #else
+        fmt::print("\n");
+    #endif
 }
 
-void Info(const std::string &msg) {
-    g_logger->info(msg);
-}
-
-void Warn(const std::string &msg) {
-    g_logger->warn(msg);
-}
-
-void Error(const std::string &msg) {
-    g_logger->error(msg);
-}
-
-void Critical(const std::string &msg) {
-    g_logger->critical(msg);
+LoggerPtr get_common_rotation_logger(const std::string &name, const std::string &logfile) {
+    return QuantLogger::get_logger(name, logfile);
 }
 
 } // namespace logger
