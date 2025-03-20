@@ -74,11 +74,11 @@ std::optional<TimeWithZone> TimeWithZone::from_zone_string(const std::string& da
             return TimeWithZone(zone_name, tp);
         }
         else {
-            qlog::Error("Failed to find zone for abbrev: {} {}", data, abbrev);
+            qlog::Error("Failed to find zone for abbreviation: {} {}", data, abbrev);
             return std::nullopt;
         }
     } else {
-        qlog::Error("Failed to parse offset time string: {}, Underlying error: {}", data, iss.fail());
+        qlog::Error("Failed to parse time string with zone: {}, Underlying error: {}", data, iss.fail());
         return std::nullopt;
     }
 }
@@ -89,12 +89,12 @@ std::optional<TimeWithZone> TimeWithZone::from_ibapi_string(const std::string& d
     std::string abbrev;
 
     if (iss >> std::chrono::parse("%Y%m%d %T %Z", tp, abbrev)) {
-        abbrev = TimeWithZone::get_canonical_zone_name(abbrev);
-        if (!abbrev.empty()) {
-            return TimeWithZone(abbrev, tp);
+        auto canonical_zone = TimeWithZone::get_canonical_zone_name(abbrev);
+        if (!canonical_zone.empty()) {
+            return TimeWithZone(canonical_zone, tp);
         }
         else {
-            qlog::Warn("Failed to find zone for abbrev: {} {}", data, abbrev);
+            qlog::Warn("Failed to find zone for abbreviation: {} {}", data, abbrev);
             return TimeWithZone(zone_name, tp);
         }
     }
@@ -109,7 +109,7 @@ std::optional<TimeWithZone> TimeWithZone::from_ibapi_string(const std::string& d
             if (iss >> std::chrono::parse("%Y%m%d", tp)) {
                 return TimeWithZone(zone_name, tp);
             } else {
-                qlog::Error("Failed to parse offset time string: {}, Underlying error: {}", data, iss.fail());
+                qlog::Error("Failed to parse IB API time string: {}, Underlying error: {}", data, iss.fail());
                 return std::nullopt;
             }
         }
@@ -149,18 +149,19 @@ const std::map<std::string, std::string>& TimeWithZone::get_legacy_zone_to_canon
 }
 
 std::string_view TimeWithZone::get_canonical_zone_name(std::string_view time_zone) {
+    // Check if it's already a valid time zone
     if (TimeWithZone::is_valid_time_zone(std::string(time_zone))) {
         return time_zone;
     }
 
+    // Look up in legacy map
     const auto& legacy_map = get_legacy_zone_to_canonical();
     auto result = legacy_map.find(std::string(time_zone));
     if (result != legacy_map.end()) {
         return result->second;
     }
-    else {
-        return "";
-    }
+    
+    return "";
 }
 
 std::chrono::local_time<std::chrono::nanoseconds> TimeWithZone::get_zone_time(const std::string &zone_name) const {
@@ -174,7 +175,7 @@ std::chrono::local_time<std::chrono::nanoseconds> TimeWithZone::get_zone_time(co
 
 std::vector<uint8_t> TimeWithZone::serialize_to_vector() const {
     auto nano_epoch = get_nano_epoch();
-    std::vector<uint8_t> bytes(8); // uint64_t is 8 bytes
+    std::vector<uint8_t> bytes(sizeof(uint64_t));
     std::memcpy(bytes.data(), &nano_epoch, sizeof(uint64_t));
     return bytes;
 }
@@ -185,42 +186,35 @@ void TimeWithZone::serialize_to_buffer(uint8_t* buffer) const {
 }
 
 std::optional<TimeWithZone> TimeWithZone::unserialize_from_vector(const std::vector<uint8_t>& bytes) {
-    if (bytes.size() != 8) {
-        qlog::Error("Vector size must be 8 to represent uint64_t for nanoseconds");
+    if (bytes.size() != sizeof(uint64_t)) {
+        qlog::Error("Vector size must be {} to represent uint64_t for nanoseconds", sizeof(uint64_t));
         return std::nullopt;
     }
 
     uint64_t nano_epoch = 0;
-    for (int i = 0; i < 8; ++i) {
-        nano_epoch |= static_cast<uint64_t>(bytes[i]) << (i * 8);
-
-    }
+    std::memcpy(&nano_epoch, bytes.data(), sizeof(uint64_t));
 
     return TimeWithZone(get_zoned_time(nano_epoch, ""));
 }
 
 std::optional<TimeWithZone> TimeWithZone::unserialize_from_buffer(const uint8_t* buffer) {
     uint64_t nano_epoch = 0;
-    for (int i = 0; i < 8; ++i) {
-        nano_epoch |= static_cast<uint64_t>(static_cast<uint8_t>(buffer[i])) << (i * 8);
-    }
+    std::memcpy(&nano_epoch, buffer, sizeof(uint64_t));
 
     return TimeWithZone(get_zoned_time(nano_epoch, ""));
 }
 
 std::chrono::zoned_time<std::chrono::nanoseconds> TimeWithZone::get_zoned_time(uint64_t nano_epoch, const std::string_view zone_name) {
-
-    // to avoid send a millisecond epoch or seconds epoch by mistake, we check the nano_epoch value
-    // if the value is smaller than 10^18, we assume it is not a nanoseconds epoch
+    // Validate nanoseconds epoch to avoid using millisecond or second epoch by mistake
     if (nano_epoch < kMinimumNanosecondsEpoch) {
-        qlog::Error("The nanoseconds epoch value is too small: {}, it maybe milliseconds or seconds", nano_epoch);
+        qlog::Error("The nanoseconds epoch value is too small: {}, it may be milliseconds or seconds", nano_epoch);
     }
 
     std::chrono::nanoseconds duration_since_epoch(nano_epoch);
     // Convert the duration to a time_point with nanosecond precision
     std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds> time_point_ns(duration_since_epoch);
 
-    // Create a zoned_time for a specific time zone (e.g., UTC)
+    // Create a zoned_time for a specific time zone or use current zone if none specified
     if (!zone_name.empty()) {
         return std::chrono::zoned_time<std::chrono::nanoseconds>(zone_name, time_point_ns);
     } else {

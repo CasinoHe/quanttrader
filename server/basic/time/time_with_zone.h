@@ -18,6 +18,8 @@ namespace time {
 class TimeWithZone {
 public:
     using ZonedTime = std::chrono::zoned_time<std::chrono::nanoseconds>;
+    // Minimum value for a valid nanosecond epoch timestamp (around year 2001)
+    static constexpr uint64_t kMinimumNanosecondsEpoch = 1000000000000000000ULL;
 
     TimeWithZone(std::string_view time_zone, std::chrono::local_time<std::chrono::nanoseconds> local_time);
     TimeWithZone(std::string_view time_zone, std::chrono::sys_time<std::chrono::nanoseconds> sys_time);
@@ -123,42 +125,42 @@ public:
     // Caution: It only compares with the nanoseconds, not milliseconds or seconds
     bool operator<(const uint64_t nanoseconds) const {
         if (nanoseconds < kMinimumNanosecondsEpoch) {
-            log::Error("Compare TimeWizoZone with a not nanoseconds epoch value: {}, it maybe milliseconds or seconds", nanoseconds);
+            log::Error("Compare TimeWithZone with a non-nanoseconds epoch value: {}, it may be milliseconds or seconds", nanoseconds);
         }
         return get_nano_epoch() < nanoseconds;
     }
 
     bool operator>(const uint64_t nanoseconds) const {
         if (nanoseconds < kMinimumNanosecondsEpoch) {
-            log::Error("Compare TimeWizoZone with a not nanoseconds epoch value: {}, it maybe milliseconds or seconds", nanoseconds);
+            log::Error("Compare TimeWithZone with a non-nanoseconds epoch value: {}, it may be milliseconds or seconds", nanoseconds);
         }
         return get_nano_epoch() > nanoseconds;
     }
 
     bool operator<=(const uint64_t nanoseconds) const {
         if (nanoseconds < kMinimumNanosecondsEpoch) {
-            log::Error("Compare TimeWizoZone with a not nanoseconds epoch value: {}, it maybe milliseconds or seconds", nanoseconds);
+            log::Error("Compare TimeWithZone with a non-nanoseconds epoch value: {}, it may be milliseconds or seconds", nanoseconds);
         }
         return get_nano_epoch() <= nanoseconds;
     }
 
     bool operator>=(const uint64_t nanoseconds) const {
         if (nanoseconds < kMinimumNanosecondsEpoch) {
-            log::Error("Compare TimeWizoZone with a not nanoseconds epoch value: {}, it maybe milliseconds or seconds", nanoseconds);
+            log::Error("Compare TimeWithZone with a non-nanoseconds epoch value: {}, it may be milliseconds or seconds", nanoseconds);
         }
         return get_nano_epoch() >= nanoseconds;
     }
 
     bool operator==(const uint64_t nanoseconds) const {
         if (nanoseconds < kMinimumNanosecondsEpoch) {
-            log::Error("Compare TimeWizoZone with a not nanoseconds epoch value: {}, it maybe milliseconds or seconds", nanoseconds);
+            log::Error("Compare TimeWithZone with a non-nanoseconds epoch value: {}, it may be milliseconds or seconds", nanoseconds);
         }
         return get_nano_epoch() == nanoseconds;
     }
 
     bool operator!=(const uint64_t nanoseconds) const {
         if (nanoseconds < kMinimumNanosecondsEpoch) {
-            log::Error("Compare TimeWizoZone with a not nanoseconds epoch value: {}, it maybe milliseconds or seconds", nanoseconds);
+            log::Error("Compare TimeWithZone with a non-nanoseconds epoch value: {}, it may be milliseconds or seconds", nanoseconds);
         }
         return get_nano_epoch() != nanoseconds;
     }
