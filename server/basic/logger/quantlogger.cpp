@@ -1,7 +1,7 @@
 #include <fmt/core.h>
 
 #include "quantlogger.h"
-#include "logger/logger_consts.h"
+#include "logger_consts.h"
 #include "config/lua_config_loader.h"
 #include "spdlog/async.h"
 

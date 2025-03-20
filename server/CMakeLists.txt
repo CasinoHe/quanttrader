@@ -71,6 +71,7 @@ add_executable(${PROJECT_NAME} ${SERVER_SOURCES} ${LUA_SOURCES} ${TWS_SOURCES} $
 target_include_directories(${PROJECT_NAME} PRIVATE ${THIRDPARTY_DIR}/fmt/include
                                                   ${THIRDPARTY_DIR}/spdlog/include
                                                   ${SERVER_ROOT_DIR}
+                                                  ${SERVER_ROOT_DIR}/basic
                                                   ${Boost_INCLUDE_DIRS}
                                                   ${TWS_ROOT}
                                                   )
