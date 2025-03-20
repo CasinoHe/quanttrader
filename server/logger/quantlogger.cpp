@@ -17,6 +17,8 @@ LevelEnum QuantLogger::default_log_level_ = LevelEnum::info; // Default log leve
 std::once_flag QuantLogger::init_pool_flag_; // Ensures single thread pool initialization
 bool QuantLogger::init_flag_ = false; // Flag to check if logger is initialized
 std::mutex QuantLogger::logger_mutex_; // Mutex for thread-safe access
+std::unordered_set<std::string> QuantLogger::logger_names_; // Set of logger names to avoid duplicates
+LoggerPtr QuantLogger::g_logger_; // Global logger instance
 std::unordered_map<std::string, LevelEnum> QuantLogger::log_level_map_ = {
     {"trace", LevelEnum::trace}, {"debug", LevelEnum::debug},
     {"info", LevelEnum::info}, {"warn", LevelEnum::warn},
