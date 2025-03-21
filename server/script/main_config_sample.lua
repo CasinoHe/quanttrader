@@ -1,7 +1,7 @@
 -- config sample for app
 
 strategy_config = {
-	config_path = "config.lua",
+	config_path = "trade_config.lua",
 }
 
 test_config = {

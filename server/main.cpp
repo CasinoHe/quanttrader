@@ -61,6 +61,7 @@ int run_strategy_command(const std::string &config_path) {
     namespace qservice = quanttrader::service;
     
     // All strategy parameters are now in the config file
+    // TODO: start trade services loaded from the configuration file, for example StockTradeService, CurrencyTradeService, etc.
     auto service = qservice::ServiceFactory::get_service<qservice::StockTradeService>(strategy_config_path);
     if (!service->prepare()) {
         std::cout << "Cannot prepare the service. Check log/service.log for more information." << std::endl;
