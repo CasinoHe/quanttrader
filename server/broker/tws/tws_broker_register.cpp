@@ -11,6 +11,7 @@ bool registerTwsBrokerProvider() {
         if (!adapter->prepare()) {
             return nullptr;
         }
+        adapter->run();
         return std::static_pointer_cast<BrokerProvider>(adapter);
     };
     
