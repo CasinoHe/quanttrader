@@ -81,9 +81,9 @@ target_link_libraries(${PROJECT_NAME} PRIVATE fmt::fmt
                                 spdlog::spdlog
                                 Boost::program_options
                                 Boost::algorithm
+                                Boost::stacktrace
                                 intel_decimal128
                                 unofficial::concurrentqueue::concurrentqueue
-                                Boost::stacktrace
                                 )
 
 if (WIN32)
