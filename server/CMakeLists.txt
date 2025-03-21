@@ -40,7 +40,7 @@ set(THIRDPARTY_DIR ${PROJECT_ROOT_DIR}/thirdparties)
 # the dependencies is built by vcpkg or custom build
 find_package(fmt 11.0.2 REQUIRED)
 find_package(spdlog 1.15.0 REQUIRED)
-find_package(Boost 1.86.0 REQUIRED COMPONENTS program_options algorithm)
+find_package(Boost 1.86.0 REQUIRED COMPONENTS program_options algorithm stacktrace)
 find_package(unofficial-concurrentqueue CONFIG REQUIRED)
 
 # --------------------- build lua start ---------------------------
@@ -83,6 +83,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE fmt::fmt
                                 Boost::algorithm
                                 intel_decimal128
                                 unofficial::concurrentqueue::concurrentqueue
+                                Boost::stacktrace
                                 )
 
 if (WIN32)

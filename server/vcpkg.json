@@ -19,6 +19,10 @@
             "features": []
         },
         {
+            "name": "boost-stacktrace",
+            "features": []
+        },
+        {
             "name": "intelrdfpmathlib",
             "features": []
         },
