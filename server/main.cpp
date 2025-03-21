@@ -15,151 +15,91 @@
 namespace po = boost::program_options;
 namespace qlog = quanttrader::log;
 
-int parse_test_command(const std::vector<std::string> &subargs) {
-    po::options_description add_desc("Options for 'test' command");
-    add_desc.add_options()
-        ("help,h", "Display help message")
-        ("function", po::value<std::string>(), "What function to test");
-
-    po::variables_map test_vm;
-    po::store(po::command_line_parser(subargs).options(add_desc).run(), test_vm);
-    po::notify(test_vm);
-
-    if (test_vm.count("help")) {
-        std::cout << add_desc << "\n";
-        return EXIT_SUCCESS;
-    }
-
-    if (test_vm.count("function")) {
+int run_test_command(const std::string &config_path) {
 #ifdef QUANTTRADER_BUILD_TEST
-        std::string name = test_vm["function"].as<std::string>();
-        auto &mgr = quanttrader::test::TestFunctionMgr::instance();
-        return mgr.run_test(name);
-#else
-        std::cout << "Not build with test support. Please recompile with QUANTTRADER_BUILD_TEST defined." << std::endl;
-        return EXIT_SUCCESS;
-#endif
-    } else {
-        std::cerr << "Error: No function specified for 'test'.\n";
-        std::cout << add_desc << "\n";
-        return 1;
-    }
-
-    return EXIT_SUCCESS;
-}
-
-
-int parse_strategy_command(const std::vector<std::string> &subargs) {
-    po::options_description add_desc("Options for 'strategy' command");
-    add_desc.add_options()
-        ("help,h", "Display help message")
-        ("name", po::value<std::string>(), "The name of strategy to run")
-        ("config,c", po::value<std::string>(), "The configuration file for the strategy")
-        ("loglevel", po::value<std::string>()->default_value("info"), "The log level for strategy");
-
-    po::variables_map strategy_vm;
-    po::store(po::command_line_parser(subargs).options(add_desc).run(), strategy_vm);
-    po::notify(strategy_vm);
-
-    if (strategy_vm.count("help")) {
-        std::cout << add_desc << "\n";
-        return EXIT_SUCCESS;
-    }
-
-    if (strategy_vm.count("loglevel")) {
-        std::string loglevel = strategy_vm["loglevel"].as<std::string>();
-        if (!qlog::QuantLogger::set_default_log_level(loglevel)) {
-            std::cerr << "Error: Invalid log level specified for 'strategy'.\n";
-            std::cout << add_desc << "\n";
-            return EXIT_FAILURE;
-        }
-    }
-
-    if (strategy_vm.count("name")) {
-        namespace qservice = quanttrader::service;
-
-        if (!strategy_vm.count("config")) {
-            std::cerr << "Error: No configuration file specified for 'strategy'.\n";
-            std::cout << add_desc << "\n";
-            return EXIT_FAILURE;
-        }
-        std::string name = strategy_vm["name"].as<std::string>();
-        std::string config_path = strategy_vm["config"].as<std::string>();
-        std::cout << "Prepare to run strategy: " << name << "\n";
-        auto service = qservice::ServiceFactory::get_service<qservice::StockTradeService>(config_path);
-        if (!service->prepare()) {
-            std::cout << "Cannot prepare the service. Check log/service.log for more information." << std::endl;
-        } else {
-            service->run();
-        }
-        return EXIT_SUCCESS;
-    } else {
-        std::cerr << "Error: No strategy specified for 'strategy'.\n";
-        std::cout << add_desc << "\n";
+    if (config_path.empty()) {
+        std::cerr << "Error: No configuration file specified for 'test'.\n";
         return EXIT_FAILURE;
     }
-
+    
+    std::cout << "Running test using configuration: " << config_path << "\n";
+    // The test function should read the configuration file to determine which test to run
+    auto &mgr = quanttrader::test::TestFunctionMgr::instance();
+    // The actual test function should be specified in the config file
+    return mgr.run_test(config_path);
+#else
+    std::cout << "Not build with test support. Please recompile with QUANTTRADER_BUILD_TEST defined." << std::endl;
     return EXIT_SUCCESS;
+#endif
 }
 
+int run_strategy_command(const std::string &config_path) {
+    if (config_path.empty()) {
+        std::cerr << "Error: No configuration file specified for 'strategy'.\n";
+        return EXIT_FAILURE;
+    }
+    
+    namespace qservice = quanttrader::service;
+    std::cout << "Running strategy using configuration: " << config_path << "\n";
+    
+    // All strategy parameters are now in the config file
+    auto service = qservice::ServiceFactory::get_service<qservice::StockTradeService>(config_path);
+    if (!service->prepare()) {
+        std::cout << "Cannot prepare the service. Check log/service.log for more information." << std::endl;
+        return EXIT_FAILURE;
+    } else {
+        service->run();
+        return EXIT_SUCCESS;
+    }
+}
 
 int main(int argc, const char* argv[]) {
     try {
         // init logger first
         qlog::QuantLogger::init();
 
-        // Top-level options
+        // Simplified options - only command and config
         po::options_description global_desc("QuantTrader options");
         global_desc.add_options()
             ("help,h", "Display help message")
             ("command", po::value<std::string>(), "Command to execute, choose from [test, strategy]")
-            ("subargs", po::value<std::vector<std::string>>()->multitoken(), "Arguments for command, forexample: quanttrader --command strategy --subargs name=a config=b.lua");
+            ("config,c", po::value<std::string>(), "Path to the configuration file. All other parameters should be in this file");
 
-        // Parse top-level options
+        // Parse options
         po::variables_map global_vm;
-        po::parsed_options parsed = po::command_line_parser(argc, argv)
-                                        .options(global_desc)
-                                        .allow_unregistered()
-                                        .run();
-        po::store(parsed, global_vm);
+        po::store(po::command_line_parser(argc, argv).options(global_desc).run(), global_vm);
         po::notify(global_vm);
 
         // Display help for global options
         if (global_vm.count("help")) {
             std::cout << global_desc << "\n";
-            return 0;
+            return EXIT_SUCCESS;
         }
 
         // Check for the command
         if (!global_vm.count("command")) {
             std::cerr << "Error: No command provided.\n";
             std::cout << global_desc << "\n";
-            return 1;
+            return EXIT_FAILURE;
         }
 
+        // Get the configuration file path
+        std::string config_path = global_vm.count("config") ? global_vm["config"].as<std::string>() : "";
+
+        // Process the command
         std::string command = global_vm["command"].as<std::string>();
-        std::vector<std::string> subargs =
-            global_vm.count("subargs") ? global_vm["subargs"].as<std::vector<std::string>>() : std::vector<std::string>();
-
-        // add "--" prefix to subargs for boost::program_options parser
-        for (int i = 0; i < subargs.size(); i++) {
-            if (!subargs[i].starts_with("--")) {
-                subargs[i] = "--" + subargs[i];
-            }
-        }
-
-        // Sub-command-specific options
         if (command == "test") {
-            return parse_test_command(subargs);
+            return run_test_command(config_path);
         } else if (command == "strategy") {
-            return parse_strategy_command(subargs);
+            return run_strategy_command(config_path);
         } else {
             std::cerr << "Error: Unknown command '" << command << "'.\n";
-            return 1;
+            std::cout << "Valid commands are: test, strategy\n";
+            return EXIT_FAILURE;
         }
     } catch (const po::error &ex) {
         std::cerr << "Error: " << ex.what() << "\n";
-        return 1;
+        return EXIT_FAILURE;
     }
 
     return EXIT_SUCCESS;
