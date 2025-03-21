@@ -1,4 +1,5 @@
 #include "logger/quantlogger.h"
+#include "config/lua_config_loader.h"
 #include "boost/program_options.hpp"
 #include "service/service_factory.h"
 #include "service/stock_trade_service.h"
@@ -10,6 +11,7 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <filesystem>
 
 
 namespace po = boost::program_options;
@@ -26,7 +28,15 @@ int run_test_command(const std::string &config_path) {
     // The test function should read the configuration file to determine which test to run
     auto &mgr = quanttrader::test::TestFunctionMgr::instance();
     // The actual test function should be specified in the config file
-    return mgr.run_test(config_path);
+    auto config_loader = quanttrader::luascript::LuaConfigLoader(config_path);
+    if (!config_loader.load_config()) {
+        std::cerr << "Error: Failed to load configuration file: " << config_path << "\n";
+        return EXIT_FAILURE;
+    } else {
+        qlog::Info("Running test using configuration: {}", config_path);
+    }
+    auto func_name = config_loader.get_string_value("test_config", "function_name");
+    return mgr.run_test(func_name);
 #else
     std::cout << "Not build with test support. Please recompile with QUANTTRADER_BUILD_TEST defined." << std::endl;
     return EXIT_SUCCESS;
@@ -39,11 +49,19 @@ int run_strategy_command(const std::string &config_path) {
         return EXIT_FAILURE;
     }
     
+    auto config_loader = quanttrader::luascript::LuaConfigLoader(config_path);
+    if (!config_loader.load_config()) {
+        std::cerr << "Error: Failed to load configuration file: " << config_path << "\n";
+        return EXIT_FAILURE;
+    } else {
+        qlog::Info("Running strategy using configuration: {}", config_path);
+    }
+    auto strategy_config_path = config_loader.get_string_value("strategy_config", "config_path");
+
     namespace qservice = quanttrader::service;
-    std::cout << "Running strategy using configuration: " << config_path << "\n";
     
     // All strategy parameters are now in the config file
-    auto service = qservice::ServiceFactory::get_service<qservice::StockTradeService>(config_path);
+    auto service = qservice::ServiceFactory::get_service<qservice::StockTradeService>(strategy_config_path);
     if (!service->prepare()) {
         std::cout << "Cannot prepare the service. Check log/service.log for more information." << std::endl;
         return EXIT_FAILURE;
@@ -83,8 +101,23 @@ int main(int argc, const char* argv[]) {
             return EXIT_FAILURE;
         }
 
-        // Get the configuration file path
-        std::string config_path = global_vm.count("config") ? global_vm["config"].as<std::string>() : "";
+        // Check for the config
+        if (!global_vm.count("config")) {
+            std::cerr << "Error: No configuration file provided.\n";
+            std::cout << global_desc << "\n";
+            return EXIT_FAILURE;
+        }
+
+        // Check the configuration file path
+        std::string config_path = global_vm["config"].as<std::string>();
+        if (config_path.empty()) {
+            std::cerr << "Error: Configuration file path is empty.\n";
+            return EXIT_FAILURE;
+        }
+        if (!std::filesystem::exists(config_path)) {
+            std::cerr << "Error: Configuration file does not exist: " << config_path << "\n";
+            return EXIT_FAILURE;
+        }
 
         // Process the command
         std::string command = global_vm["command"].as<std::string>();

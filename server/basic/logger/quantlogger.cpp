@@ -34,7 +34,7 @@ void QuantLogger::init() {
         return;
     }
 
-    g_logger_ = get_logger("Global", "global");
+    g_logger_ = get_logger("Global", "global", kLoggerConfigFilePath);
     if (!g_logger_) {
         std::cerr << "Failed to create global logger" << std::endl;
         return;
@@ -126,14 +126,14 @@ LoggerPtr QuantLogger::get_logger(const std::string &name, const std::string &lo
     std::string sinks_config = quanttrader::logger::LOGGER_SINK_DAILY_FILE_TYPE;
 
     if (!config_path.empty()) {
-        auto config_loader = std::make_shared<quanttrader::luascript::LuaConfigLoader>(config_path);
-        if (!config_loader->load_config())
+        auto config_loader = quanttrader::luascript::LuaConfigLoader(config_path);
+        if (!config_loader.load_config())
         {
             std::cerr << "Failed to load logger config from: " << config_path << std::endl;
             return nullptr;
         }
 
-        std::string level_str = config_loader->get_string_value(name, quanttrader::logger::LOGGER_LEVEL_FIELD);
+        std::string level_str = config_loader.get_string_value(logname, quanttrader::logger::LOGGER_LEVEL_FIELD);
         if (!level_str.empty()) {
             for (const auto &pair : log_level_map_) {
                 if (pair.first == level_str) {
@@ -143,8 +143,8 @@ LoggerPtr QuantLogger::get_logger(const std::string &name, const std::string &lo
             }
         }
 
-        use_sync_config = config_loader->get_bool_value(name, quanttrader::logger::LOGGER_USE_SYNC_FIELD);
-        sinks_config = config_loader->get_string_value(name, quanttrader::logger::LOGGER_SINKS_FIELD);
+        use_sync_config = config_loader.get_bool_value(logname, quanttrader::logger::LOGGER_USE_SYNC_FIELD);
+        sinks_config = config_loader.get_string_value(logname, quanttrader::logger::LOGGER_SINKS_FIELD);
     }
 
     std::stringstream ss(sinks_config);
@@ -176,6 +176,11 @@ LoggerPtr QuantLogger::get_logger(const std::string &name, const std::string &lo
         else {
             std::cerr << "Create logger" << name << " log file path " << logname << " Unknown sink type: " << key << std::endl;
         }
+    }
+
+    if (logname == "global"){
+        // set the default log level
+        default_log_level_ = level_config;
     }
 
     if (use_sync_config) {

@@ -9,4 +9,6 @@ namespace quanttrader
 
     constexpr char kDefaultLogDir[] = "log";
     constexpr unsigned long long kMinimumNanosecondsEpoch = static_cast<unsigned long long>(1e+17);
+
+    constexpr char kLoggerConfigFilePath[] = "log_config.json";
 }
