@@ -1,4 +1,18 @@
--- config sample for strategy service
+-- stock trade service configuration
+stock_trade_service = {
+	broker_service = "tws",
+	data_provider = {
+		"tws",          -- only tws works for now
+		"localdb",
+		"yahoofinance",
+	},
+	risk_manager = {
+		"to_be_implemented",
+		"to_be_implemented2",
+	},
+	engine = "fortune",  -- only forturn for now
+	mode = "backtest",  -- backtest or live
+}
 
 tws_service = {
 	host = "127.0.0.1",
@@ -10,12 +24,6 @@ tws_service = {
 	update_config_interval = 60000, -- update config interval in milliseconds
 	record_log = 0,         -- record log or not
 	stop_flag = 0,          -- stop flag
-}
-
-stock_trade_service = {
-	broker_service = "tws",
-	broker_config = "this",
-	back_test_config = "this",
 }
 
 back_test_service = {
