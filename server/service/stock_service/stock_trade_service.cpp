@@ -58,17 +58,13 @@ bool StockTradeService::prepare() {
             continue;
         }
 
-        auto config_loader = qconfig::LuaConfigLoader(cerebro_config);
-        config_loader.load_config();
-        auto params = std::make_shared<std::unordered_map<std::string, std::any>>();
-        config_loader.get_all_values(cerebro_name, *params);
-        auto cerebro = cerebro::CerebroFactory::instance()->create_cerebro(cerebro_type, cerebro_name, params);
+        auto cerebro = cerebro::CerebroFactory::instance()->create_cerebro(cerebro_type, cerebro_name, cerebro_config);
         if (!cerebro) {
             logger_->error("Failed to create the cerebro: {}, please check the configuration file.", cerebro_name);
             qlog::Error("Failed to create the cerebro: {}, please check the configuration file.", cerebro_name);
             return false;
         }
-        cerebro_ = cerebro;
+        cerebro_map_[cerebro_name] = cerebro;
     }
 
     // // prepare back test service

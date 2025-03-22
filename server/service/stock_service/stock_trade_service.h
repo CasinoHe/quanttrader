@@ -36,7 +36,7 @@ private:
     // std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::RequestHeader>>> request_queue_ {nullptr};
     // std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::ResponseHeader>>> response_queue_ {nullptr};
     std::shared_ptr<broker::BrokerProvider> broker_provider_ {nullptr};  // broker provider, defined by configuration file
-    std::shared_ptr<cerebro::Cerebro> cerebro_ {nullptr};  // cerebro, defined by configuration file
+    std::unordered_map<std::string, std::shared_ptr<cerebro::Cerebro>> cerebro_map_ {};  // cerebro, defined by configuration file
 };
 
 }
