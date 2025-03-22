@@ -1,6 +1,6 @@
 #pragma once
 
-#include "data/provider/data_provider.h"
+#include "data/data_provider.h"
 #include "data/util/bar_line.h"
 #include "data/storage/data_storage.h"
 #include <curl/curl.h>
