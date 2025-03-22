@@ -2,7 +2,7 @@
 
 strategy_config = {
 	config_path = "trade_config.lua",
-	start_services = "stock_trade_service",
+	start_services = "stock_trade",
 }
 
 test_config = {

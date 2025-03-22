@@ -2,7 +2,6 @@
 #include "config/lua_config_loader.h"
 #include "boost/program_options.hpp"
 #include "service/service_factory.h"
-#include "service/stock_trade_service.h"
 
 #ifdef QUANTTRADER_BUILD_TEST
 #include "test/test_base.h"
@@ -16,6 +15,9 @@
 
 namespace po = boost::program_options;
 namespace qlog = quanttrader::log;
+
+constexpr char STRATEGY_CONFIG_TABLE_NAME[] = "strategy_config";
+constexpr char TEST_CONFIG_TABLE_NAME[] = "test_config";
 
 int run_test_command(const std::string &config_path) {
 #ifdef QUANTTRADER_BUILD_TEST
@@ -35,7 +37,7 @@ int run_test_command(const std::string &config_path) {
     } else {
         qlog::Info("Running test using configuration: {}", config_path);
     }
-    auto func_name = config_loader.get_string_value("test_config", "function_name");
+    auto func_name = config_loader.get_string_value(TEST_CONFIG_TABLE_NAME, "function_name");
     return mgr.run_test(func_name);
 #else
     std::cout << "Not build with test support. Please recompile with QUANTTRADER_BUILD_TEST defined." << std::endl;
@@ -56,13 +58,12 @@ int run_strategy_command(const std::string &config_path) {
     } else {
         qlog::Info("Running strategy using configuration: {}", config_path);
     }
-    auto strategy_config_path = config_loader.get_string_value("strategy_config", "config_path");
+    auto strategy_config_path = config_loader.get_string_value(STRATEGY_CONFIG_TABLE_NAME, "config_path");
+    auto need_start_service = config_loader.get_string_value(STRATEGY_CONFIG_TABLE_NAME, "start_services");
 
     namespace qservice = quanttrader::service;
-    
     // All strategy parameters are now in the config file
-    // TODO: start trade services loaded from the configuration file, for example StockTradeService, CurrencyTradeService, etc.
-    auto service = qservice::ServiceFactory::get_service<qservice::StockTradeService>(strategy_config_path);
+    auto service = qservice::ServiceFactory::instance()->createService(need_start_service, strategy_config_path);
     if (!service->prepare()) {
         std::cout << "Cannot prepare the service. Check log/service.log for more information." << std::endl;
         return EXIT_FAILURE;

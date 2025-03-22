@@ -2,6 +2,7 @@
 
 #include "common/singleton.h"
 #include "config/lua_config_loader.h"
+#include "service_consts.h"
 #include <string>
 #include <memory>
 #include <unordered_map>

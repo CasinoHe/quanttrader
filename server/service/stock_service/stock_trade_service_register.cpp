@@ -1,5 +1,5 @@
 #include "stock_trade_service.h"
-#include "service_factory.h"
+#include "service/service_factory.h"
 #include "service/service.h"
 
 namespace quanttrader {
@@ -7,12 +7,12 @@ namespace service {
 
 // Function to register the StockTradeService with the factory
 bool registerStockTradeService() {
-    auto creatorFunc = [](const std::string& configPath) -> std::shared_ptr<ServiceInterface> {
+    auto creatorFunc = [](const std::string& configPath) -> std::shared_ptr<ServiceBase> {
         auto service = StockTradeService::instance(configPath);
-        return std::static_pointer_cast<ServiceInterface>(service);
+        return std::static_pointer_cast<ServiceBase>(service);
     };
     
-    return ServiceFactory::instance().registerService("stock_trade", creatorFunc);
+    return ServiceFactory::instance().registerService(STOCK_TRADE_SERVICE_NAME, creatorFunc);
 }
 
 // Automatic registration
