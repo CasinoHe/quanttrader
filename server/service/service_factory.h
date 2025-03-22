@@ -10,10 +10,10 @@ namespace quanttrader {
 namespace service {
 
 // Forward declaration for the service base interface
-class ServiceBase;
+class ServiceInterface;
 
 // Function type for creating services
-using ServiceCreatorFunc = std::function<std::shared_ptr<ServiceBase>(const std::string&)>;
+using ServiceCreatorFunc = std::function<std::shared_ptr<ServiceInterface>(const std::string&)>;
 
 /**
  * Factory class for creating and managing services.
@@ -28,7 +28,7 @@ public:
      * @param configPath Path to the configuration file for the service
      * @return A shared pointer to the created service
      */
-    std::shared_ptr<ServiceBase> createService(const std::string& serviceName, const std::string& configPath) {
+    std::shared_ptr<ServiceInterface> createService(const std::string& serviceName, const std::string& configPath) {
         auto it = serviceCreators_.find(serviceName);
         if (it == serviceCreators_.end()) {
             return nullptr;

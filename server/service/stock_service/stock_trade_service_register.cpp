@@ -7,9 +7,9 @@ namespace service {
 
 // Function to register the StockTradeService with the factory
 bool registerStockTradeService() {
-    auto creatorFunc = [](const std::string& configPath) -> std::shared_ptr<ServiceBase> {
+    auto creatorFunc = [](const std::string& configPath) -> std::shared_ptr<ServiceInterface> {
         auto service = StockTradeService::instance(configPath);
-        return std::static_pointer_cast<ServiceBase>(service);
+        return service;  // Now StockTradeService directly inherits ServiceInterface through ServiceBase
     };
     
     return ServiceFactory::instance().registerService(STOCK_TRADE_SERVICE_NAME, creatorFunc);

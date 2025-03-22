@@ -2,6 +2,7 @@
 #include "config/lua_config_loader.h"
 #include "boost/program_options.hpp"
 #include "service/service_factory.h"
+#include "service/service.h"
 
 #ifdef QUANTTRADER_BUILD_TEST
 #include "test/test_base.h"

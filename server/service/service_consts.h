@@ -1,9 +1,14 @@
 #pragma once
 
+#include <string>
+
 namespace quanttrader {
 namespace service {
 
-constexpr char STOCK_TRADE_SERVICE_NAME[] = "stock_trade";
+// Common service name constants
+constexpr inline const char* STOCK_TRADE_SERVICE_NAME = "StockTradeService";
+constexpr inline const char* BACK_TEST_SERVICE_NAME = "BackTestService";
+// Add more service name constants here as needed
 
 constexpr char UPDATE_CONFIG_INTERVAL_VARIABLE[] = "update_config_interval";
 constexpr char HOST_VARIABLE[] = "host";
