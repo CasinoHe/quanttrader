@@ -1,14 +1,16 @@
 #include "csv_data_feed.h"
 #include "data/storage/file_storage.h"
+#include "time/time_with_zone.h"
 #include <fstream>
 #include <sstream>
 #include <vector>
-#include <string>
-#include <chrono>
-#include <iomanip>
+#include <algorithm>
 #include <filesystem>
+#include <iomanip>
+#include <ctime>
 
 namespace fs = std::filesystem;
+namespace qtime = quanttrader::time;
 
 namespace quanttrader {
 namespace data {
@@ -16,77 +18,50 @@ namespace feed {
 
 CsvDataFeed::CsvDataFeed(const std::string_view &data_prefix, provider::DataParamsType params)
     : provider::DataProvider(data_prefix, params) {
+    // Constructor implementation
 }
 
 bool CsvDataFeed::prepare_data() {
-    // Get required parameters
-    csv_file_path_ = get_data_by_prefix<std::string>("_csv_path");
+    // Extract configuration from parameters
+    csv_file_path_ = get_data_by_prefix<std::string>("_csv_file_path");
     if (csv_file_path_.empty()) {
-        logger_->error("CSV file path not specified for data prefix: {}", data_prefix_);
+        logger_->error("CSV file path is missing for {}", get_data_prefix());
         return false;
     }
-
+    
     symbol_ = get_data_by_prefix<std::string>("_symbol");
     if (symbol_.empty()) {
-        // Try to use the filename as symbol if not explicitly specified
-        symbol_ = fs::path(csv_file_path_).stem().string();
-        if (symbol_.empty()) {
-            logger_->error("Symbol not specified for data prefix: {}", data_prefix_);
-            return false;
-        }
+        // Try to extract symbol from filename
+        fs::path file_path(csv_file_path_);
+        symbol_ = file_path.stem().string();
+        logger_->info("Using filename as symbol: {}", symbol_);
     }
-
-    // Get bar type
+    
+    // Parse bar type and size
     std::string bar_type_str = get_data_by_prefix<std::string>("_bar_type", "1 day");
-    
-    auto pos = bar_type_str.find(" ");
-    if (pos == std::string::npos) {
-        logger_->error("Invalid bar type format: {}", bar_type_str);
+    auto [type, size] = get_bar_type_from_string(bar_type_str);
+    if (type == BarType::NONE) {
+        logger_->error("Invalid bar type: {}", bar_type_str);
         return false;
     }
+    bar_type_ = type;
+    bar_size_ = size;
     
-    try {
-        bar_size_ = std::stoi(bar_type_str.substr(0, pos));
-        std::string type = bar_type_str.substr(pos + 1);
-        
-        if (type == "sec" || type == "secs" || type == "second" || type == "seconds") {
-            bar_type_ = BarType::Second;
-        } else if (type == "min" || type == "mins" || type == "minute" || type == "minutes") {
-            bar_type_ = BarType::Minute;
-        } else if (type == "hour" || type == "hours") {
-            bar_type_ = BarType::Hour;
-        } else if (type == "day" || type == "days") {
-            bar_type_ = BarType::Day;
-        } else if (type == "week" || type == "weeks" || type == "W") {
-            bar_type_ = BarType::Week;
-        } else if (type == "month" || type == "months" || type == "M") {
-            bar_type_ = BarType::Month;
-        } else {
-            logger_->error("Unknown bar type: {}", type);
-            return false;
-        }
-    } catch (const std::exception& e) {
-        logger_->error("Failed to parse bar type: {}, error: {}", bar_type_str, e.what());
-        return false;
-    }
-
-    // Get optional parameters
-    date_format_ = get_data_by_prefix<std::string>("_date_format", "%Y-%m-%d %H:%M:%S");
+    // Configure CSV parsing options
     delimiter_ = get_data_by_prefix<char>("_delimiter", ',');
-    has_header_ = get_data_by_prefix<bool>("_has_header", true);
-    
-    // Column configuration
     date_time_column_ = get_data_by_prefix<int>("_datetime_column", 0);
     open_column_ = get_data_by_prefix<int>("_open_column", 1);
     high_column_ = get_data_by_prefix<int>("_high_column", 2);
     low_column_ = get_data_by_prefix<int>("_low_column", 3);
     close_column_ = get_data_by_prefix<int>("_close_column", 4);
     volume_column_ = get_data_by_prefix<int>("_volume_column", 5);
+    has_header_ = get_data_by_prefix<bool>("_has_header", true);
+    date_format_ = get_data_by_prefix<std::string>("_date_format", "%Y-%m-%d");
     
-    // Storage options
+    // Configure storage options
     use_storage_ = get_data_by_prefix<bool>("_use_storage", false);
     store_after_load_ = get_data_by_prefix<bool>("_store_after_load", false);
-    storage_path_ = get_data_by_prefix<std::string>("_storage_path", "./data_storage");
+    storage_path_ = get_data_by_prefix<std::string>("_storage_path", "./data");
     
     // Initialize the bar line
     bar_line_ = std::make_shared<util::BarLine>(0, bar_type_, bar_size_);
@@ -104,21 +79,25 @@ bool CsvDataFeed::prepare_data() {
 }
 
 bool CsvDataFeed::start_request_data() {
-    // If we're using storage, try to load from storage first
+    // Try to load from storage first if enabled
     if (use_storage_ && storage_) {
-        if (load_from_storage()) {
-            data_ready_ = true;
-            return true;
+        if (storage_->has_data(symbol_, bar_type_, bar_size_)) {
+            logger_->info("Loading {} data for {} from storage", 
+                get_bar_type_string(bar_type_, bar_size_), symbol_);
+            if (load_from_storage()) {
+                data_ready_ = true;
+                return true;
+            } else {
+                logger_->warn("Failed to load data from storage, falling back to CSV");
+            }
         }
-        
-        logger_->info("Data not found in storage, falling back to CSV file");
     }
     
-    // Load from CSV
+    // Load from CSV file
     if (load_from_csv()) {
         data_ready_ = true;
         
-        // If requested, save the loaded data to storage
+        // Store the data if requested
         if (store_after_load_ && storage_) {
             save_to_storage();
         }
@@ -130,7 +109,7 @@ bool CsvDataFeed::start_request_data() {
 }
 
 bool CsvDataFeed::terminate_request_data() {
-    // Nothing to clean up for this feed type
+    // Nothing to do for CSV data feed
     return true;
 }
 
@@ -139,7 +118,7 @@ bool CsvDataFeed::is_data_ready() {
 }
 
 std::optional<BarStruct> CsvDataFeed::next() {
-    if (!bar_line_) {
+    if (!data_ready_ || !bar_line_) {
         return std::nullopt;
     }
     
@@ -148,68 +127,81 @@ std::optional<BarStruct> CsvDataFeed::next() {
 
 bool CsvDataFeed::load_from_csv() {
     std::ifstream file(csv_file_path_);
-    if (!file) {
+    if (!file.is_open()) {
         logger_->error("Failed to open CSV file: {}", csv_file_path_);
         return false;
     }
     
     std::string line;
-    int line_num = 0;
-    int valid_rows = 0;
+    int line_count = 0;
+    int data_count = 0;
     
     // Skip header if needed
-    if (has_header_) {
-        std::getline(file, line);
-        line_num++;
+    if (has_header_ && std::getline(file, line)) {
+        line_count++;
     }
     
+    // Process each line
     while (std::getline(file, line)) {
-        line_num++;
+        line_count++;
         
-        std::stringstream ss(line);
         std::vector<std::string> tokens;
+        std::stringstream ss(line);
         std::string token;
         
-        // Split line by delimiter
+        // Split the line by delimiter
         while (std::getline(ss, token, delimiter_)) {
             tokens.push_back(token);
         }
         
-        // Check if we have enough tokens
-        int max_column = std::max({date_time_column_, open_column_, high_column_, 
-                                  low_column_, close_column_, volume_column_});
-        if (static_cast<int>(tokens.size()) <= max_column) {
-            logger_->warn("Line {} has insufficient columns ({}), skipping", line_num, tokens.size());
+        // Check if we have enough columns
+        size_t max_col = std::max({date_time_column_, open_column_, high_column_, 
+                                 low_column_, close_column_, volume_column_});
+        if (tokens.size() <= max_col) {
+            logger_->warn("Line {} has insufficient columns (found {}, need {})", 
+                        line_count, tokens.size(), max_col + 1);
             continue;
         }
         
-        // Parse the data
+        // Parse the values
+        uint64_t time_ns;
+        if (!parse_date_time(tokens[date_time_column_], time_ns)) {
+            logger_->warn("Failed to parse date/time on line {}: {}", 
+                        line_count, tokens[date_time_column_]);
+            continue;
+        }
+        
         try {
-            uint64_t time_ns;
-            if (!parse_date_time(tokens[date_time_column_], time_ns)) {
-                logger_->warn("Failed to parse date-time at line {}: {}", line_num, tokens[date_time_column_]);
-                continue;
-            }
-            
             double open = std::stod(tokens[open_column_]);
             double high = std::stod(tokens[high_column_]);
             double low = std::stod(tokens[low_column_]);
             double close = std::stod(tokens[close_column_]);
-            Decimal volume = std::stod(tokens[volume_column_]);
             
-            if (bar_line_->push_data(time_ns, open, high, low, close, volume, 0, 1)) {
-                valid_rows++;
-            } else {
-                logger_->warn("Failed to push data at line {}", line_num);
+            // Volume might be empty or invalid in some datasets
+            Decimal volume(0);
+            if (volume_column_ < tokens.size() && !tokens[volume_column_].empty()) {
+                try {
+                    volume = Decimal(tokens[volume_column_]);
+                } catch (...) {
+                    // Use default volume of 0
+                }
             }
-        } catch (const std::exception& e) {
-            logger_->warn("Error parsing line {}: {}", line_num, e.what());
+            
+            // Add the bar to our bar line
+            if (bar_line_->push_data(time_ns, open, high, low, close, volume, Decimal(0), 0)) {
+                data_count++;
+            }
+        }
+        catch (const std::exception& e) {
+            logger_->warn("Error parsing values on line {}: {}", line_count, e.what());
             continue;
         }
     }
     
-    logger_->info("Loaded {} valid rows from CSV file: {}", valid_rows, csv_file_path_);
-    return valid_rows > 0;
+    logger_->info("Loaded {} data points from CSV file {} (processed {} lines)", 
+                data_count, csv_file_path_, line_count);
+    
+    return data_count > 0;
 }
 
 bool CsvDataFeed::load_from_storage() {
@@ -217,99 +209,85 @@ bool CsvDataFeed::load_from_storage() {
         return false;
     }
     
-    if (!storage_->has_data(symbol_, bar_type_, bar_size_)) {
-        logger_->info("No data found in storage for symbol: {} bar_type: {} bar_size: {}", 
-                    symbol_, static_cast<int>(bar_type_), bar_size_);
-        return false;
-    }
-    
     auto bars_opt = storage_->load_bars(symbol_, bar_type_, bar_size_);
     if (!bars_opt.has_value()) {
-        logger_->error("Failed to load data from storage for symbol: {}", symbol_);
         return false;
     }
     
-    const auto& bars = bars_opt.value();
-    size_t count = bars.start_time.size();
+    BarSeries& bars = bars_opt.value();
     
-    if (count == 0) {
-        logger_->warn("Loaded empty bar series from storage for symbol: {}", symbol_);
-        return false;
-    }
-    
-    // Push data into bar_line
-    for (size_t i = 0; i < count; i++) {
-        if (!bar_line_->push_data(bars.start_time[i], 
-                                 bars.open[i], 
-                                 bars.high[i], 
-                                 bars.low[i], 
-                                 bars.close[i], 
-                                 bars.volume[i], 
-                                 bars.wap[i], 
-                                 bars.count[i])) {
-            logger_->warn("Failed to push data at index {}", i);
+    // Add all bars to our bar line
+    int count = 0;
+    for (size_t i = 0; i < bars.start_time.size(); ++i) {
+        if (bar_line_->push_data(
+            bars.start_time[i], 
+            bars.open[i], 
+            bars.high[i], 
+            bars.low[i], 
+            bars.close[i], 
+            bars.volume[i], 
+            bars.wap[i], 
+            bars.count[i])) {
+            count++;
         }
     }
     
-    logger_->info("Loaded {} bars from storage for symbol: {}", count, symbol_);
-    return true;
+    logger_->info("Loaded {} data points from storage for {}", count, symbol_);
+    return count > 0;
 }
 
 bool CsvDataFeed::save_to_storage() {
-    if (!storage_) {
+    if (!storage_ || !bar_line_) {
         return false;
     }
     
-    // Create a bar series from the current bar line data
-    // This is a bit hacky since we don't have direct access to the internal data
-    // In a real implementation, we would make the bar series directly accessible
-    
+    // Extract all data from bar line
     BarSeries bars;
-    auto current_bar = bar_line_->next();
-    while (current_bar.has_value()) {
-        bars.start_time.push_back(current_bar->time);
-        bars.open.push_back(current_bar->open);
-        bars.high.push_back(current_bar->high);
-        bars.low.push_back(current_bar->low);
-        bars.close.push_back(current_bar->close);
-        bars.volume.push_back(current_bar->volume);
-        bars.wap.push_back(current_bar->swap);
-        bars.count.push_back(current_bar->count);
-        
-        current_bar = bar_line_->next();
+    std::optional<BarStruct> bar;
+    while ((bar = bar_line_->next()).has_value()) {
+        bars.start_time.push_back(bar->time);
+        bars.open.push_back(bar->open);
+        bars.high.push_back(bar->high);
+        bars.low.push_back(bar->low);
+        bars.close.push_back(bar->close);
+        bars.volume.push_back(bar->volume);
+        bars.wap.push_back(bar->swap);
+        bars.count.push_back(bar->count);
     }
     
     if (bars.start_time.empty()) {
-        logger_->warn("No data to save to storage for symbol: {}", symbol_);
+        logger_->warn("No data to save to storage for {}", symbol_);
         return false;
     }
     
-    if (!storage_->store_bars(symbol_, bar_type_, bar_size_, bars)) {
-        logger_->error("Failed to save data to storage for symbol: {}", symbol_);
-        return false;
+    bool result = storage_->store_bars(symbol_, bar_type_, bar_size_, bars);
+    if (result) {
+        logger_->info("Successfully saved {} data points to storage for {}", 
+                    bars.start_time.size(), symbol_);
+    } else {
+        logger_->error("Failed to save data to storage for {}", symbol_);
     }
     
-    logger_->info("Saved {} bars to storage for symbol: {}", bars.start_time.size(), symbol_);
-    return true;
+    return result;
 }
 
 bool CsvDataFeed::parse_date_time(const std::string& date_time_str, uint64_t& time_ns) {
     std::tm tm = {};
     std::istringstream ss(date_time_str);
-    ss >> std::get_time(&tm, date_format_.c_str());
     
+    ss >> std::get_time(&tm, date_format_.c_str());
     if (ss.fail()) {
         return false;
     }
     
-    // Convert to time_t
-    std::time_t time = std::mktime(&tm);
-    if (time == -1) {
+    // Convert to time_t (seconds since epoch)
+    std::time_t time_sec = std::mktime(&tm);
+    if (time_sec == -1) {
         return false;
     }
     
     // Convert to nanoseconds
-    time_ns = static_cast<uint64_t>(time) * 1000000000;
+    time_ns = static_cast<uint64_t>(time_sec) * 1000000000ULL;
     return true;
 }
 
