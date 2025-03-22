@@ -94,11 +94,12 @@ public:
     virtual void run() = 0;
     virtual void stop() = 0;
 
+    // Get the service name
+    const std::string_view get_service_name() const { return service_name_; }
+
 protected:
     ServiceBase(const std::string &&name) : service_name_(name) {};
     virtual ~ServiceBase() = default;
-    void set_service_name(const std::string_view name) { service_name_ = name; }
-    const std::string_view get_service_name() const { return service_name_; }
 
     bool load_config() {
         if (config_loaded_) {

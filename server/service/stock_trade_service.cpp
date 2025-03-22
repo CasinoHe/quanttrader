@@ -42,8 +42,15 @@ bool StockTradeService::prepare() {
     request_queue_ = std::make_shared<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::RequestHeader>>>();
     response_queue_ = std::make_shared<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::ResponseHeader>>>();
 
-    std::shared_ptr<quanttrader::service::TwsService> broker_service = quanttrader::service::ServiceFactory::get_service<quanttrader::service::TwsService>(broker_config);
-    broker_service_ = std::static_pointer_cast<void>(broker_service);
+    // Use the factory to create the broker service
+    auto& factory = ServiceFactory::instance();
+    auto broker_service = std::dynamic_pointer_cast<TwsService>(factory.createService("tws", broker_config));
+    if (!broker_service) {
+        logger_->error("Failed to create the broker service.");
+        return false;
+    }
+    
+    broker_service_ = broker_service;
     broker_service->set_response_queue(response_queue_);
     broker_service->set_request_queue(request_queue_);
 
@@ -58,8 +65,14 @@ bool StockTradeService::prepare() {
         back_test_config = get_config_path();
     }
 
-    std::shared_ptr<quanttrader::service::BackTestService> back_test_service = quanttrader::service::ServiceFactory::get_service<quanttrader::service::BackTestService>(back_test_config);
-    back_test_service_ = std::static_pointer_cast<void>(back_test_service);
+    // Use the factory to create the back test service
+    auto back_test_service = std::dynamic_pointer_cast<BackTestService>(factory.createService("back_test", back_test_config));
+    if (!back_test_service) {
+        logger_->error("Failed to create the back test service.");
+        return false;
+    }
+    
+    back_test_service_ = back_test_service;
     back_test_service->set_response_queue(response_queue_);
     back_test_service->set_request_queue(request_queue_);
 
