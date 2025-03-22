@@ -2,9 +2,29 @@
 #include "data/feed/tws_data_feed.h"
 #include "data/feed/csv_data_feed.h"
 #include "data/feed/yahoo_data_feed.h"
+#include "data/storage/file_storage.h"
+#include "data/storage/db_storage.h"
+#include <memory>
 
 namespace quanttrader {
 namespace data {
+
+/**
+ * @brief Create a storage provider based on the specified type
+ * 
+ * @param storage_type Type of storage ("file" or "db")
+ * @return std::shared_ptr<storage::DataStorage> Storage provider instance
+ */
+std::shared_ptr<storage::DataStorage> create_storage(const std::string& storage_type) {
+    if (storage_type == "file") {
+        return std::make_shared<storage::FileStorage>();
+    } else if (storage_type == "db") {
+        return std::make_shared<storage::DbStorage>();
+    } else {
+        // Default to file storage
+        return std::make_shared<storage::FileStorage>();
+    }
+}
 
 /**
  * @brief Register all data feed implementations with the factory

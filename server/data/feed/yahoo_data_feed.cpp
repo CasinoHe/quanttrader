@@ -1,5 +1,5 @@
 #include "yahoo_data_feed.h"
-#include "data/storage/file_storage.h"
+#include "data/storage/storage_factory.h"
 #include "time/time_with_zone.h"
 #include <sstream>
 #include <vector>
@@ -88,14 +88,17 @@ bool YahooDataFeed::prepare_data() {
     store_after_download_ = get_data_by_prefix<bool>("_store_after_download", false);
     storage_path_ = get_data_by_prefix<std::string>("_storage_path", "./data");
     
+    // Get storage type from configuration or use default
+    std::string storage_type = get_data_by_prefix<std::string>("_storage_type", "file");
+    
     // Initialize the bar line
     bar_line_ = std::make_shared<util::BarLine>(0, bar_type_, bar_size_);
     
-    // Initialize storage if needed
+    // Initialize storage if needed using the factory
     if (use_storage_ || store_after_download_) {
-        storage_ = std::make_shared<storage::FileStorage>();
+        storage_ = storage::StorageFactory::create(storage_type);
         if (!storage_->initialize(storage_path_)) {
-            logger_->error("Failed to initialize storage at path: {}", storage_path_);
+            logger_->error("Failed to initialize {} storage at path: {}", storage_type, storage_path_);
             return false;
         }
     }
