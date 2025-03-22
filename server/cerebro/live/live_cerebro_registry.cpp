@@ -18,8 +18,8 @@ int register_live_cerebro() {
     auto& factory = CerebroFactory::instance();
     
     // Register LiveCerebro
-    factory.register_cerebro(LIVE_CEREBRO_TYPE, [](const std::string_view& name, CerebroParamsType params) {
-        return std::make_shared<LiveCerebro>(name, params);
+    factory->register_cerebro(LIVE_CEREBRO_TYPE, [](const std::string_view& name, const std::string &config_path) {
+        return std::make_shared<LiveCerebro>(name, config_path);
     });
     
     return 1;
