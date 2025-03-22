@@ -1,6 +1,5 @@
-#include "cerebro_factory.h"
+#include "cerebro/cerebro_factory.h"
 #include "backtest_cerebro.h"
-#include "live_cerebro.h"
 #include <memory>
 
 namespace quanttrader {
@@ -14,7 +13,7 @@ namespace cerebro {
  * 
  * @return int Returns 1 if registration was successful
  */
-int register_cerebros() {
+int register_backtest_cerebro() {
     auto& factory = CerebroFactory::instance();
     
     // Register BacktestCerebro
@@ -22,17 +21,12 @@ int register_cerebros() {
         return std::make_shared<BacktestCerebro>(name, params);
     });
     
-    // Register LiveCerebro
-    factory.register_cerebro("live", [](const std::string_view& name, CerebroParamsType params) {
-        return std::make_shared<LiveCerebro>(name, params);
-    });
-    
     return 1;
 }
 
 // This ensures the cerebros are registered when the library is loaded
 namespace {
-    static int registered = register_cerebros();
+    static int registered = register_backtest_cerebro();
 }
 
 } // namespace cerebro
