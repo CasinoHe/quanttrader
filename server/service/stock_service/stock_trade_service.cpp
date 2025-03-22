@@ -5,6 +5,7 @@
 #include "config/lua_config_loader.h"
 
 #include <sstream>
+#include <vector>
 
 namespace quanttrader {
 namespace service {
@@ -65,95 +66,68 @@ bool StockTradeService::prepare() {
             return false;
         }
         cerebro_map_[cerebro_name] = cerebro;
+        cerebro->initialize();
     }
-
-    // // prepare back test service
-    // std::string back_test_config = get_string_value("back_test_config");
-    // if (back_test_config == "this") {
-    //     back_test_config = get_config_path();
-    // }
-
-    // // Use the factory to create the back test service
-    // auto back_test_service = std::dynamic_pointer_cast<BackTestService>(factory.createService("back_test", back_test_config));
-    // if (!back_test_service) {
-    //     logger_->error("Failed to create the back test service.");
-    //     return false;
-    // }
-    
-    // back_test_service_ = back_test_service;
-    // back_test_service->set_response_queue(response_queue_);
-    // back_test_service->set_request_queue(request_queue_);
-
-    // if (!back_test_service->prepare()) {
-    //     logger_->error("Cannot prepare the back test service. Please check the service.log file for more information.");
-    //     return false;
-    // }
-
-    // // stock trade service should prepare the runners and all strategies
-    // if (!quanttrader::runner::prepare_stock_runners()) {
-    //     logger_->error("Cannot prepare the stock runners.");
-    //     return false;
-    // }
-
-    // if (!quanttrader::strategy::prepare_stategies()) {
-    //     logger_->error("Cannot prepare the stock strategies.");
-    //     return false;
-    // }
 
     return true;
 }
 
 void StockTradeService::run() {
-//     if (!is_service_prepared()) {
-//         logger_->error("Service is not prepared. Please prepare the service first.");
-//         return;
-//     }
+    if (!is_service_prepared()) {
+        logger_->error("Service is not prepared. Please prepare the service first.");
+        return;
+    }
 
-//     auto broker_service = std::static_pointer_cast<quanttrader::service::TwsService>(broker_service_);
-//     auto back_test_service = std::static_pointer_cast<quanttrader::service::BackTestService>(back_test_service_);
+    std::vector<std::thread> threads;
+    for (auto& pair : cerebro_map_) {
+        auto& cerebro = pair.second;
+        if (cerebro) {
+            threads.emplace_back([cerebro]() {
+                cerebro->run();
+            });
+        } else {
+            logger_->error("Cerebro {} is not initialized.", pair.first);
+        }
+    }
 
-//     std::thread broker_thread([&broker_service]() {
-//         broker_service->run();
-//     });
+    for (auto& thread : threads) {
+        if (thread.joinable()) {
+            thread.join();
+        }
+    }
+}
 
-//     std::thread back_test_thread([&back_test_service]() {
-//         back_test_service->run();
-//     });
+void StockTradeService::stop() {
+    for (auto& pair : cerebro_map_) {
+        auto& cerebro = pair.second;
+        if (cerebro) {
+            cerebro->stop();
+        } else {
+            logger_->error("Cerebro {} is not initialized.", pair.first);
+        }
+    }
+    logger_->info("Stop broker and back test service.");
+}
 
-//     broker_thread.join();
-//     back_test_thread.join();
-// }
+bool StockTradeService::is_service_prepared() const {
+    if (!ServiceBase<StockTradeService>::is_service_prepared()) {
+        return false;
+    }
 
-// void StockTradeService::stop() {
-//     auto broker_service = std::static_pointer_cast<quanttrader::service::TwsService>(broker_service_);
-//     auto back_test_service = std::static_pointer_cast<quanttrader::service::BackTestService>(back_test_service_);
+    for (auto& pair : cerebro_map_) {
+        auto& cerebro = pair.second;
+        if (!cerebro) {
+            logger_->error("Cerebro {} is not initialized.", pair.first);
+            return false;
+        }
+    }
 
-//     if (broker_service) {
-//         broker_service->stop();
-//     }
+    if (!broker_provider_) {
+        logger_->error("Broker provider is not initialized.");
+        return false;
+    }
 
-//     if (back_test_service) {
-//         back_test_service->stop();
-//     }
-//     logger_->info("Stop broker and back test service.");
-// }
-
-// bool StockTradeService::is_service_prepared() const {
-//     if (!ServiceBase<StockTradeService>::is_service_prepared()) {
-//         return false;
-//     }
-
-//     auto broker_service = std::static_pointer_cast<quanttrader::service::TwsService>(broker_service_);
-//     if (!broker_service || !broker_service->is_service_prepared()) {
-//         return false;
-//     }
-
-//     auto back_test_service = std::static_pointer_cast<quanttrader::service::BackTestService>(back_test_service_);
-//     if (!back_test_service || !back_test_service->is_service_prepared()) {
-//         return false;
-//     }
-
-//     return true;
+    return true;
 }
 
 }

@@ -2,7 +2,6 @@
 
 #include "service.h"
 #include "logger/quantlogger.h"
-// #include "concurrentqueue/blockingconcurrentqueue.h"
 
 #include <memory>
 #include <thread>
@@ -33,8 +32,6 @@ private:
 
 private:
     quanttrader::log::LoggerPtr logger_ {nullptr};
-    // std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::RequestHeader>>> request_queue_ {nullptr};
-    // std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::ResponseHeader>>> response_queue_ {nullptr};
     std::shared_ptr<broker::BrokerProvider> broker_provider_ {nullptr};  // broker provider, defined by configuration file
     std::unordered_map<std::string, std::shared_ptr<cerebro::Cerebro>> cerebro_map_ {};  // cerebro, defined by configuration file
 };
