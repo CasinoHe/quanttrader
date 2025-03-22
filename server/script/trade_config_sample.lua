@@ -2,6 +2,15 @@
 StockTradeService = {
 	broker_service = "tws",
 	broker_config = "tws_service.lua",
+	cerebro_names = "backtest,live",
+	backtest = {
+		cerebro_type = "backtest",
+		cerebro_config = "back_test_service.lua",
+	},
+	live = {
+		cerebro_type = "live",
+		cerebro_config = "tws_service.lua",
+	},
 	data_provider = {
 		"tws",          -- only tws works for now
 		"localdb",

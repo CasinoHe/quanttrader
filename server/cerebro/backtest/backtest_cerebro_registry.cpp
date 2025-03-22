@@ -17,7 +17,7 @@ int register_backtest_cerebro() {
     auto& factory = CerebroFactory::instance();
     
     // Register BacktestCerebro
-    factory.register_cerebro("backtest", [](const std::string_view& name, CerebroParamsType params) {
+    factory.register_cerebro(BACKTEST_CEREBRO_TYPE, [](const std::string_view& name, CerebroParamsType params) {
         return std::make_shared<BacktestCerebro>(name, params);
     });
     

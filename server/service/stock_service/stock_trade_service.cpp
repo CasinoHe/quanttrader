@@ -1,11 +1,16 @@
 #include "stock_trade_service.h"
 #include "service/service_consts.h"
 #include "broker/broker_provider_factory.h"
+#include "cerebro/cerebro_factory.h"
+#include "config/lua_config_loader.h"
+
+#include <sstream>
 
 namespace quanttrader {
 namespace service {
 
 namespace qlog = quanttrader::log;
+namespace qconfig = quanttrader::luascript;
 
 StockTradeService::StockTradeService(const std::string_view config_path) : ServiceBase<StockTradeService>(STOCK_TRADE_SERVICE_NAME) {
     logger_ = qlog::get_common_rotation_logger("StockTrade", "service");
@@ -36,38 +41,35 @@ bool StockTradeService::prepare() {
         qlog::Warn("Broker provider name is empty. Please check the {}.broker_provider section of configuration file {}.", get_service_name(), get_config_path());
     }
 
-    // prepare broker service first
-    // std::string broker_service_name = get_string_value("broker_service");
-    // std::string broker_config = get_string_value("broker_config");
+    // prepare cerebro
+    auto cerebro_names = get_string_value("cerebro_names");
+    std::string cerebro_name;
+    std::stringstream ss;
 
-    // // only tws now
-    // if (broker_service_name != "tws") {
-    //     logger_->error("Cannot find the broker service: {}", broker_service_name);
-    //     return false;
-    // }
+    while (std::getline(ss, cerebro_name, ',')) {
+        if (cerebro_name.empty()) {
+            continue;
+        }
+        auto cerebro_type = get_string_value(cerebro_name + ".cerebro_type");
+        auto cerebro_config = get_string_value(cerebro_name + ".cerebro_config");
+        if (cerebro_type.empty() || cerebro_config.empty()) {
+            logger_->warn("Cerebro type or config is empty. Please check the {}.cerebro_names section of configuration file {}.", get_service_name(), get_config_path());
+            qlog::Warn("Cerebro type or config is empty. Please check the {}.cerebro_names section of configuration file {}.", get_service_name(), get_config_path());
+            continue;
+        }
 
-    // if (broker_config == "this") {
-    //     broker_config = get_config_path();
-    // }
-    // request_queue_ = std::make_shared<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::RequestHeader>>>();
-    // response_queue_ = std::make_shared<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::ResponseHeader>>>();
-
-    // Use the factory to create the broker service
-    // auto& factory = ServiceFactory::instance();
-    // auto broker_service = std::dynamic_pointer_cast<TwsService>(factory.createService("tws", broker_config));
-    // if (!broker_service) {
-    //     logger_->error("Failed to create the broker service.");
-    //     return false;
-    // }
-    
-    // broker_service_ = broker_service;
-    // broker_service->set_response_queue(response_queue_);
-    // broker_service->set_request_queue(request_queue_);
-
-    // if (!broker_service->prepare()) {
-    //     logger_->error("Cannot prepare the broker service. Please check the service.log file for more information.");
-    //     return false;
-    // }
+        auto config_loader = qconfig::LuaConfigLoader(cerebro_config);
+        config_loader.load_config();
+        auto params = std::make_shared<std::unordered_map<std::string, std::any>>();
+        config_loader.get_all_values(cerebro_name, *params);
+        auto cerebro = cerebro::CerebroFactory::instance()->create_cerebro(cerebro_type, cerebro_name, params);
+        if (!cerebro) {
+            logger_->error("Failed to create the cerebro: {}, please check the configuration file.", cerebro_name);
+            qlog::Error("Failed to create the cerebro: {}, please check the configuration file.", cerebro_name);
+            return false;
+        }
+        cerebro_ = cerebro;
+    }
 
     // // prepare back test service
     // std::string back_test_config = get_string_value("back_test_config");

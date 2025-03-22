@@ -2,6 +2,7 @@
 
 #include "cerebro_base.h"
 #include "common/singleton.h"
+#include "cerebro/cerebro_consts.h"
 #include <unordered_map>
 #include <memory>
 #include <string>
