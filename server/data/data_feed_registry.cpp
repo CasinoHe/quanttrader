@@ -32,7 +32,7 @@ std::shared_ptr<storage::DataStorage> create_storage(const std::string& storage_
  * This function must be called during application initialization to register
  * all data feed implementations with the factory.
  */
-void register_data_feeds() {
+int register_data_feeds() {
     auto& factory = provider::DataProviderFactory::instance();
     
     // Register TWS data feed
@@ -49,6 +49,13 @@ void register_data_feeds() {
     factory.register_provider("yahoo", [](const std::string_view& data_prefix, provider::DataParamsType params) {
         return std::make_shared<feed::YahooDataFeed>(data_prefix, params);
     });
+
+    return 0;
+}
+
+namespace {
+    // Static variable to ensure that the data feeds are registered only once
+    static int register_data_feeds_once = register_data_feeds();
 }
 
 } // namespace data
