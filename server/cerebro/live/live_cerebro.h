@@ -22,8 +22,8 @@ public:
      * @param name Name of this cerebro instance
      * @param params Configuration parameters
      */
-    LiveCerebro(const std::string_view name, CerebroParamsType params)
-        : Cerebro(name, params), stop_flag_(false), trading_thread_(nullptr) {
+    LiveCerebro(const std::string_view name, const std::string& config_path)
+        : Cerebro(name, config_path), stop_flag_(false), trading_thread_(nullptr) {
         
         logger_->info("Created live trading cerebro: {}", name_);
     }

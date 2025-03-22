@@ -22,8 +22,8 @@ public:
      * @param name Name of this cerebro instance
      * @param params Configuration parameters
      */
-    BacktestCerebro(const std::string_view name, CerebroParamsType params)
-        : Cerebro(name, params), stop_flag_(false) {
+    BacktestCerebro(const std::string_view name, const std::string &config_path)
+        : Cerebro(name, config_path), stop_flag_(false) {
         
         logger_->info("Created backtest cerebro: {}", name_);
     }
