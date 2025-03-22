@@ -26,13 +26,13 @@ public:
      * 
      * @param cerebroType Type of cerebro to create (e.g., "backtest" or "live")
      * @param name Unique name to identify this cerebro instance
-     * @param params Configuration parameters
+     * @param configPath Path to the configuration file for the cerebro
      * @return std::shared_ptr<Cerebro> The created cerebro instance or nullptr if creation failed
      */
     std::shared_ptr<Cerebro> create_cerebro(
         const std::string& cerebroType,
         const std::string& name,
-        CerebroParamsType params) {
+        const std::string& configPath) {
         
         std::lock_guard<std::mutex> lock(mutex_);
         
@@ -43,7 +43,7 @@ public:
         }
         
         // Create the cerebro instance
-        auto cerebro = CerebroFactory::instance().create_cerebro(cerebroType, name, params);
+        auto cerebro = CerebroFactory::instance().create_cerebro(cerebroType, name, configPath);
         if (!cerebro) {
             logger_->error("Failed to create cerebro of type '{}' with name '{}'", cerebroType, name);
             return nullptr;

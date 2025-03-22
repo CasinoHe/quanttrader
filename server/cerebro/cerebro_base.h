@@ -22,9 +22,6 @@ class Strategy;
 
 namespace cerebro {
 
-// Typedef for parameters used across the system
-using CerebroParamsType = std::shared_ptr<std::unordered_map<std::string, std::any>>;
-
 /**
  * @brief Base class for Cerebro engine implementations
  * 
@@ -37,12 +34,12 @@ public:
      * @brief Construct a new Cerebro object
      * 
      * @param name Name of this Cerebro instance
-     * @param params Configuration parameters
+     * @param configPath Path to the configuration file for this Cerebro
      */
-    Cerebro(const std::string_view name, CerebroParamsType params)
-        : name_(name), params_(params) {
+    Cerebro(const std::string_view name, const std::string& configPath)
+        : name_(name), config_path_(configPath) {
         logger_ = quanttrader::log::get_common_rotation_logger(name_, "cerebro");
-        logger_->info("Created cerebro: {}", name_);
+        logger_->info("Created cerebro: {} with config: {}", name_, config_path_);
     }
 
     virtual ~Cerebro() {
@@ -50,7 +47,7 @@ public:
     }
 
     /**
-     * @brief Initialize the Cerebro engine with the provided parameters
+     * @brief Initialize the Cerebro engine with the provided configuration
      * 
      * @return true if initialization succeeded
      * @return false if initialization failed
@@ -104,9 +101,16 @@ public:
      */
     std::string get_name() const noexcept { return name_; }
 
+    /**
+     * @brief Get the config path of this Cerebro instance
+     * 
+     * @return std::string The config path
+     */
+    std::string get_config_path() const noexcept { return config_path_; }
+
 protected:
     std::string name_;
-    CerebroParamsType params_;
+    std::string config_path_;
     quanttrader::log::LoggerPtr logger_;
     std::vector<std::shared_ptr<strategy::Strategy>> strategies_;
     std::vector<std::shared_ptr<data::DataProvider>> data_providers_;
