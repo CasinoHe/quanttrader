@@ -12,7 +12,7 @@ bool registerStockTradeService() {
         return service;  // Now StockTradeService directly inherits ServiceInterface through ServiceBase
     };
     
-    return ServiceFactory::instance().registerService(STOCK_TRADE_SERVICE_NAME, creatorFunc);
+    return ServiceFactory::instance()->registerService(STOCK_TRADE_SERVICE_NAME, creatorFunc);
 }
 
 // Automatic registration
