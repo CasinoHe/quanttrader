@@ -2,7 +2,7 @@
 
 #include "service.h"
 #include "logger/quantlogger.h"
-#include "concurrentqueue/blockingconcurrentqueue.h"
+// #include "concurrentqueue/blockingconcurrentqueue.h"
 
 #include <memory>
 #include <thread>
@@ -10,9 +10,11 @@
 namespace quanttrader {
 
 namespace broker {
-class TwsClient;
-struct RequestHeader;
-struct ResponseHeader;
+class BrokerProvider;
+}
+
+namespace cerebro {
+class Cerebro;
 }
 
 namespace service {
@@ -31,10 +33,10 @@ private:
 
 private:
     quanttrader::log::LoggerPtr logger_ {nullptr};
-    std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::RequestHeader>>> request_queue_ {nullptr};
-    std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::ResponseHeader>>> response_queue_ {nullptr};
-    std::shared_ptr<ServiceInterface> broker_service_ {nullptr};  // broker service, defined by configuration file
-    std::shared_ptr<ServiceInterface> back_test_service_ {nullptr};  // back test service, defined by configuration file
+    // std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::RequestHeader>>> request_queue_ {nullptr};
+    // std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::shared_ptr<broker::ResponseHeader>>> response_queue_ {nullptr};
+    std::shared_ptr<broker::BrokerProvider> broker_provider_ {nullptr};  // broker provider, defined by configuration file
+    std::shared_ptr<cerebro::Cerebro> cerebro_ {nullptr};  // cerebro, defined by configuration file
 };
 
 }

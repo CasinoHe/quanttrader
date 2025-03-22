@@ -1,6 +1,7 @@
 -- stock trade service configuration
-stock_trade_service = {
+StockTradeService = {
 	broker_service = "tws",
+	broker_config = "tws_service.lua",
 	data_provider = {
 		"tws",          -- only tws works for now
 		"localdb",
