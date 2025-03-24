@@ -5,11 +5,11 @@ StockTradeService = {
 	cerebro_names = "backtest,live",
 	backtest = {
 		cerebro_type = "backtest",
-		cerebro_config = "back_test_service.lua",
+		cerebro_config = "backtest_cerebro.lua",
 	},
 	live = {
 		cerebro_type = "live",
-		cerebro_config = "tws_service.lua",
+		cerebro_config = "live_trade_cerebro.lua",
 	},
 	data_provider = {
 		"tws",          -- only tws works for now

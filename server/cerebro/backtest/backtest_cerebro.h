@@ -20,55 +20,16 @@ public:
      * @brief Construct a new Backtest Cerebro object
      * 
      * @param name Name of this cerebro instance
-     * @param params Configuration parameters
+     * @param config_path Configuration file path
      */
     BacktestCerebro(const std::string_view name, const std::string &config_path)
-        : Cerebro(name, config_path), stop_flag_(false) {
+        : Cerebro(name, config_path) {
         
         logger_->info("Created backtest cerebro: {}", name_);
     }
 
     ~BacktestCerebro() {
-        stop();
         logger_->info("Destroying backtest cerebro: {}", name_);
-    }
-
-    /**
-     * @brief Initialize the backtest engine
-     * 
-     * Sets up the data feeds, strategies, and broker for backtesting
-     * 
-     * @return true if initialization succeeds
-     * @return false if initialization fails
-     */
-    bool initialize() override {
-        logger_->info("Initializing backtest cerebro: {}", name_);
-        
-        if (strategies_.empty()) {
-            logger_->error("No strategies added to cerebro");
-            return false;
-        }
-        
-        if (data_providers_.empty()) {
-            logger_->error("No data providers added to cerebro");
-            return false;
-        }
-        
-        if (!broker_) {
-            logger_->error("No broker set for cerebro");
-            return false;
-        }
-        
-        // Prepare data providers
-        for (auto& data_provider : data_providers_) {
-            if (!data_provider->prepare_data()) {
-                logger_->error("Failed to prepare data provider: {}", data_provider->get_data_prefix());
-                return false;
-            }
-        }
-        
-        logger_->info("Backtest cerebro initialized successfully");
-        return true;
     }
 
     /**
@@ -89,9 +50,7 @@ public:
         stop_flag_.store(false);
         
         // Start data feeds
-        for (auto& data_provider : data_providers_) {
-            data_provider->start_request_data();
-        }
+        start_data_providers();
         
         // Main backtest loop
         while (!stop_flag_.load()) {
@@ -112,13 +71,11 @@ public:
             // Get next data points from all providers
             for (auto& data_provider : data_providers_) {
                 auto bar = data_provider->next();
-                // TODO: Process this bar with all strategies
+                // Process this bar with all strategies
             }
             
-            // Process strategies
-            for (auto& strategy : strategies_) {
-                strategy->on_bar();
-            }
+            // Process strategies with new data
+            process_strategies_on_bar();
             
             // Check if we've reached the end of data
             bool end_of_data = true;
@@ -142,70 +99,40 @@ public:
         return true;
     }
 
+protected:
     /**
-     * @brief Stop the backtest
-     */
-    void stop() override {
-        stop_flag_.store(true);
-        logger_->info("Stopping backtest");
-    }
-
-    /**
-     * @brief Add a strategy to the backtest
+     * @brief Initialize broker for backtesting
      * 
-     * @param strategy The strategy to add
-     * @return true if added successfully
-     * @return false if failed to add
+     * @return true if successful
+     * @return false if failed
      */
-    bool add_strategy(std::shared_ptr<strategy::Strategy> strategy) override {
-        if (!strategy) {
-            logger_->error("Cannot add null strategy");
+    bool initialize_broker() override {
+        // Initialize backtesting broker simulation
+        if (!broker_->init_backtest()) {
+            logger_->error("Failed to initialize backtest broker");
             return false;
         }
         
-        strategies_.push_back(strategy);
-        logger_->info("Added strategy to backtest");
         return true;
     }
-
+    
     /**
-     * @brief Add a data provider to the backtest
+     * @brief Prepare data providers for backtesting
      * 
-     * @param data_provider The data provider to add
-     * @return true if added successfully
-     * @return false if failed to add
+     * @return true if successful
+     * @return false if failed
      */
-    bool add_data(std::shared_ptr<data::DataProvider> data_provider) override {
-        if (!data_provider) {
-            logger_->error("Cannot add null data provider");
-            return false;
+    bool prepare_data_providers() override {
+        // Prepare data providers for historical data
+        for (auto& data_provider : data_providers_) {
+            if (!data_provider->prepare_data()) {
+                logger_->error("Failed to prepare data provider: {}", data_provider->get_data_prefix());
+                return false;
+            }
         }
         
-        data_providers_.push_back(data_provider);
-        logger_->info("Added data provider: {}", data_provider->get_data_prefix());
         return true;
     }
-
-    /**
-     * @brief Set the broker for the backtest
-     * 
-     * @param broker The broker to use
-     * @return true if set successfully
-     * @return false if failed to set
-     */
-    bool set_broker(std::shared_ptr<broker::BrokerProvider> broker) override {
-        if (!broker) {
-            logger_->error("Cannot set null broker");
-            return false;
-        }
-        
-        broker_ = broker;
-        logger_->info("Set broker for backtest");
-        return true;
-    }
-
-private:
-    std::atomic<bool> stop_flag_;
 };
 
 } // namespace cerebro
