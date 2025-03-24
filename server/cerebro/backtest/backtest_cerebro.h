@@ -41,7 +41,8 @@ public:
      * @return false if backtest failed
      */
     bool run() override {
-        if (!initialize()) {
+        // Use initialize_from_config instead of initialize directly
+        if (!initialize_from_config()) {
             logger_->error("Failed to initialize backtest");
             return false;
         }
@@ -100,6 +101,27 @@ public:
     }
 
 protected:
+    /**
+     * @brief Load configuration from config file for backtesting
+     * 
+     * Loads data providers, broker, and strategies for backtesting.
+     * 
+     * @return true if loading succeeded
+     * @return false if loading failed
+     */
+    bool load_config() override {
+        logger_->info("Loading backtest configuration from: {}", get_config_path());
+        
+        // Load and create backtest components from config
+        // TODO: Implement actual configuration loading for backtesting
+        // This would include:
+        // 1. Creating appropriate data providers for historical data
+        // 2. Creating a simulated broker for backtesting
+        // 3. Loading and configuring strategies for backtesting
+        
+        return true; // Replace with actual implementation
+    }
+
     /**
      * @brief Initialize broker for backtesting
      * 

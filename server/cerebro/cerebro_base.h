@@ -49,46 +49,25 @@ public:
     }
 
     /**
-     * @brief Initialize the Cerebro engine with the provided configuration
+     * @brief Initialize the Cerebro engine with configurations
+     * 
+     * This method loads data providers, broker, and strategies from configuration
+     * and then calls initialize() to complete the initialization process.
      * 
      * @return true if initialization succeeded
      * @return false if initialization failed
      */
-    bool initialize() {
-        logger_->info("Initializing cerebro: {}", name_);
+    virtual bool initialize_from_config() {
+        logger_->info("Initializing cerebro from config: {}", config_path_);
         
-        if (strategies_.empty()) {
-            logger_->error("No strategies added to cerebro");
+        // Load and create data providers, broker, and strategies from config
+        if (!load_config()) {
+            logger_->error("Failed to load configuration");
             return false;
         }
         
-        if (data_providers_.empty()) {
-            logger_->error("No data providers added to cerebro");
-            return false;
-        }
-        
-        if (!broker_) {
-            logger_->error("No broker set for cerebro");
-            return false;
-        }
-        
-        // Hook for broker-specific initialization
-        if (!initialize_broker()) {
-            return false;
-        }
-        
-        // Prepare data providers for specific mode (backtest or live)
-        if (!prepare_data_providers()) {
-            return false;
-        }
-        
-        // Hook for additional initialization in derived classes
-        if (!initialize_derived()) {
-            return false;
-        }
-        
-        logger_->info("Cerebro initialized successfully");
-        return true;
+        // Call the base initialize method to complete initialization
+        return initialize();
     }
 
     /**
@@ -179,6 +158,67 @@ public:
     std::string get_config_path() const noexcept { return config_path_; }
 
 protected:
+    /**
+     * @brief Initialize the Cerebro engine with the provided configuration
+     * 
+     * This should be called by initialize_from_config after loading configurations.
+     * 
+     * @return true if initialization succeeded
+     * @return false if initialization failed
+     */
+    virtual bool initialize() {
+        logger_->info("Initializing cerebro: {}", name_);
+        
+        if (strategies_.empty()) {
+            logger_->error("No strategies added to cerebro");
+            return false;
+        }
+        
+        if (data_providers_.empty()) {
+            logger_->error("No data providers added to cerebro");
+            return false;
+        }
+        
+        if (!broker_) {
+            logger_->error("No broker set for cerebro");
+            return false;
+        }
+        
+        // Hook for broker-specific initialization
+        if (!initialize_broker()) {
+            return false;
+        }
+        
+        // Prepare data providers for specific mode (backtest or live)
+        if (!prepare_data_providers()) {
+            return false;
+        }
+        
+        // Hook for additional initialization in derived classes
+        if (!initialize_derived()) {
+            return false;
+        }
+        
+        logger_->info("Cerebro initialized successfully");
+        return true;
+    }
+
+    /**
+     * @brief Load configuration from config file
+     * 
+     * This method loads the data providers, broker, and strategies
+     * from the configuration file specified in config_path_.
+     * 
+     * @return true if loading succeeded
+     * @return false if loading failed
+     */
+    virtual bool load_config() {
+        // Default implementation - derived classes should override this
+        // to load their specific configurations
+        logger_->warn("load_config() not implemented in base class");
+        return false;
+    }
+
     /**
      * @brief Hook for broker-specific initialization in derived classes
      * 

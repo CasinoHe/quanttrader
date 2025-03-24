@@ -41,7 +41,8 @@ public:
      * @return false if trading session failed to start
      */
     bool run() override {
-        if (!initialize()) {
+        // Use initialize_from_config instead of initialize directly
+        if (!initialize_from_config()) {
             logger_->error("Failed to initialize live trading");
             return false;
         }
@@ -76,6 +77,27 @@ public:
     }
 
 protected:
+    /**
+     * @brief Load configuration from config file for live trading
+     * 
+     * Loads data providers, broker, and strategies for live trading.
+     * 
+     * @return true if loading succeeded
+     * @return false if loading failed
+     */
+    bool load_config() override {
+        logger_->info("Loading live trading configuration from: {}", get_config_path());
+        
+        // Load and create live trading components from config
+        // TODO: Implement actual configuration loading for live trading
+        // This would include:
+        // 1. Creating appropriate data providers for live data
+        // 2. Creating a real broker connection
+        // 3. Loading and configuring strategies for live trading
+        
+        return true; // Replace with actual implementation
+    }
+
     /**
      * @brief Initialize broker for live trading
      * 
