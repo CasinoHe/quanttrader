@@ -9,10 +9,10 @@
 namespace quanttrader {
 namespace strategy {
 
-class Strategy;
+class StrategyBase;
 
 using StrategyCreateFuncParemType = std::unordered_map<std::string, std::any>;
-using StrategyCreateFuncType = std::function<std::shared_ptr<Strategy>(StrategyCreateFuncParemType &)>;
+using StrategyCreateFuncType = std::function<std::shared_ptr<StrategyBase>(StrategyCreateFuncParemType &)>;
 
 class StrategyFactory {
 public:
@@ -47,7 +47,7 @@ public:
         return strategies_.find(name) != strategies_.end();
     }
 
-    static std::shared_ptr<Strategy> create_strategy(const std::string &name, StrategyCreateFuncParemType &params) {
+    static std::shared_ptr<StrategyBase> create_strategy(const std::string &name, StrategyCreateFuncParemType &params) {
         auto it = strategies_.find(name);
         if (it != strategies_.end()) {
             return it->second(params);

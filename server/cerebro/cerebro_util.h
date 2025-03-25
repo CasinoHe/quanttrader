@@ -11,20 +11,20 @@ namespace quanttrader {
 namespace cerebro {
 
 /**
- * @brief Utility class for working with Cerebro instances
+ * @brief Utility class for working with CerebroBase instances
  * 
- * This class provides static methods to simplify the creation and use of Cerebro instances.
+ * This class provides static methods to simplify the creation and use of CerebroBase instances.
  */
 class CerebroUtil {
 public:
     /**
-     * @brief Create a backtest Cerebro instance
+     * @brief Create a backtest CerebroBase instance
      * 
      * @param name Name for this cerebro instance
      * @param configPath Path to the configuration file for the cerebro
-     * @return std::shared_ptr<Cerebro> The created cerebro instance or nullptr if creation failed
+     * @return std::shared_ptr<CerebroBase> The created cerebro instance or nullptr if creation failed
      */
-    static std::shared_ptr<Cerebro> create_backtest(
+    static std::shared_ptr<CerebroBase> create_backtest(
         const std::string& name,
         const std::string& configPath) {
         
@@ -32,13 +32,13 @@ public:
     }
     
     /**
-     * @brief Create a live trading Cerebro instance
+     * @brief Create a live trading CerebroBase instance
      * 
      * @param name Name for this cerebro instance
      * @param configPath Path to the configuration file for the cerebro
-     * @return std::shared_ptr<Cerebro> The created cerebro instance or nullptr if creation failed
+     * @return std::shared_ptr<CerebroBase> The created cerebro instance or nullptr if creation failed
      */
-    static std::shared_ptr<Cerebro> create_live(
+    static std::shared_ptr<CerebroBase> create_live(
         const std::string& name,
         const std::string& configPath) {
         
@@ -46,17 +46,17 @@ public:
     }
     
     /**
-     * @brief Get a Cerebro instance by name
+     * @brief Get a CerebroBase instance by name
      * 
      * @param name Name of the cerebro instance to retrieve
-     * @return std::shared_ptr<Cerebro> The cerebro instance or nullptr if not found
+     * @return std::shared_ptr<CerebroBase> The cerebro instance or nullptr if not found
      */
-    static std::shared_ptr<Cerebro> get(const std::string& name) {
+    static std::shared_ptr<CerebroBase> get(const std::string& name) {
         return CerebroManager::instance().get_cerebro(name);
     }
     
     /**
-     * @brief Destroy a Cerebro instance by name
+     * @brief Destroy a CerebroBase instance by name
      * 
      * @param name Name of the cerebro instance to destroy
      * @return true if successfully destroyed

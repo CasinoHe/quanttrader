@@ -9,21 +9,21 @@ namespace quanttrader {
 namespace cerebro {
 
 /**
- * @brief Implementation of Cerebro for backtesting
+ * @brief Implementation of CerebroBase for backtesting
  * 
  * This class handles the execution of strategies in a backtesting environment,
  * coordinating data feeds and broker simulation.
  */
-class BacktestCerebro : public Cerebro {
+class BacktestCerebro : public CerebroBase {
 public:
     /**
-     * @brief Construct a new Backtest Cerebro object
+     * @brief Construct a new Backtest CerebroBase object
      * 
      * @param name Name of this cerebro instance
      * @param config_path Configuration file path
      */
-    BacktestCerebro(const std::string_view name, const std::string &config_path)
-        : Cerebro(name, config_path) {
+    BacktestCerebro(const std::string_view name)
+        : CerebroBase(name) {
         
         logger_->info("Created backtest cerebro: {}", name_);
     }

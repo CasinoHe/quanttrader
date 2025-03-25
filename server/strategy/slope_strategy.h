@@ -5,9 +5,9 @@
 namespace quanttrader {
 namespace strategy {
 
-class SlopeStrategy : public Strategy {
+class SlopeStrategy : public StrategyBase {
 public:
-    SlopeStrategy(StrategyCreateFuncParemType params) : Strategy(params) {
+    SlopeStrategy(StrategyCreateFuncParemType params) : StrategyBase(params) {
     }
 
     void on_tick() override {

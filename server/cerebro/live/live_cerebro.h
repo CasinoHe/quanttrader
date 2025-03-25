@@ -8,21 +8,21 @@ namespace quanttrader {
 namespace cerebro {
 
 /**
- * @brief Implementation of Cerebro for live trading
+ * @brief Implementation of CerebroBase for live trading
  * 
  * This class handles the execution of strategies in a live trading environment,
  * coordinating real-time data feeds and broker interactions.
  */
-class LiveCerebro : public Cerebro {
+class LiveCerebro : public CerebroBase {
 public:
     /**
-     * @brief Construct a new Live Cerebro object
+     * @brief Construct a new Live CerebroBase object
      * 
      * @param name Name of this cerebro instance
      * @param config_path Configuration file path
      */
-    LiveCerebro(const std::string_view name, const std::string& config_path)
-        : Cerebro(name, config_path), trading_thread_(nullptr) {
+    LiveCerebro(const std::string_view name)
+        : CerebroBase(name), trading_thread_(nullptr) {
         
         logger_->info("Created live trading cerebro: {}", name_);
     }
@@ -62,7 +62,7 @@ public:
      * @brief Stop the live trading session
      */
     void stop() override {
-        Cerebro::stop(); // Call base class stop first
+        CerebroBase::stop(); // Call base class stop first
         
         if (!trading_thread_) {
             return;

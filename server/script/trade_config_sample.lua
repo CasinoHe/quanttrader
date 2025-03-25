@@ -1,20 +1,30 @@
 -- stock trade service configuration
 StockTradeService = {
+	-- settings for broker
 	broker_service = "tws",
-	broker_config = "tws_service.lua",
-	cerebro_names = "backtest,live",
-	backtest = {
-		cerebro_type = "backtest",
-		cerebro_config = "backtest_cerebro.lua",
+	broker_config = "this",  -- "this" means we should load config from this file
+
+	-- settings for data series
+	data_series = "daily_data,min_data,sec_data",
+	daily_data = {
+		provider_type = "tws",
 	},
-	live = {
-		cerebro_type = "live",
-		cerebro_config = "live_trade_cerebro.lua",
+	min_data = {
+		provider_type = "tws",
 	},
-	data_provider = {
-		"tws",          -- only tws works for now
-		"localdb",
-		"yahoofinance",
+	sec_data = {
+		provider_type = "tws",
+	},
+
+	-- setting for cerebro
+	cerebro_names = "backtest_cerebro,live_cerebro",
+	backtest_cerebro = {
+		cerebro_type = "",
+		cerebro_config = "this",
+	},
+	live_cerebro = {
+		cerebro_type = "",
+		cerebro_config = "this",
 	},
 	risk_manager = {
 		"to_be_implemented",

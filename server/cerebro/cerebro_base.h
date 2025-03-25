@@ -27,9 +27,9 @@ namespace cerebro {
 class CerebroBase {
 public:
     /**
-     * @brief Construct a new Cerebro object
+     * @brief Construct a new CerebroBase object
      * 
-     * @param name Name of this Cerebro instance
+     * @param name Name of this CerebroBase instance
      */
     CerebroBase(const std::string_view name);
     virtual ~CerebroBase();

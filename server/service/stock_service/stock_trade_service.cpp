@@ -1,6 +1,8 @@
 #include "stock_trade_service.h"
 #include "service/service_consts.h"
 #include "broker/broker_provider_factory.h"
+#include "data/data_provider_factory.h"
+#include "strategy/strategy_factory.h"
 #include "cerebro/cerebro_factory.h"
 #include "config/lua_config_loader.h"
 
@@ -24,30 +26,7 @@ StockTradeService::StockTradeService(const std::string_view config_path) : Servi
     }
 }
 
-bool StockTradeService::prepare() {
-    auto result = ServiceBase<StockTradeService>::prepare();
-    if (!result) {
-        logger_->error("Cannot load configuration file: {}. Please check the existence of the file or try to run the file.", get_config_path());
-        qlog::Error("Cannot load configuration file: {}. Please check the existence of the file or try to run the file.", get_config_path());
-        return false;
-    }
-
-    // Get and prepare broker provider
-    auto broker_provider_name = get_string_value("broker_provider");
-    auto broker_provider_config = get_string_value("broker_config");
-    if (!broker_provider_name.empty()) {
-        broker_provider_ = broker::BrokerProviderFactory::instance()->createProvider(broker_provider_name, broker_provider_config);
-        if (!broker_provider_) {
-            logger_->error("Failed to create the broker provider: {}, please check the configuration file.", broker_provider_name);
-            qlog::Error("Failed to create the broker provider: {}, please check the configuration file.", broker_provider_name);
-            return false;
-        }
-        logger_->info("Created broker provider: {}", broker_provider_name);
-    } else {
-        logger_->warn("Broker provider name is empty. Please check the {}.broker_provider section of configuration file {}.", get_service_name(), get_config_path());
-        qlog::Warn("Broker provider name is empty. Please check the {}.broker_provider section of configuration file {}.", get_service_name(), get_config_path());
-    }
-
+bool StockTradeService::prepare_data_series() {
     // Parse data provider configurations
     auto data_series = get_string_value("data_series");
     std::vector<std::string> data_prefixes;
@@ -59,12 +38,6 @@ bool StockTradeService::prepare() {
         }
     }
 
-    // Create data providers
-    std::shared_ptr<std::unordered_map<std::string, std::any>> params = std::make_shared<std::unordered_map<std::string, std::any>>();
-    auto& config_loader = qconfig::LuaConfigLoader::instance();
-    config_loader.read_data_values(params.get());
-    
-    std::vector<std::shared_ptr<data::provider::DataProvider>> data_providers;
     for (const auto& prefix : data_prefixes) {
         std::string provider_type = get_string_value(prefix + ".provider_type");
         if (provider_type.empty()) {
@@ -72,6 +45,11 @@ bool StockTradeService::prepare() {
             continue;
         }
         
+        // get all params from configuration file
+        auto params = std::make_shared<std::unordered_map<std::string, std::any>>();
+        (*params)["data_prefix"] = prefix;
+        (*params)["broker_provider"] = broker_provider_;
+        get_all_values_in_table(prefix, *params);
         auto provider = data::provider::DataProviderFactory::instance()->create_provider(provider_type, prefix, params);
         if (!provider) {
             logger_->error("Failed to create data provider with prefix: {} and type: {}", prefix, provider_type);
@@ -83,20 +61,14 @@ bool StockTradeService::prepare() {
             return false;
         }
         
-        data_providers.push_back(provider);
+        data_providers_.push_back(provider);
         logger_->info("Created and prepared data provider: {} of type: {}", prefix, provider_type);
     }
+    return true;
+}
 
-    // Get strategy configurations
-    auto strategy_names = get_string_value("strategy_names");
-    std::vector<std::string> strategies;
-    std::stringstream ss(strategy_names);
-    std::string strategy_name;
-    while (std::getline(ss, strategy_name, ',')) {
-        if (!strategy_name.empty()) {
-            strategies.push_back(strategy_name);
-        }
-    }
+bool StockTradeService::prepare_cerebro() {
+    std::stringstream ss;
 
     // Prepare cerebro instances
     auto cerebro_names = get_string_value("cerebro_names");
@@ -115,6 +87,10 @@ bool StockTradeService::prepare() {
             continue;
         }
 
+        if (cerebro_config == "this") {
+            cerebro_config = get_config_path();
+        }
+
         // Create cerebro instance
         auto cerebro = cerebro::CerebroFactory::instance()->create_cerebro(cerebro_type, cerebro_name, cerebro_config);
         if (!cerebro) {
@@ -124,13 +100,15 @@ bool StockTradeService::prepare() {
         }
         
         // Add data providers to cerebro
-        for (size_t i = 0; i < data_providers.size(); ++i) {
-            std::string data_name = "data" + std::to_string(i+1);
-            if (!cerebro->add_data(data_name, data_providers[i])) {
-                logger_->error("Failed to add data provider {} to cerebro: {}", data_prefixes[i], cerebro_name);
+        for (auto iter = data_providers_.begin(); iter != data_providers_.end(); iter++) {
+            auto provider = *iter;
+            std::string data_name = provider->get_data_prefix();
+            if (!cerebro->add_data(data_name, provider)) {
+                logger_->error("Failed to add data provider {} to cerebro: {}", data_name, cerebro_name);
                 return false;
+            } else {
+                logger_->info("Added data provider {} to cerebro: {}", data_name, cerebro_name);
             }
-            logger_->info("Added data provider {} to cerebro: {}", data_prefixes[i], cerebro_name);
             
             // Check if we need to resample this data
             std::string resample_key = cerebro_name + "." + data_name + ".resample";
@@ -161,17 +139,9 @@ bool StockTradeService::prepare() {
         }
         
         // Add strategies to cerebro
-        for (const auto& strat_name : strategies) {
-            auto strategy_params = std::make_shared<std::unordered_map<std::string, std::any>>(*params);
-            (*strategy_params)["strategy_name"] = strat_name;
-            
-            auto strategy = strategy::StrategyFactory::create_strategy(strat_name, *strategy_params);
-            if (!strategy) {
-                logger_->error("Failed to create strategy: {}", strat_name);
-                return false;
-            }
-            
-            if (!cerebro->add_strategy(strategy)) {
+        for (const auto& strat : strategy_map_) {
+            const std::string &strat_name = strat.first;
+            if (!cerebro->add_strategy(strat.second)) {
                 logger_->error("Failed to add strategy {} to cerebro: {}", strat_name, cerebro_name);
                 return false;
             }
@@ -187,6 +157,82 @@ bool StockTradeService::prepare() {
             return false;
         }
         logger_->info("Successfully prepared cerebro: {}", cerebro_name);
+    }
+    return true;
+}
+
+bool StockTradeService::prepare_strategyes() {
+    // Get strategy configurations
+    auto strategy_names = get_string_value("strategy_names");
+    std::vector<std::string> strategies;
+    std::stringstream ss(strategy_names);
+    std::string strategy_name;
+    while (std::getline(ss, strategy_name, ',')) {
+        if (!strategy_name.empty()) {
+            strategies.push_back(strategy_name);
+        }
+    }
+
+    for (const auto &strategy_name : strategies) {
+        // build strategy data
+        auto params = std::make_shared<std::unordered_map<std::string, std::any>>();
+        get_all_values_in_table(strategy_name, *params);
+        auto strategy_params = std::make_shared<std::unordered_map<std::string, std::any>>(*params);
+        (*strategy_params)["strategy_name"] = strategy_name;
+        
+        auto strategy = strategy::StrategyFactory::create_strategy(strategy_name, *strategy_params);
+        if (!strategy) {
+            logger_->error("Failed to create strategy: {}", strategy_name);
+            return false;
+        }
+
+        strategy_map_[strategy_name] = strategy;
+    }
+
+    return true;
+}
+
+bool StockTradeService::prepare() {
+    auto result = ServiceBase<StockTradeService>::prepare();
+    if (!result) {
+        logger_->error("Cannot load configuration file: {}. Please check the existence of the file or try to run the file.", get_config_path());
+        qlog::Error("Cannot load configuration file: {}. Please check the existence of the file or try to run the file.", get_config_path());
+        return false;
+    }
+
+    // Get and prepare broker provider
+    auto broker_provider_name = get_string_value("broker_provider");
+    auto broker_provider_config = get_string_value("broker_config");
+    // if the broker provider config is set to "this", then use the current config file
+    if (broker_provider_config == "this") {
+        broker_provider_config = get_config_path();
+    }
+    if (!broker_provider_name.empty()) {
+        broker_provider_ = broker::BrokerProviderFactory::instance()->createProvider(broker_provider_name, broker_provider_config);
+        if (!broker_provider_) {
+            logger_->error("Failed to create the broker provider: {}, please check the configuration file.", broker_provider_name);
+            qlog::Error("Failed to create the broker provider: {}, please check the configuration file.", broker_provider_name);
+            return false;
+        }
+        logger_->info("Created broker provider: {}", broker_provider_name);
+    } else {
+        logger_->warn("Broker provider name is empty. Please check the {}.broker_provider section of configuration file {}.", get_service_name(), get_config_path());
+        qlog::Warn("Broker provider name is empty. Please check the {}.broker_provider section of configuration file {}.", get_service_name(), get_config_path());
+    }
+
+    // prepare data series 
+    if (!prepare_data_series()) {
+        return false;
+    }
+
+    // prepare strategies
+    if (!prepare_strategyes()) {
+        return false;
+    }
+
+    // prepare cerebro
+    if (!prepare_cerebro()) {
+        return false;
     }
 
     return !cerebro_map_.empty();

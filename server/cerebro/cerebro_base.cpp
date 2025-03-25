@@ -6,7 +6,7 @@ namespace cerebro {
 CerebroBase::CerebroBase(const std::string_view name) : name_(name), stop_flag_(false) {
         logger_ = quanttrader::log::get_common_rotation_logger(name_, "cerebro");
         logger_->info("Created cerebro: {} ", name_);
-    logger_ = quanttrader::log::get_common_rotation_logger("Cerebro", "cerebro");
+    logger_ = quanttrader::log::get_common_rotation_logger("CerebroBase", "cerebro");
     replay_controller_ = std::make_shared<data::replay::DataReplayController>();
 }
 
@@ -107,7 +107,7 @@ bool CerebroBase::resample_data(const std::string& name, data::BarType target_ty
 
 bool CerebroBase::prepare() {
     if (is_prepared_) {
-        logger_->warn("Cerebro is already prepared");
+        logger_->warn("CerebroBase is already prepared");
         return true;
     }
     
@@ -152,13 +152,13 @@ bool CerebroBase::prepare() {
     }
     
     is_prepared_ = true;
-    logger_->info("Cerebro preparation completed successfully");
+    logger_->info("CerebroBase preparation completed successfully");
     return true;
 }
 
 bool CerebroBase::stop() {
     if (!is_running_) {
-        logger_->warn("Cerebro is not running");
+        logger_->warn("CerebroBase is not running");
         return true;
     }
     
@@ -171,13 +171,13 @@ bool CerebroBase::stop() {
     }
     
     is_running_ = false;
-    logger_->info("Cerebro stopped successfully");
+    logger_->info("CerebroBase stopped successfully");
     return true;
 }
 
 bool CerebroBase::process_next() {
     if (!is_prepared_) {
-        logger_->error("Cerebro is not prepared");
+        logger_->error("CerebroBase is not prepared");
         return false;
     }
     
