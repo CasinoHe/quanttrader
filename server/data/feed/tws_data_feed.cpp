@@ -25,8 +25,8 @@ TwsDataFeed::TwsDataFeed(const std::string_view &data_prefix, provider::DataPara
 
 bool TwsDataFeed::prepare_data() {
     // Extract configuration parameters using the data prefix
-    tick_name_ = get_data_by_prefix<std::string>(DATA_TICK_NAME);
-    if (tick_name_.empty()) {
+    symbol_ = get_data_by_prefix<std::string>(DATA_TICK_NAME);
+    if (symbol_.empty()) {
         logger_->error("Cannot find the tick name for the data provider: {}", data_prefix_);
         return false;
     }
@@ -44,18 +44,32 @@ bool TwsDataFeed::prepare_data() {
         is_historical_ = true;
         start_date_ = get_data_by_prefix<std::string>(DATA_START_DATE_NAME);
         end_date_ = get_data_by_prefix<std::string>(DATA_END_DATE_NAME);
-        bar_type_ = get_data_by_prefix<std::string>(BAR_TYPE_NAME);
+        bar_type_str_ = get_data_by_prefix<std::string>(BAR_TYPE_NAME);
 
         // get bar type and bar size
-        auto bar_type_size = get_bar_type_from_string(bar_type_);
+        auto bar_type_size = get_bar_type_from_string(bar_type_str_);
         if (bar_type_size.first == BarType::NONE) {
-            logger_->error("Cannot parse the bar type: {}", bar_type_);
+            logger_->error("Cannot parse the bar type: {}", bar_type_str_);
             return false;
         } else {
-            bar_line_ = std::make_shared<util::BarLine>(0, bar_type_size.first, bar_type_size.second);
+            bar_type_ = bar_type_size.first;
+            bar_size_ = bar_type_size.second;
+            bar_line_ = std::make_shared<util::BarLine>(0, bar_type_, bar_size_);
         }
     } else if (data_type == "realtime") {
         is_realtime_ = true;
+        
+        // For realtime data, we still need a bar type for data structure
+        bar_type_str_ = get_data_by_prefix<std::string>(BAR_TYPE_NAME, "1 min");
+        auto bar_type_size = get_bar_type_from_string(bar_type_str_);
+        if (bar_type_size.first == BarType::NONE) {
+            logger_->error("Cannot parse the bar type: {}", bar_type_str_);
+            return false;
+        } else {
+            bar_type_ = bar_type_size.first;
+            bar_size_ = bar_type_size.second;
+            bar_line_ = std::make_shared<util::BarLine>(0, bar_type_, bar_size_);
+        }
     } else {
         logger_->error("Unsupported data type: {}", data_type);
         return false;
@@ -102,12 +116,12 @@ bool TwsDataFeed::start_request_data() {
     if (is_realtime_) {
         request_id_ = subscribe_realtime_data();
     }
-    return true;
+    return request_id_ > 0;
 }
 
 long TwsDataFeed::subscribe_realtime_data() {
     auto request = std::make_shared<qbroker::ReqRealtimeMktData>();
-    request->symbol = tick_name_;
+    request->symbol = symbol_;
     request->currency = currency_;
     request->exchange = exchange_;
     request->security_type = security_type_;
@@ -158,23 +172,21 @@ std::optional<std::string> TwsDataFeed::get_duration() {
     } else if (duration >= 2592000) {
         return std::to_string(static_cast<int>(std::ceil(static_cast<double>(duration) / 2592000))) + " M";
     } else if (duration >= 86400) {
-        return std::to_string(static_cast<int>(std::ceil(static_cast<double>(duration) / 60))) + " M";
+        return std::to_string(static_cast<int>(std::ceil(static_cast<double>(duration) / 86400))) + " D";
     } else {
         return std::to_string(duration) + " S";
     }
-
-    return std::nullopt;
 }
 
 long TwsDataFeed::fetch_historical_data() {
     historical_fetch_completed_.store(false);
 
     auto request = std::make_shared<qbroker::ReqHistoricalData>();
-    request->symbol = tick_name_;
+    request->symbol = symbol_;
     request->currency = currency_;
     request->exchange = exchange_;
     request->security_type = security_type_;
-    request->bar_size = bar_type_;
+    request->bar_size = bar_type_str_;
     request->what_to_show = what_type_;
     request->use_rth = use_rth_;
     request->keep_up_to_date = keep_up_to_date_;
@@ -186,9 +198,9 @@ long TwsDataFeed::fetch_historical_data() {
     request->duration = duration.value();
 
     logger_->info("Request historical data for: {} security {} bar size {} rth {} duration {} up to date {}", 
-                tick_name_,
+                symbol_,
                 security_type_,
-                bar_type_,
+                bar_type_str_,
                 use_rth_,
                 request->duration,
                 request->keep_up_to_date
@@ -201,38 +213,12 @@ long TwsDataFeed::fetch_historical_data() {
     return broker_service_->push_request(std::dynamic_pointer_cast<qbroker::RequestHeader>(request), callback);
 }
 
-std::pair<BarType, unsigned int> TwsDataFeed::get_bar_type_from_string(const std::string &bar_type) {
-    auto pos = bar_type.find(" ");
-    int size = 0;
-
-    BarType bar_type_enum = BarType::NONE;
-    if (pos == std::string::npos) {
-        return std::make_pair(BarType::NONE, 0);
-    } else {
-        size = std::stoi(bar_type.substr(0, pos));
-    }
-
-    if (std::find(kSecondsBarType, kSecondsBarType + sizeof(kSecondsBarType) / sizeof(kSecondsBarType[0]), bar_type) != kSecondsBarType + sizeof(kSecondsBarType) / sizeof(kSecondsBarType[0])) {
-        bar_type_enum = BarType::Second;
-    } else if (std::find(kMinutesBarType, kMinutesBarType + sizeof(kMinutesBarType) / sizeof(kMinutesBarType[0]), bar_type) != kMinutesBarType + sizeof(kMinutesBarType) / sizeof(kMinutesBarType[0])) {
-        bar_type_enum = BarType::Minute;
-    } else if (std::find(kHoursBarType, kHoursBarType + sizeof(kHoursBarType) / sizeof(kHoursBarType[0]), bar_type) != kHoursBarType + sizeof(kHoursBarType) / sizeof(kHoursBarType[0])) {
-        bar_type_enum = BarType::Hour;
-    } else if (std::find(kDaysBarType, kDaysBarType + sizeof(kDaysBarType) / sizeof(kDaysBarType[0]), bar_type) != kDaysBarType + sizeof(kDaysBarType) / sizeof(kDaysBarType[0])) {
-        bar_type_enum = BarType::Day;
-    } else if (std::find(kWeekBarType, kWeekBarType + sizeof(kWeekBarType) / sizeof(kWeekBarType[0]), bar_type) != kWeekBarType + sizeof(kWeekBarType) / sizeof(kWeekBarType[0])) {
-        bar_type_enum = BarType::Week;
-    } else if (std::find(kMonthBarType, kMonthBarType + sizeof(kMonthBarType) / sizeof(kMonthBarType[0]), bar_type) != kMonthBarType + sizeof(kMonthBarType) / sizeof(kMonthBarType[0])) {
-        bar_type_enum = BarType::Month;
-    }
-    
-    return std::make_pair(bar_type_enum, size);
-}
-
 void TwsDataFeed::historical_data_response(std::shared_ptr<broker::ResHistoricalData> response) {
     if (response->is_end) {
         historical_fetch_completed_.store(true);
-        logger_->info("Historical data response for: {} is completed. start_date {}, end_date {}", tick_name_, response->start_date, response->end_date);
+        data_ready_ = true;
+        logger_->info("Historical data response for: {} is completed. start_date {}, end_date {}", 
+                      symbol_, response->start_date, response->end_date);
         return;
     }
 
@@ -257,7 +243,17 @@ void TwsDataFeed::historical_data_response(std::shared_ptr<broker::ResHistorical
 
 void TwsDataFeed::realtime_data_response(std::shared_ptr<broker::ResRealtimeData> response) {
     // process the real time data
-    logger_->info("Realtime data response for: {}", tick_name_);
+    logger_->info("Realtime data response for: {}", symbol_);
+    
+    // Extract the data from the response and add to bar line
+    // For TWS, we need to manage the bar aggregation ourselves for realtime data
+    // This will depend on the exact API response format
+    
+    // Once we have a complete bar:
+    // bar_line_->push_data(...);
+    
+    // Mark as ready after first data point
+    data_ready_ = true;
 }
 
 bool TwsDataFeed::is_data_ready() {
@@ -266,18 +262,33 @@ bool TwsDataFeed::is_data_ready() {
     }
 
     if (is_realtime_) {
-        return true;
+        return data_ready_;
     }
 
     return false;
 }
 
 std::optional<BarStruct> TwsDataFeed::next() {
-    if (bar_line_ == nullptr) {
+    if (!is_data_ready() || !bar_line_) {
         return std::nullopt;
     }
-
-    return bar_line_->next();
+    
+    auto bar_opt = bar_line_->next();
+    if (bar_opt.has_value()) {
+        // Handle replay modes
+        BarStruct current_bar = bar_opt.value();
+        
+        // For realtime mode, wait appropriately
+        wait_for_realtime(current_bar, last_bar_);
+        
+        // For stepped mode, wait for step signal
+        wait_for_step();
+        
+        // Update last bar for next time
+        last_bar_ = current_bar;
+    }
+    
+    return bar_opt;
 }
 
 } // namespace feed

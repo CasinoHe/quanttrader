@@ -29,6 +29,7 @@ bool CsvDataFeed::prepare_data() {
         return false;
     }
     
+    // Set the symbol name
     symbol_ = get_data_by_prefix<std::string>("_symbol");
     if (symbol_.empty()) {
         // Try to extract symbol from filename
@@ -125,7 +126,22 @@ std::optional<BarStruct> CsvDataFeed::next() {
         return std::nullopt;
     }
     
-    return bar_line_->next();
+    auto bar_opt = bar_line_->next();
+    if (bar_opt.has_value()) {
+        // Handle replay modes
+        BarStruct current_bar = bar_opt.value();
+        
+        // For realtime mode, wait appropriately
+        wait_for_realtime(current_bar, last_bar_);
+        
+        // For stepped mode, wait for step signal
+        wait_for_step();
+        
+        // Update last bar for next time
+        last_bar_ = current_bar;
+    }
+    
+    return bar_opt;
 }
 
 bool CsvDataFeed::load_from_csv() {
@@ -204,6 +220,11 @@ bool CsvDataFeed::load_from_csv() {
     logger_->info("Loaded {} data points from CSV file {} (processed {} lines)", 
                 data_count, csv_file_path_, line_count);
     
+    // Rewind to the beginning for subsequent access
+    if (bar_line_) {
+        bar_line_->reset();
+    }
+    
     return data_count > 0;
 }
 
@@ -236,6 +257,12 @@ bool CsvDataFeed::load_from_storage() {
     }
     
     logger_->info("Loaded {} data points from storage for {}", count, symbol_);
+    
+    // Rewind to the beginning for subsequent access
+    if (bar_line_) {
+        bar_line_->reset();
+    }
+    
     return count > 0;
 }
 
@@ -243,6 +270,12 @@ bool CsvDataFeed::save_to_storage() {
     if (!storage_ || !bar_line_) {
         return false;
     }
+    
+    // Save current position
+    auto current_pos = bar_line_->get_position();
+    
+    // Rewind to beginning
+    bar_line_->reset();
     
     // Extract all data from bar line
     BarSeries bars;
@@ -257,6 +290,9 @@ bool CsvDataFeed::save_to_storage() {
         bars.wap.push_back(bar->swap);
         bars.count.push_back(bar->count);
     }
+    
+    // Restore position
+    bar_line_->set_position(current_pos);
     
     if (bars.start_time.empty()) {
         logger_->warn("No data to save to storage for {}", symbol_);

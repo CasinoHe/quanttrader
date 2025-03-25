@@ -1,7 +1,6 @@
 #pragma once
 
 #include "data/data_provider.h"
-#include "data/util/bar_line.h"
 #include "data/common/data_consts.h"
 #include <atomic>
 #include <string>
@@ -41,20 +40,17 @@ public:
     // TWS specific methods
     void historical_data_response(std::shared_ptr<broker::ResHistoricalData> response);
     void realtime_data_response(std::shared_ptr<broker::ResRealtimeData> response);
-    std::string get_ticker_name() const { return tick_name_; }
 
 protected:
-    bool is_historical_completed() { return historical_fetch_completed_.load(); }
+    bool is_historical_completed() const { return historical_fetch_completed_.load(); }
     long subscribe_realtime_data();
     long fetch_historical_data();
     std::optional<std::string> get_duration();
-    std::pair<BarType, unsigned int> get_bar_type_from_string(const std::string &bar_type);
 
 private:
     std::shared_ptr<quanttrader::service::TwsService> broker_service_ {nullptr};
-    std::shared_ptr<util::BarLine> bar_line_ {nullptr};
 
-    std::string tick_name_ {};
+    // TWS specific configuration
     std::string security_type_ {kDefaultSecurityType};
     std::string exchange_ {kDefaultExchange};
     std::string currency_ {kDefaultCurrency};
@@ -63,9 +59,10 @@ private:
     std::string what_type_ {kDefaultWhatToShow};
     bool keep_up_to_date_ {false};
 
+    // Historical data parameters
     std::string start_date_ {""};
     std::string end_date_ {""};
-    std::string bar_type_ {""};
+    std::string bar_type_str_ {""};
     bool is_realtime_ {false};
     bool is_historical_ {false};
     std::atomic<bool> historical_fetch_completed_ {false};

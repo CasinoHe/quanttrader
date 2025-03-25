@@ -1,10 +1,13 @@
 #pragma once
 
+#include "cerebro_consts.h"
+#include "data/data_provider.h"
+#include "data/replay/data_replay_controller.h"
+#include "strategy/strategy_base.h"
 #include "logger/quantlogger.h"
-#include <string>
 #include <memory>
+#include <string>
 #include <unordered_map>
-#include <any>
 #include <vector>
 #include <atomic>
 
@@ -12,24 +15,17 @@ namespace quanttrader {
 namespace broker {
 class BrokerProvider;
 }
-
-namespace data {
-class DataProvider;
-}
-
-namespace strategy {
-class Strategy;
 }
 
 namespace cerebro {
 
 /**
- * @brief Base class for Cerebro engine implementations
+ * @brief Base class for all cerebro types
  * 
- * The Cerebro is the main backtesting/live trading engine that coordinates
- * the interaction between strategies, data providers, and brokers.
+ * This class provides the common functionality for all cerebro implementations,
+ * which are responsible for coordinating data feeds, strategies, and brokers.
  */
-class Cerebro {
+class CerebroBase {
 public:
     /**
      * @brief Construct a new Cerebro object
@@ -37,253 +33,104 @@ public:
      * @param name Name of this Cerebro instance
      * @param configPath Path to the configuration file for this Cerebro
      */
-    Cerebro(const std::string_view name, const std::string& configPath)
+    CerebroBase(const std::string_view name, const std::string& configPath)
         : name_(name), config_path_(configPath), stop_flag_(false) {
         logger_ = quanttrader::log::get_common_rotation_logger(name_, "cerebro");
         logger_->info("Created cerebro: {} with config: {}", name_, config_path_);
     }
 
-    virtual ~Cerebro() {
-        stop();
-        logger_->info("Destroying cerebro: {}", name_);
-    }
+    virtual ~CerebroBase();
 
     /**
-     * @brief Initialize the Cerebro engine with configurations
+     * @brief Add a data provider to cerebro
      * 
-     * This method loads data providers, broker, and strategies from configuration
-     * and then calls initialize() to complete the initialization process.
-     * 
-     * @return true if initialization succeeded
-     * @return false if initialization failed
+     * @param name A unique identifier for this data feed
+     * @param provider The data provider to add
+     * @return true if successful, false otherwise
      */
-    virtual bool initialize_from_config() {
-        logger_->info("Initializing cerebro from config: {}", config_path_);
-        
-        // Load and create data providers, broker, and strategies from config
-        if (!load_config()) {
-            logger_->error("Failed to load configuration");
-            return false;
-        }
-        
-        // Call the base initialize method to complete initialization
-        return initialize();
-    }
+    bool add_data(const std::string& name, std::shared_ptr<data::provider::DataProvider> provider);
 
     /**
-     * @brief Run the cerebro engine (backtest or live trading)
+     * @brief Add a strategy to cerebro
      * 
-     * @return true if execution completed successfully
-     * @return false if execution failed
+     * @param strategy The strategy to add
+     * @return true if successful, false otherwise
+     */
+    bool add_strategy(std::shared_ptr<strategy::StrategyBase> strategy);
+
+    /**
+     * @brief Set the replay mode for all data providers
+     * 
+     * @param mode The replay mode to set
+     */
+    void set_replay_mode(data::provider::DataProvider::ReplayMode mode);
+
+    /**
+     * @brief For STEPPED replay mode, advance to the next data point
+     */
+    void next_step();
+
+    /**
+     * @brief Set the resample parameters for a data feed
+     * 
+     * @param name The name of the data feed to resample
+     * @param target_type The target bar type for resampling
+     * @param target_size The target bar size for resampling
+     * @return true if successful, false otherwise
+     */
+    bool resample_data(const std::string& name, data::BarType target_type, unsigned int target_size);
+
+    /**
+     * @brief Prepare cerebro for execution
+     * 
+     * This method initializes all components and prepares them for the run.
+     * 
+     * @return true if preparation is successful, false otherwise
+     */
+    virtual bool prepare();
+
+    /**
+     * @brief Run the cerebro engine
+     * 
+     * This method executes the entire backtest or trading process.
+     * 
+     * @return true if the run is successful, false otherwise
      */
     virtual bool run() = 0;
 
     /**
-     * @brief Stop the cerebro engine
-     */
-    virtual void stop() {
-        stop_flag_.store(true);
-        logger_->info("Stopping cerebro: {}", name_);
-        
-        // Cleanup broker connection if needed
-        cleanup_broker();
-    }
-
-    /**
-     * @brief Add a strategy to the Cerebro engine
+     * @brief Stop cerebro execution
      * 
-     * @param strategy Strategy to add
-     * @return true if the strategy was added successfully
-     * @return false if the strategy couldn't be added
-     */
-    bool add_strategy(std::shared_ptr<strategy::Strategy> strategy) {
-        if (!strategy) {
-            logger_->error("Cannot add null strategy");
-            return false;
-        }
-        
-        strategies_.push_back(strategy);
-        logger_->info("Added strategy to cerebro");
-        return true;
-    }
-
-    /**
-     * @brief Add a data provider to the Cerebro engine
+     * This method terminates any ongoing execution.
      * 
-     * @param data_provider Data provider to add
-     * @return true if the data provider was added successfully
-     * @return false if the data provider couldn't be added
+     * @return true if the stop is successful, false otherwise
      */
-    bool add_data(std::shared_ptr<data::DataProvider> data_provider) {
-        if (!data_provider) {
-            logger_->error("Cannot add null data provider");
-            return false;
-        }
-        
-        data_providers_.push_back(data_provider);
-        logger_->info("Added data provider: {}", data_provider->get_data_prefix());
-        return true;
-    }
-
-    /**
-     * @brief Set the broker provider to use for order execution
-     * 
-     * @param broker Broker provider to use
-     * @return true if the broker was set successfully
-     * @return false if the broker couldn't be set
-     */
-    bool set_broker(std::shared_ptr<broker::BrokerProvider> broker) {
-        if (!broker) {
-            logger_->error("Cannot set null broker");
-            return false;
-        }
-        
-        broker_ = broker;
-        logger_->info("Set broker for cerebro");
-        return true;
-    }
-
-    /**
-     * @brief Get the name of this Cerebro instance
-     * 
-     * @return std::string The name
-     */
-    std::string get_name() const noexcept { return name_; }
-
-    /**
-     * @brief Get the config path of this Cerebro instance
-     * 
-     * @return std::string The config path
-     */
-    std::string get_config_path() const noexcept { return config_path_; }
+    virtual bool stop();
 
 protected:
     /**
-     * @brief Initialize the Cerebro engine with the provided configuration
+     * @brief Process the next set of data
      * 
-     * This should be called by initialize_from_config after loading configurations.
+     * This method fetches the next data point and passes it to strategies.
      * 
-     * @return true if initialization succeeded
-     * @return false if initialization failed
+     * @return true if there is more data to process, false if done
      */
-    virtual bool initialize() {
-        logger_->info("Initializing cerebro: {}", name_);
-        
-        if (strategies_.empty()) {
-            logger_->error("No strategies added to cerebro");
-            return false;
-        }
-        
-        if (data_providers_.empty()) {
-            logger_->error("No data providers added to cerebro");
-            return false;
-        }
-        
-        if (!broker_) {
-            logger_->error("No broker set for cerebro");
-            return false;
-        }
-        
-        // Hook for broker-specific initialization
-        if (!initialize_broker()) {
-            return false;
-        }
-        
-        // Prepare data providers for specific mode (backtest or live)
-        if (!prepare_data_providers()) {
-            return false;
-        }
-        
-        // Hook for additional initialization in derived classes
-        if (!initialize_derived()) {
-            return false;
-        }
-        
-        logger_->info("Cerebro initialized successfully");
-        return true;
-    }
+    virtual bool process_next();
 
-    /**
-     * @brief Load configuration from config file
-     * 
-     * This method loads the data providers, broker, and strategies
-     * from the configuration file specified in config_path_.
-     * 
-     * @return true if loading succeeded
-     * @return false if loading failed
-     */
-    virtual bool load_config() {
-        // Default implementation - derived classes should override this
-        // to load their specific configurations
-        logger_->warn("load_config() not implemented in base class");
-        return false;
-    }
-
-    /**
-     * @brief Hook for broker-specific initialization in derived classes
-     * 
-     * @return true if broker initialization succeeded
-     * @return false if broker initialization failed
-     */
-    virtual bool initialize_broker() = 0;
+    // Data management
+    std::shared_ptr<data::replay::DataReplayController> replay_controller_;
     
-    /**
-     * @brief Hook for data provider preparation in derived classes
-     * 
-     * @return true if data provider preparation succeeded
-     * @return false if data provider preparation failed
-     */
-    virtual bool prepare_data_providers() = 0;
+    // Strategy management
+    std::vector<std::shared_ptr<strategy::StrategyBase>> strategies_;
     
-    /**
-     * @brief Hook for additional initialization in derived classes
-     * 
-     * @return true if derived initialization succeeded
-     * @return false if derived initialization failed
-     */
-    virtual bool initialize_derived() {
-        return true; // Default implementation does nothing
-    }
+    // Execution state
+    bool is_running_ = false;
+    bool is_prepared_ = false;
     
-    /**
-     * @brief Cleanup broker resources
-     */
-    virtual void cleanup_broker() {
-        // Default implementation does nothing
-    }
-    
-    /**
-     * @brief Common method to trigger on_bar for all strategies
-     */
-    void process_strategies_on_bar() {
-        for (auto& strategy : strategies_) {
-            strategy->on_bar();
-        }
-    }
-    
-    /**
-     * @brief Common method to trigger on_tick for all strategies
-     */
-    void process_strategies_on_tick() {
-        for (auto& strategy : strategies_) {
-            strategy->on_tick();
-        }
-    }
-    
-    /**
-     * @brief Common method to start data requests from all providers
-     */
-    void start_data_providers() {
-        for (auto& data_provider : data_providers_) {
-            data_provider->start_request_data();
-        }
-    }
-
+    // Logging
+    quanttrader::log::LoggerPtr logger_;
     std::string name_;
     std::string config_path_;
-    quanttrader::log::LoggerPtr logger_;
-    std::vector<std::shared_ptr<strategy::Strategy>> strategies_;
-    std::vector<std::shared_ptr<data::DataProvider>> data_providers_;
     std::shared_ptr<broker::BrokerProvider> broker_;
     std::atomic<bool> stop_flag_;
 };

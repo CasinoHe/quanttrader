@@ -9,18 +9,18 @@
 namespace quanttrader {
 namespace strategy {
 
-class Strategy;
+class StrategyBase;
 
 using StrategyCreateFuncParemType = std::unordered_map<std::string, std::any>;
-using StrategyCreateFuncType = std::function<std::shared_ptr<Strategy>(StrategyCreateFuncParemType &)>;
+using StrategyCreateFuncType = std::function<std::shared_ptr<StrategyBase>(StrategyCreateFuncParemType &)>;
 
 
-class Strategy {
+class StrategyBase {
 public:
-    Strategy(StrategyCreateFuncParemType params) {
+    StrategyBase(StrategyCreateFuncParemType params) {
     }
 
-    virtual ~Strategy() = default;
+    virtual ~StrategyBase() = default;
 
     virtual void on_tick() = 0;
     virtual void on_bar() = 0;
