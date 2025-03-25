@@ -15,7 +15,6 @@ namespace quanttrader {
 namespace broker {
 class BrokerProvider;
 }
-}
 
 namespace cerebro {
 
@@ -31,14 +30,8 @@ public:
      * @brief Construct a new Cerebro object
      * 
      * @param name Name of this Cerebro instance
-     * @param configPath Path to the configuration file for this Cerebro
      */
-    CerebroBase(const std::string_view name, const std::string& configPath)
-        : name_(name), config_path_(configPath), stop_flag_(false) {
-        logger_ = quanttrader::log::get_common_rotation_logger(name_, "cerebro");
-        logger_->info("Created cerebro: {} with config: {}", name_, config_path_);
-    }
-
+    CerebroBase(const std::string_view name);
     virtual ~CerebroBase();
 
     /**
@@ -130,7 +123,6 @@ protected:
     // Logging
     quanttrader::log::LoggerPtr logger_;
     std::string name_;
-    std::string config_path_;
     std::shared_ptr<broker::BrokerProvider> broker_;
     std::atomic<bool> stop_flag_;
 };

@@ -3,9 +3,9 @@
 namespace quanttrader {
 namespace cerebro {
 
-CerebroBase::CerebroBase(const std::string_view name, const std::string& configPath) : name_(name), config_path_(configPath), stop_flag_(false) {
+CerebroBase::CerebroBase(const std::string_view name) : name_(name), stop_flag_(false) {
         logger_ = quanttrader::log::get_common_rotation_logger(name_, "cerebro");
-        logger_->info("Created cerebro: {} with config: {}", name_, config_path_);
+        logger_->info("Created cerebro: {} ", name_);
     logger_ = quanttrader::log::get_common_rotation_logger("Cerebro", "cerebro");
     replay_controller_ = std::make_shared<data::replay::DataReplayController>();
 }
