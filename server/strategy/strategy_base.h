@@ -6,6 +6,7 @@
 #include <any>
 #include <functional>
 #include <memory>
+#include <optional>
 
 namespace quanttrader {
 namespace data {
