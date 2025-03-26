@@ -26,7 +26,7 @@ using DataParamsType = std::shared_ptr<std::unordered_map<std::string, std::any>
  * It handles the common functionality of data providers and delegates specific
  * implementations to derived classes.
  */
-class DataProvider {
+class DataProvider : public std::enable_shared_from_this<DataProvider> {
 public:
     // Replay mode options
     enum class ReplayMode {

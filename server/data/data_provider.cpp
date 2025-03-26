@@ -1,5 +1,5 @@
-#include "data/data_provider.h"
-#include "data/resampler/data_resampler.h"
+#include "data_provider.h"
+#include "resampler/data_resampler.h"
 #include <sstream>
 #include <regex>
 #include <algorithm>
@@ -43,7 +43,8 @@ bool DataProvider::rewind() {
     }
     
     // Reset the bar line to the beginning
-    return bar_line_->reset();
+    bar_line_.reset();
+    return true;
 }
 
 std::pair<BarType, unsigned int> DataProvider::get_bar_type_from_string(const std::string &bar_type_str) {
