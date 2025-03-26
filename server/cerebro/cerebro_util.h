@@ -2,8 +2,8 @@
 
 #include "cerebro_base.h"
 #include "cerebro_factory.h"
-#include "cerebro_manager.h"
 #include "cerebro_consts.h"
+#include "strategy/strategy_util.h"
 #include <memory>
 #include <string>
 
@@ -14,56 +14,89 @@ namespace cerebro {
  * @brief Utility class for working with CerebroBase instances
  * 
  * This class provides static methods to simplify the creation and use of CerebroBase instances.
+ * It works directly with the CerebroFactory instead of using a separate manager.
  */
 class CerebroUtil {
 public:
     /**
-     * @brief Create a backtest CerebroBase instance
+     * @brief Create a backtest cerebro instance
      * 
      * @param name Name for this cerebro instance
-     * @param configPath Path to the configuration file for the cerebro
      * @return std::shared_ptr<CerebroBase> The created cerebro instance or nullptr if creation failed
      */
-    static std::shared_ptr<CerebroBase> create_backtest(
-        const std::string& name,
-        const std::string& configPath) {
-        
-        return CerebroManager::instance().create_cerebro(BACKTEST_CEREBRO_TYPE, name, configPath);
+    static std::shared_ptr<CerebroBase> create_backtest(const std::string_view& name) {
+        auto factory = CerebroFactory::instance();
+        return factory->create_cerebro(BACKTEST_CEREBRO_TYPE, name);
     }
     
     /**
-     * @brief Create a live trading CerebroBase instance
+     * @brief Create a live trading cerebro instance
      * 
      * @param name Name for this cerebro instance
-     * @param configPath Path to the configuration file for the cerebro
      * @return std::shared_ptr<CerebroBase> The created cerebro instance or nullptr if creation failed
      */
-    static std::shared_ptr<CerebroBase> create_live(
+    static std::shared_ptr<CerebroBase> create_live(const std::string_view& name) {
+        auto factory = CerebroFactory::instance();
+        return factory->create_cerebro(LIVE_CEREBRO_TYPE, name);
+    }
+
+    /**
+     * @brief Add a moving average crossover strategy to a cerebro instance
+     * 
+     * @param cerebro The cerebro instance to add the strategy to
+     * @param name The name to give the strategy
+     * @param symbol The symbol to trade
+     * @param fast_period The fast moving average period
+     * @param slow_period The slow moving average period
+     * @return true if successfully added
+     * @return false if failed to add
+     */
+    static bool add_ma_crossover_strategy(
+        std::shared_ptr<CerebroBase> cerebro,
         const std::string& name,
-        const std::string& configPath) {
+        const std::string& symbol,
+        int fast_period = 20,
+        int slow_period = 50) {
         
-        return CerebroManager::instance().create_cerebro(LIVE_CEREBRO_TYPE, name, configPath);
+        if (!cerebro) {
+            return false;
+        }
+        
+        auto strategy = strategy::StrategyUtil::create_ma_crossover(
+            name, symbol, fast_period, slow_period);
+        
+        if (!strategy) {
+            return false;
+        }
+        
+        return cerebro->add_strategy(strategy);
     }
     
     /**
-     * @brief Get a CerebroBase instance by name
+     * @brief Add a generic strategy to a cerebro instance
      * 
-     * @param name Name of the cerebro instance to retrieve
-     * @return std::shared_ptr<CerebroBase> The cerebro instance or nullptr if not found
+     * @param cerebro The cerebro instance to add the strategy to
+     * @param type The type of strategy to create
+     * @param params Parameters for strategy creation
+     * @return true if successfully added
+     * @return false if failed to add
      */
-    static std::shared_ptr<CerebroBase> get(const std::string& name) {
-        return CerebroManager::instance().get_cerebro(name);
-    }
-    
-    /**
-     * @brief Destroy a CerebroBase instance by name
-     * 
-     * @param name Name of the cerebro instance to destroy
-     * @return true if successfully destroyed
-     * @return false if not found
-     */
-    static bool destroy(const std::string& name) {
-        return CerebroManager::instance().destroy_cerebro(name);
+    static bool add_strategy(
+        std::shared_ptr<CerebroBase> cerebro,
+        const std::string& type,
+        strategy::StrategyCreateFuncParemType& params) {
+        
+        if (!cerebro) {
+            return false;
+        }
+        
+        auto strategy = strategy::StrategyUtil::create_strategy(type, params);
+        
+        if (!strategy) {
+            return false;
+        }
+        
+        return cerebro->add_strategy(strategy);
     }
 };
 

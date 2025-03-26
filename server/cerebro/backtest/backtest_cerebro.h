@@ -42,57 +42,46 @@ public:
      */
     bool run() override {
         logger_->info("Starting backtest");
-        // stop_flag_.store(false);
+        stop_flag_.store(false);
         
-        // Start data feeds
-    //     start_data_providers();
+        if (!prepare()) {
+            logger_->error("Failed to prepare cerebro for execution");
+            return false;
+        }
         
-    //     // Main backtest loop
-    //     while (!stop_flag_.load()) {
-    //         // Check if all data is ready
-    //         bool all_data_ready = true;
-    //         for (auto& data_provider : data_providers_) {
-    //             if (!data_provider->is_data_ready()) {
-    //                 all_data_ready = false;
-    //                 break;
-    //             }
-    //         }
-            
-    //         if (!all_data_ready) {
-    //             std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    //             continue;
-    //         }
-            
-    //         // Get next data points from all providers
-    //         for (auto& data_provider : data_providers_) {
-    //             auto bar = data_provider->next();
-    //             // Process this bar with all strategies
-    //         }
-            
-    //         // Process strategies with new data
-    //         process_strategies_on_bar();
-            
-    //         // Check if we've reached the end of data
-    //         bool end_of_data = true;
-    //         for (auto& data_provider : data_providers_) {
-    //             if (!data_provider->is_data_finished()) {
-    //                 end_of_data = false;
-    //                 break;
-    //             }
-    //         }
-            
-    //         if (end_of_data) {
-    //             logger_->info("Reached end of backtest data");
-    //             break;
-    //         }
-            
-    //         // Add a small delay to prevent high CPU usage
-    //         std::this_thread::sleep_for(std::chrono::milliseconds(1));
-    //     }
+        is_running_ = true;
         
-    //     logger_->info("Backtest completed");
-    //     return true;
-    // }
+        // Start all strategies
+        for (auto& strategy : strategies_) {
+            if (!strategy->on_start()) {
+                logger_->error("Failed to start strategy: {}", strategy->get_name());
+                return false;
+            }
+        }
+        
+        // Process data
+        int step_count = 0;
+        while (!stop_flag_.load()) {
+            // Process the next data point
+            if (!process_next()) {
+                logger_->info("No more data to process, completed {} steps", step_count);
+                break;
+            }
+            
+            step_count++;
+            
+            // Optional small delay to prevent high CPU usage (can be removed for faster backtest)
+            // std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+        
+        // Stop all strategies
+        for (auto& strategy : strategies_) {
+            strategy->on_stop();
+        }
+        
+        is_running_ = false;
+        logger_->info("Backtest completed with {} steps", step_count);
+        return true;
     }
 };
 
