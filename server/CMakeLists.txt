@@ -40,7 +40,7 @@ set(THIRDPARTY_DIR ${PROJECT_ROOT_DIR}/thirdparties)
 # the dependencies is built by vcpkg or custom build
 find_package(fmt 11.0.2 REQUIRED)
 find_package(spdlog 1.15.0 REQUIRED)
-find_package(Boost REQUIRED COMPONENTS program_options algorithm stacktrace)
+find_package(Boost REQUIRED COMPONENTS program_options algorithm stacktrace_basic)
 find_package(unofficial-concurrentqueue CONFIG REQUIRED)
 find_package(CURL REQUIRED)
 find_package(unofficial-sqlite3 CONFIG REQUIRED)
@@ -83,7 +83,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE fmt::fmt
                                 spdlog::spdlog
                                 Boost::program_options
                                 Boost::algorithm
-                                Boost::stacktrace
+                                Boost::stacktrace_basic
                                 intel_decimal128
                                 unofficial::concurrentqueue::concurrentqueue
                                 CURL::libcurl
