@@ -40,8 +40,10 @@ set(THIRDPARTY_DIR ${PROJECT_ROOT_DIR}/thirdparties)
 # the dependencies is built by vcpkg or custom build
 find_package(fmt 11.0.2 REQUIRED)
 find_package(spdlog 1.15.0 REQUIRED)
-find_package(Boost 1.86.0 REQUIRED COMPONENTS program_options algorithm)
+find_package(Boost REQUIRED COMPONENTS program_options algorithm stacktrace)
 find_package(unofficial-concurrentqueue CONFIG REQUIRED)
+find_package(CURL REQUIRED)
+find_package(unofficial-sqlite3 CONFIG REQUIRED)
 
 # --------------------- build lua start ---------------------------
 set(LUA_ROOT "${THIRDPARTY_DIR}/lua")
@@ -81,8 +83,11 @@ target_link_libraries(${PROJECT_NAME} PRIVATE fmt::fmt
                                 spdlog::spdlog
                                 Boost::program_options
                                 Boost::algorithm
+                                Boost::stacktrace
                                 intel_decimal128
                                 unofficial::concurrentqueue::concurrentqueue
+                                CURL::libcurl
+                                unofficial::sqlite3::sqlite3
                                 )
 
 if (WIN32)
