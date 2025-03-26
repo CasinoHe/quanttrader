@@ -33,20 +33,20 @@ std::shared_ptr<storage::DataStorage> create_storage(const std::string& storage_
  * all data feed implementations with the factory.
  */
 int register_data_feeds() {
-    auto& factory = provider::DataProviderFactory::instance();
+    auto factory = provider::DataProviderFactory::instance();
     
     // Register TWS data feed
-    factory.register_provider("tws", [](const std::string_view& data_prefix, provider::DataParamsType params) {
+    factory->register_provider("tws", [](const std::string_view& data_prefix, provider::DataParamsType params) {
         return std::make_shared<feed::TwsDataFeed>(data_prefix, params);
     });
     
     // Register CSV data feed
-    factory.register_provider("csv", [](const std::string_view& data_prefix, provider::DataParamsType params) {
+    factory->register_provider("csv", [](const std::string_view& data_prefix, provider::DataParamsType params) {
         return std::make_shared<feed::CsvDataFeed>(data_prefix, params);
     });
     
     // Register Yahoo Finance data feed
-    factory.register_provider("yahoo", [](const std::string_view& data_prefix, provider::DataParamsType params) {
+    factory->register_provider("yahoo", [](const std::string_view& data_prefix, provider::DataParamsType params) {
         return std::make_shared<feed::YahooDataFeed>(data_prefix, params);
     });
 
