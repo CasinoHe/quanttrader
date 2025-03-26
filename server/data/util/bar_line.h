@@ -54,6 +54,24 @@ public:
     const unsigned int get_bar_size() const {
         return bar_size_;
     }
+    
+    // Add methods to access and modify the cursor position
+    void reset() {
+        std::unique_lock lock(bar_mutex_);
+        cur_ = 0;
+    }
+    
+    unsigned int get_position() const {
+        std::shared_lock lock(bar_mutex_);
+        return cur_;
+    }
+    
+    void set_position(unsigned int position) {
+        std::unique_lock lock(bar_mutex_);
+        if (position <= size_) {
+            cur_ = position;
+        }
+    }
 
     std::optional<BarStruct> next();
 

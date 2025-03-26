@@ -43,7 +43,7 @@ bool DataProvider::rewind() {
     }
     
     // Reset the bar line to the beginning
-    bar_line_.reset();
+    bar_line_->reset();
     return true;
 }
 
