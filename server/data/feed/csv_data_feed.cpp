@@ -174,8 +174,13 @@ bool CsvDataFeed::load_from_csv() {
         }
         
         // Check if we have enough columns
-        size_t max_col = std::max({date_time_column_, open_column_, high_column_, 
-                                 low_column_, close_column_, volume_column_});
+        size_t max_col = date_time_column_;
+        max_col = (max_col < open_column_) ? open_column_ : max_col;
+        max_col = (max_col < high_column_) ? high_column_ : max_col;
+        max_col = (max_col < low_column_) ? low_column_ : max_col;
+        max_col = (max_col < close_column_) ? close_column_ : max_col;
+        max_col = (max_col < volume_column_) ? volume_column_ : max_col;
+        
         if (tokens.size() <= max_col) {
             logger_->warn("Line {} has insufficient columns (found {}, need {})", 
                         line_count, tokens.size(), max_col + 1);
@@ -200,7 +205,8 @@ bool CsvDataFeed::load_from_csv() {
             Decimal volume(0);
             if (volume_column_ < tokens.size() && !tokens[volume_column_].empty()) {
                 try {
-                    volume = Decimal(tokens[volume_column_]);
+                    // Fix: Convert string to Decimal directly using string constructor
+                    volume = Decimal(tokens[volume_column_].c_str());
                 } catch (...) {
                     // Use default volume of 0
                 }
@@ -222,7 +228,7 @@ bool CsvDataFeed::load_from_csv() {
     
     // Rewind to the beginning for subsequent access
     if (bar_line_) {
-        bar_line_->reset();
+        bar_line_->reset(); // Now using the proper reset() method
     }
     
     return data_count > 0;
@@ -260,7 +266,7 @@ bool CsvDataFeed::load_from_storage() {
     
     // Rewind to the beginning for subsequent access
     if (bar_line_) {
-        bar_line_->reset();
+        bar_line_->reset(); // Now using the proper reset() method
     }
     
     return count > 0;
@@ -272,10 +278,10 @@ bool CsvDataFeed::save_to_storage() {
     }
     
     // Save current position
-    auto current_pos = bar_line_->get_position();
+    unsigned int current_pos = bar_line_->get_position(); // Using get_position() method
     
     // Rewind to beginning
-    bar_line_->reset();
+    bar_line_->reset(); // Using reset() method
     
     // Extract all data from bar line
     BarSeries bars;
@@ -292,7 +298,7 @@ bool CsvDataFeed::save_to_storage() {
     }
     
     // Restore position
-    bar_line_->set_position(current_pos);
+    bar_line_->set_position(current_pos); // Using set_position() method
     
     if (bars.start_time.empty()) {
         logger_->warn("No data to save to storage for {}", symbol_);

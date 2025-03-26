@@ -1,6 +1,5 @@
 #include "tws_data_feed.h"
-#include "service/tws_service.h"
-#include "service/service_factory.h"
+#include "broker/tws/tws_broker_adapter.h"
 #include "broker/requests.h"
 #include "time/time_with_zone.h"
 #include <chrono>
@@ -11,7 +10,6 @@ namespace quanttrader {
 namespace data {
 namespace feed {
 
-namespace qservice = quanttrader::service;
 namespace qbroker = quanttrader::broker;
 namespace qtime = quanttrader::time;
 
@@ -19,8 +17,11 @@ using ResponseCallBackType = std::function<void(std::shared_ptr<broker::Response
 
 TwsDataFeed::TwsDataFeed(const std::string_view &data_prefix, provider::DataParamsType params) 
     : provider::DataProvider(data_prefix, params) {
-    // Get the TWS service for broker communication
-    broker_service_ = qservice::ServiceFactory::get_exist_service<qservice::TwsService>();
+    // Get the TWS broker adapter singleton instance
+    broker_adapter_ = qbroker::TwsBrokerAdapter::instance();
+    if (!broker_adapter_) {
+        logger_->error("Failed to get TwsBrokerAdapter instance");
+    }
 }
 
 bool TwsDataFeed::prepare_data() {
@@ -75,40 +76,50 @@ bool TwsDataFeed::prepare_data() {
         return false;
     }
 
+    // Check if broker adapter is available
+    if (!broker_adapter_ || !broker_adapter_->isConnected()) {
+        logger_->error("TWS Broker adapter is not available or not connected");
+        return false;
+    }
+
     return true;
 }
 
 bool TwsDataFeed::terminate_request_data() {
+    if (!broker_adapter_) {
+        logger_->error("TWS Broker adapter is not available");
+        return false;
+    }
+
     if (is_historical_) {
         if (keep_up_to_date_) {
-            // cancel the keep up to date
-            auto request = std::make_shared<qbroker::ReqCancelHistoricalData>();
-            request->request_id = request_id_;
-            auto cancel_id = broker_service_->push_request(request, std::nullopt);
-            logger_->info("Cancel up-to-date historical data request {}, cancel id {}", request_id_, cancel_id);
+            // Cancel the keep up to date historical data
+            broker_adapter_->cancelHistoricalData(request_id_);
+            logger_->info("Cancel up-to-date historical data request {}", request_id_);
         } else {
-            // cancel the historical data
+            // Cancel the historical data
             if (!is_historical_completed()) {
-                auto request = std::make_shared<qbroker::ReqCancelHistoricalData>();
-                request->request_id = request_id_;
-                auto cancel_id = broker_service_->push_request(request, std::nullopt);
-                logger_->info("Cancel historical data request {}, cancel id {}", request_id_, cancel_id);
+                broker_adapter_->cancelHistoricalData(request_id_);
+                logger_->info("Cancel historical data request {}", request_id_);
             }
         }
     }
 
     if (is_realtime_) {
-        // cancel the real time data
-        auto request = std::make_shared<qbroker::ReqCancelRealtimeMktData>();
-        request->request_id = request_id_;
-        auto cancel_id = broker_service_->push_request(request, std::nullopt);
-        logger_->info("Cancel real time data request {}, cancel id {}", request_id_, cancel_id);
+        // Cancel the real time data
+        broker_adapter_->cancelRealTimeData(request_id_);
+        logger_->info("Cancel real time data request {}", request_id_);
     }
 
     return true;
 }
 
 bool TwsDataFeed::start_request_data() {
+    if (!broker_adapter_) {
+        logger_->error("TWS Broker adapter is not available");
+        return false;
+    }
+
     if (is_historical_) {
         request_id_ = fetch_historical_data();
     }
@@ -120,18 +131,25 @@ bool TwsDataFeed::start_request_data() {
 }
 
 long TwsDataFeed::subscribe_realtime_data() {
-    auto request = std::make_shared<qbroker::ReqRealtimeMktData>();
-    request->symbol = symbol_;
-    request->currency = currency_;
-    request->exchange = exchange_;
-    request->security_type = security_type_;
+    if (!broker_adapter_) return -1;
 
-    auto callback = [this](std::shared_ptr<broker::ResponseHeader> response) {
-        // process the real time data
-        realtime_data_response(std::dynamic_pointer_cast<qbroker::ResRealtimeData>(response));
-    };
+    // Register a callback for real-time data
+    broker_adapter_->registerTradeCallback([this](const std::string& symbol, double price, double size) {
+        // Basic processing of real-time data
+        logger_->info("Received real-time data for {}: price={}, size={}", symbol.empty() ? symbol_ : symbol, price, size);
+        
+        // In a real implementation, we'd update the bar_line_ with this data
+        // For now, just mark data as ready
+        data_ready_ = true;
+    });
 
-    return broker_service_->push_request(request, callback);
+    // Request real-time data
+    return broker_adapter_->requestRealTimeData(
+        symbol_,
+        security_type_,
+        exchange_,
+        currency_
+    );
 }
 
 std::optional<std::string> TwsDataFeed::get_duration() {
@@ -179,81 +197,62 @@ std::optional<std::string> TwsDataFeed::get_duration() {
 }
 
 long TwsDataFeed::fetch_historical_data() {
+    if (!broker_adapter_) return -1;
+    
     historical_fetch_completed_.store(false);
 
-    auto request = std::make_shared<qbroker::ReqHistoricalData>();
-    request->symbol = symbol_;
-    request->currency = currency_;
-    request->exchange = exchange_;
-    request->security_type = security_type_;
-    request->bar_size = bar_type_str_;
-    request->what_to_show = what_type_;
-    request->use_rth = use_rth_;
-    request->keep_up_to_date = keep_up_to_date_;
     auto duration = get_duration();
     if (!duration.has_value()) {
         logger_->error("Cannot get the duration for the historical data.");
         return -1;
     }
-    request->duration = duration.value();
-
+    
     logger_->info("Request historical data for: {} security {} bar size {} rth {} duration {} up to date {}", 
                 symbol_,
                 security_type_,
                 bar_type_str_,
                 use_rth_,
-                request->duration,
-                request->keep_up_to_date
+                duration.value(),
+                keep_up_to_date_
                 );
-    auto callback = [this](std::shared_ptr<broker::ResponseHeader> response) {
-        // process the historical data
-        historical_data_response(std::dynamic_pointer_cast<qbroker::ResHistoricalData>(response));
-    };
-
-    return broker_service_->push_request(std::dynamic_pointer_cast<qbroker::RequestHeader>(request), callback);
-}
-
-void TwsDataFeed::historical_data_response(std::shared_ptr<broker::ResHistoricalData> response) {
-    if (response->is_end) {
-        historical_fetch_completed_.store(true);
-        data_ready_ = true;
-        logger_->info("Historical data response for: {} is completed. start_date {}, end_date {}", 
-                      symbol_, response->start_date, response->end_date);
-        return;
-    }
-
-    uint64_t start_time = 0;
-    // push historical bar data into the bar line
-    try {
-        auto time_str = std::get<std::string>(response->date);
-        auto time_with_zone = qtime::TimeWithZone::from_ibapi_string(time_str, timezone_);
-        start_time = time_with_zone.value().get_nano_epoch();
-    } catch (std::bad_variant_access) {
-        auto time = std::get<int>(response->date);
-        start_time = time * kSecondsToNano;
-    } catch (std::exception &e) {
-        logger_->error("Cannot parse the Historical data: {}", e.what());
-        return;
-    }
-
-    if (bar_line_->push_data(start_time, response->open, response->high, response->low, response->close, response->volume, response->wap, response->count)) {
-        historical_data_length_++;
-    }
-}
-
-void TwsDataFeed::realtime_data_response(std::shared_ptr<broker::ResRealtimeData> response) {
-    // process the real time data
-    logger_->info("Realtime data response for: {}", symbol_);
     
-    // Extract the data from the response and add to bar line
-    // For TWS, we need to manage the bar aggregation ourselves for realtime data
-    // This will depend on the exact API response format
-    
-    // Once we have a complete bar:
-    // bar_line_->push_data(...);
-    
-    // Mark as ready after first data point
-    data_ready_ = true;
+    // Register a callback for historical data
+    long requestId = broker_adapter_->getNextRequestId();
+    broker_adapter_->registerBarDataCallback(requestId, [this](const broker::BarData& barData) {
+        if (barData.is_last) {
+            historical_fetch_completed_.store(true);
+            data_ready_ = true;
+            logger_->info("Historical data response for: {} is completed.", symbol_);
+            return;
+        }
+
+        // Push historical bar data into the bar line
+        if (bar_line_->push_data(
+                barData.time,
+                barData.open,
+                barData.high,
+                barData.low,
+                barData.close,
+                barData.volume,
+                barData.wap,
+                barData.count)) {
+            historical_data_length_++;
+        }
+    });
+
+    // Request historical data
+    return broker_adapter_->requestHistoricalData(
+        symbol_,
+        security_type_,
+        exchange_,
+        currency_,
+        end_date_ == "now" ? "" : end_date_,  // Empty string for current time
+        duration.value(),
+        bar_type_str_,
+        what_type_,
+        use_rth_,
+        keep_up_to_date_
+    );
 }
 
 bool TwsDataFeed::is_data_ready() {

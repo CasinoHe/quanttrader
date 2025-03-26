@@ -135,7 +135,7 @@ private:
     BarSeries bars_;
     quanttrader::log::LoggerPtr logger_ {nullptr};
 
-    std::shared_mutex bar_mutex_;
+    mutable std::shared_mutex bar_mutex_;
 };
 
 }  // namespace util

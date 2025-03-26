@@ -10,10 +10,7 @@ namespace quanttrader {
 namespace broker {
 struct ResHistoricalData;
 struct ResRealtimeData;
-}
-
-namespace service {
-class TwsService;
+class TwsBrokerAdapter;
 }
 
 namespace data {
@@ -37,10 +34,6 @@ public:
     bool is_data_ready() override;
     std::optional<BarStruct> next() override;
 
-    // TWS specific methods
-    void historical_data_response(std::shared_ptr<broker::ResHistoricalData> response);
-    void realtime_data_response(std::shared_ptr<broker::ResRealtimeData> response);
-
 protected:
     bool is_historical_completed() const { return historical_fetch_completed_.load(); }
     long subscribe_realtime_data();
@@ -48,7 +41,7 @@ protected:
     std::optional<std::string> get_duration();
 
 private:
-    std::shared_ptr<quanttrader::service::TwsService> broker_service_ {nullptr};
+    std::shared_ptr<broker::TwsBrokerAdapter> broker_adapter_{nullptr};
 
     // TWS specific configuration
     std::string security_type_ {kDefaultSecurityType};
