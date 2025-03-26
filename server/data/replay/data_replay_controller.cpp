@@ -3,6 +3,10 @@
 #include <algorithm>
 #include <limits>
 
+// Avoid macro conflicts with std::numeric_limits::max
+#undef min
+#undef max
+
 namespace quanttrader {
 namespace data {
 namespace replay {

@@ -3,6 +3,10 @@
 #include <limits>
 #include <algorithm>
 
+// Avoid macro conflicts with std::max
+#undef min
+#undef max
+
 namespace quanttrader {
 namespace data {
 namespace resampler {
@@ -174,7 +178,8 @@ bool DataResampler::rewind() {
         return false;
     }
     
-    return bar_line_->reset();
+    bar_line_->reset();
+    return true;
 }
 
 bool DataResampler::add_to_aggregation(const BarStruct& bar) {

@@ -92,7 +92,7 @@ bool StockTradeService::prepare_cerebro() {
         }
 
         // Create cerebro instance
-        auto cerebro = cerebro::CerebroFactory::instance()->create_cerebro(cerebro_type, cerebro_name, cerebro_config);
+        auto cerebro = cerebro::CerebroFactory::instance()->create_cerebro(cerebro_type, cerebro_name);
         if (!cerebro) {
             logger_->error("Failed to create the cerebro: {}, please check the configuration file.", cerebro_name);
             qlog::Error("Failed to create the cerebro: {}, please check the configuration file.", cerebro_name);

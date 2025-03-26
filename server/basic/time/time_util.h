@@ -65,16 +65,21 @@ public:
         // Convert to time_t (seconds)
         time_t time_secs = static_cast<time_t>(time_ns / 1000000000ULL);
         
-        // Convert to calendar time
-        std::tm* cal_time = std::gmtime(&time_secs);
+        // Convert to calendar time (thread-safe version)
+        std::tm cal_time = {};
+#ifdef _WIN32
+        gmtime_s(&cal_time, &time_secs);
+#else
+        gmtime_r(&time_secs, &cal_time);
+#endif
         
         // Reset to start of day
-        cal_time->tm_hour = 0;
-        cal_time->tm_min = 0;
-        cal_time->tm_sec = 0;
+        cal_time.tm_hour = 0;
+        cal_time.tm_min = 0;
+        cal_time.tm_sec = 0;
         
         // Convert back to time_t
-        time_t day_start = std::mktime(cal_time);
+        time_t day_start = std::mktime(&cal_time);
         
         // Align to multi-day period if necessary
         if (days > 1) {
@@ -103,21 +108,26 @@ public:
         // Convert to time_t (seconds)
         time_t time_secs = static_cast<time_t>(time_ns / 1000000000ULL);
         
-        // Convert to calendar time
-        std::tm* cal_time = std::gmtime(&time_secs);
+        // Convert to calendar time (thread-safe version)
+        std::tm cal_time = {};
+#ifdef _WIN32
+        gmtime_s(&cal_time, &time_secs);
+#else
+        gmtime_r(&time_secs, &cal_time);
+#endif
         
         // Reset to start of day
-        cal_time->tm_hour = 0;
-        cal_time->tm_min = 0;
-        cal_time->tm_sec = 0;
+        cal_time.tm_hour = 0;
+        cal_time.tm_min = 0;
+        cal_time.tm_sec = 0;
         
         // Calculate days since start of week (assuming Monday is start of week)
-        int day_of_week = cal_time->tm_wday;
+        int day_of_week = cal_time.tm_wday;
         if (day_of_week == 0) day_of_week = 7;  // Convert Sunday (0) to 7
         day_of_week -= 1;  // Adjust to make Monday = 0
         
         // Go back to the start of the week
-        time_t day_start = std::mktime(cal_time);
+        time_t day_start = std::mktime(&cal_time);
         time_t week_start = day_start - (day_of_week * 86400);
         
         // Convert to nanoseconds
@@ -134,17 +144,22 @@ public:
         // Convert to time_t (seconds)
         time_t time_secs = static_cast<time_t>(time_ns / 1000000000ULL);
         
-        // Convert to calendar time
-        std::tm* cal_time = std::gmtime(&time_secs);
+        // Convert to calendar time (thread-safe version)
+        std::tm cal_time = {};
+#ifdef _WIN32
+        gmtime_s(&cal_time, &time_secs);
+#else
+        gmtime_r(&time_secs, &cal_time);
+#endif
         
         // Reset to start of month
-        cal_time->tm_mday = 1;
-        cal_time->tm_hour = 0;
-        cal_time->tm_min = 0;
-        cal_time->tm_sec = 0;
+        cal_time.tm_mday = 1;
+        cal_time.tm_hour = 0;
+        cal_time.tm_min = 0;
+        cal_time.tm_sec = 0;
         
         // Convert back to time_t
-        time_t month_start = std::mktime(cal_time);
+        time_t month_start = std::mktime(&cal_time);
         
         // Convert to nanoseconds
         return static_cast<uint64_t>(month_start) * 1000000000ULL;
