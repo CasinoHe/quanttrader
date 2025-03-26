@@ -1,11 +1,11 @@
 #pragma once
 
-#include "broker_provider.h"
+#include "broker/broker_provider.h"
 #include "twsclient.h"
 #include "logger/quantlogger.h"
 #include "common/singleton.h"
-#include "requests.h"
-#include "response.h"
+#include "broker/requests.h"
+#include "broker/response.h"
 #include "concurrentqueue/blockingconcurrentqueue.h"
 
 #include <string>

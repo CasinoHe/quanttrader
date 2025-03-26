@@ -12,7 +12,7 @@ namespace quanttrader {
 namespace cerebro {
 
 // Function type for creating cerebro instances
-using CerebroCreatorFunc = std::function<std::shared_ptr<CerebroBase>(const std::string_view&, const std::string&)>;
+using CerebroCreatorFunc = std::function<std::shared_ptr<CerebroBase>(const std::string_view&)>;
 
 /**
  * @brief Factory class for creating and managing CerebroBase instances
@@ -32,14 +32,12 @@ public:
      */
     std::shared_ptr<CerebroBase> create_cerebro(
         const std::string& cerebroType, 
-        const std::string_view& name, 
-        const std::string& configPath) {
-        
+        const std::string_view& name) {
         auto it = cerebro_creators_.find(cerebroType);
         if (it == cerebro_creators_.end()) {
             return nullptr;
         }
-        return it->second(name, configPath);
+        return it->second(name);
     }
 
     /**

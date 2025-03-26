@@ -1,5 +1,5 @@
 #include "tws_broker_adapter.h"
-#include "service_consts.h"
+#include "service/service_consts.h"
 #include <chrono>
 
 namespace quanttrader {
@@ -183,7 +183,7 @@ bool TwsBrokerAdapter::prepare() {
     int clientId = 1;
     
     // Create the TWS client
-    client_ = std::make_shared<TwsClient>(host, port, clientId, waitTimeout_.count());
+    client_ = std::make_shared<TwsClient>(host, port, clientId, static_cast<int>(waitTimeout_.count()));
     
     // Set up the client's response queue
     client_->set_response_queue(responseQueue_);

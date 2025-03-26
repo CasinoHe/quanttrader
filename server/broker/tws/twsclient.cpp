@@ -2,6 +2,7 @@
 #include "EReader.h"
 #include "EReaderOSSignal.h"
 #include "broker/requests.h"
+#include "broker/response.h"
 #include <cstdio>
 #include <iostream>
 #include <chrono>

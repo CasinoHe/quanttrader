@@ -25,8 +25,13 @@ public:
     virtual void on_tick() = 0;
     virtual void on_bar() = 0;
     virtual void on_trade() = 0;
-
-private:
+    virtual std::string get_name() const = 0;
+    virtual bool initialize() = 0;
+    virtual bool on_stop() = 0;
+    virtual bool on_start() = 0;
+    virtual bool on_order() = 0;
+    virtual bool on_signal() = 0;
+    virtual bool on_data() = 0;
 };
 
 }

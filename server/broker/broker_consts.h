@@ -1,6 +1,8 @@
 #pragma once
-#include "CommonDefs.h"
+
 #include <string>
+
+#include "CommonDefs.h"
 
 namespace quanttrader {
 namespace broker {

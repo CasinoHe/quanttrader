@@ -75,7 +75,7 @@ bool CerebroBase::resample_data(const std::string& name, data::BarType target_ty
     // Create a resampled provider
     auto resampled_provider = provider->resample(target_type, target_size);
     if (!resampled_provider) {
-        logger_->error("Failed to resample data provider: {} from {}:{} to {}:{}",
+        logger_->error("Failed to resample data provider: {}, {}:{}",
                      name,
                      data::provider::DataProvider::get_bar_type_string(current_type, current_size),
                      data::provider::DataProvider::get_bar_type_string(target_type, target_size));
@@ -96,7 +96,7 @@ bool CerebroBase::resample_data(const std::string& name, data::BarType target_ty
         return false;
     }
     
-    logger_->info("Resampled data provider: {} for symbol: {} from {}:{} to {}:{}",
+    logger_->info("Resampled data provider: {} for symbol: {}, {}:{}",
                 name,
                 symbol,
                 data::provider::DataProvider::get_bar_type_string(current_type, current_size),

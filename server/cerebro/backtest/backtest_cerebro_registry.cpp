@@ -14,11 +14,11 @@ namespace cerebro {
  * @return int Returns 1 if registration was successful
  */
 int register_backtest_cerebro() {
-    auto& factory = CerebroFactory::instance();
+    auto factory = CerebroFactory::instance();
     
     // Register BacktestCerebro
-    factory->register_cerebro(BACKTEST_CEREBRO_TYPE, [](const std::string_view& name, const std::string &config_path) {
-        return std::make_shared<BacktestCerebro>(name, config_path);
+    factory->register_cerebro(BACKTEST_CEREBRO_TYPE, [](const std::string_view& name) {
+        return std::make_shared<BacktestCerebro>(name);
     });
     
     return 1;
