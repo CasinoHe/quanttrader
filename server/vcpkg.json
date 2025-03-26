@@ -27,6 +27,14 @@
             "features": []
         },
         {
+            "name": "curl",
+            "features": []
+        },
+        {
+            "name": "sqlite3",
+            "features": []
+        },
+        {
             "name": "concurrentqueue",
             "features": []
         }
