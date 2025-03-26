@@ -135,7 +135,7 @@ long TwsDataFeed::subscribe_realtime_data() {
     if (!broker_adapter_) return -1;
 
     // Register a callback for real-time data
-    broker_adapter_->registerTradeCallback([this](const std::string& symbol, double price, double size) {
+    broker_adapter_->registerTradeCallback([this](const std::string& symbol, double price, Decimal size) {
         // Basic processing of real-time data
         logger_->info("Received real-time data for {}: price={}, size={}", symbol.empty() ? symbol_ : symbol, price, size);
         
