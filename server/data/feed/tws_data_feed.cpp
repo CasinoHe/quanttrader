@@ -17,8 +17,9 @@ using ResponseCallBackType = std::function<void(std::shared_ptr<broker::Response
 
 TwsDataFeed::TwsDataFeed(const std::string_view &data_prefix, provider::DataParamsType params) 
     : provider::DataProvider(data_prefix, params) {
-    // Get the TWS broker adapter singleton instance
-    broker_adapter_ = qbroker::TwsBrokerAdapter::instance();
+    // Get the TWS broker adapter singleton instance with config path
+    std::string configPath = get_data_by_prefix<std::string>("tws_config_path", "script/tws_config.lua");
+    broker_adapter_ = qbroker::TwsBrokerAdapter::instance(configPath);
     if (!broker_adapter_) {
         logger_->error("Failed to get TwsBrokerAdapter instance");
     }
