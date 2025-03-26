@@ -44,6 +44,7 @@ find_package(Boost REQUIRED COMPONENTS program_options algorithm stacktrace_basi
 find_package(unofficial-concurrentqueue CONFIG REQUIRED)
 find_package(CURL REQUIRED)
 find_package(unofficial-sqlite3 CONFIG REQUIRED)
+find_package(RapidJSON CONFIG REQUIRED)
 
 # --------------------- build lua start ---------------------------
 set(LUA_ROOT "${THIRDPARTY_DIR}/lua")
@@ -88,6 +89,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE fmt::fmt
                                 unofficial::concurrentqueue::concurrentqueue
                                 CURL::libcurl
                                 unofficial::sqlite3::sqlite3
+                                rapidjson
                                 )
 
 if (WIN32)

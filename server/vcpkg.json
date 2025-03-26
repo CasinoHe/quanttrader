@@ -35,6 +35,10 @@
             "features": []
         },
         {
+            "name": "rapidjson",
+            "features": []
+        },
+        {
             "name": "concurrentqueue",
             "features": []
         }

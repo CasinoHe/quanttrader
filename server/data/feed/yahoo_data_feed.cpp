@@ -7,11 +7,12 @@
 #include <regex>
 #include <ctime>
 #include <filesystem>
-#include <json/json.hpp>
+// Replace nlohmann/json with rapidjson
+#include <rapidjson/document.h>
+#include <rapidjson/error/en.h>
 
 namespace fs = std::filesystem;
 namespace qtime = quanttrader::time;
-using json = nlohmann::json;
 
 namespace quanttrader {
 namespace data {
@@ -210,41 +211,46 @@ bool YahooDataFeed::download_data() {
 bool YahooDataFeed::parse_yahoo_data(const std::string& data) {
     try {
         // Parse JSON response
-        json j = json::parse(data);
+        rapidjson::Document document;
+        document.Parse(data.c_str());
+        if (document.HasParseError()) {
+            logger_->error("JSON parse error: {}", rapidjson::GetParseError_En(document.GetParseError()));
+            return false;
+        }
         
         // Navigate to the actual data
-        json result = j["chart"]["result"][0];
-        json timestamps = result["timestamp"];
-        json quote = result["indicators"]["quote"][0];
+        const rapidjson::Value& result = document["chart"]["result"][0];
+        const rapidjson::Value& timestamps = result["timestamp"];
+        const rapidjson::Value& quote = result["indicators"]["quote"][0];
         
         // Get data arrays
-        json open = quote["open"];
-        json high = quote["high"];
-        json low = quote["low"];
-        json close = quote["close"];
-        json volume = quote["volume"];
+        const rapidjson::Value& open = quote["open"];
+        const rapidjson::Value& high = quote["high"];
+        const rapidjson::Value& low = quote["low"];
+        const rapidjson::Value& close = quote["close"];
+        const rapidjson::Value& volume = quote["volume"];
         
         // Process each data point
         int count = 0;
-        for (size_t i = 0; i < timestamps.size(); i++) {
+        for (rapidjson::SizeType i = 0; i < timestamps.Size(); i++) {
             // Skip if any value is null/missing
-            if (open[i].is_null() || high[i].is_null() || 
-                low[i].is_null() || close[i].is_null() || 
-                volume[i].is_null()) {
+            if (open[i].IsNull() || high[i].IsNull() || 
+                low[i].IsNull() || close[i].IsNull() || 
+                volume[i].IsNull()) {
                 continue;
             }
             
             // Convert timestamp to nanoseconds (Yahoo uses seconds)
-            uint64_t time_ns = timestamps[i].get<uint64_t>() * 1000000000ULL;
+            uint64_t time_ns = timestamps[i].GetUint64() * 1000000000ULL;
             
             // Add the bar to our bar line
             if (bar_line_->push_data(
                 time_ns, 
-                open[i].get<double>(), 
-                high[i].get<double>(), 
-                low[i].get<double>(), 
-                close[i].get<double>(), 
-                Decimal(volume[i].get<double>()), 
+                open[i].GetDouble(), 
+                high[i].GetDouble(), 
+                low[i].GetDouble(), 
+                close[i].GetDouble(), 
+                Decimal(volume[i].GetDouble()), 
                 Decimal(0), 
                 0)) {
                 count++;
