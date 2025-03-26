@@ -1,5 +1,5 @@
-#include "cerebro_factory.h"
-#include "backtest_cerebro.h"
+#include "cerebro/cerebro_factory.h"
+#include "live_cerebro.h"
 #include "live_cerebro.h"
 #include <memory>
 
@@ -15,11 +15,11 @@ namespace cerebro {
  * @return int Returns 1 if registration was successful
  */
 int register_live_cerebro() {
-    auto& factory = CerebroFactory::instance();
+    auto factory = CerebroFactory::instance();
     
     // Register LiveCerebro
-    factory->register_cerebro(LIVE_CEREBRO_TYPE, [](const std::string_view& name, const std::string &config_path) {
-        return std::make_shared<LiveCerebro>(name, config_path);
+    factory->register_cerebro(LIVE_CEREBRO_TYPE, [](const std::string_view& name) {
+        return std::make_shared<LiveCerebro>(name);
     });
     
     return 1;

@@ -7,6 +7,9 @@
 #include <memory>
 
 namespace quanttrader {
+namespace data {
+struct BarStruct;
+}
 namespace strategy {
 
 class StrategyBase;
@@ -31,7 +34,7 @@ public:
     virtual bool on_start() = 0;
     virtual bool on_order() = 0;
     virtual bool on_signal() = 0;
-    virtual bool on_data() = 0;
+    virtual bool on_data(std::map<std::string, std::optional<data::BarStruct>>) = 0;
 };
 
 }

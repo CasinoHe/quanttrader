@@ -1,6 +1,6 @@
 #pragma once
 
-#include "cerebro_base.h"
+#include "cerebro/cerebro_base.h"
 #include <chrono>
 #include <thread>
 
@@ -41,12 +41,6 @@ public:
      * @return false if trading session failed to start
      */
     bool run() override {
-        // Use initialize_from_config instead of initialize directly
-        if (!initialize_from_config()) {
-            logger_->error("Failed to initialize live trading");
-            return false;
-        }
-        
         logger_->info("Starting live trading");
         stop_flag_.store(false);
         
@@ -61,11 +55,11 @@ public:
     /**
      * @brief Stop the live trading session
      */
-    void stop() override {
+    bool stop() override {
         CerebroBase::stop(); // Call base class stop first
         
         if (!trading_thread_) {
-            return;
+            return false;
         }
         
         if (trading_thread_->joinable()) {
@@ -74,72 +68,7 @@ public:
         
         trading_thread_.reset();
         logger_->info("Live trading stopped");
-    }
-
-protected:
-    /**
-     * @brief Load configuration from config file for live trading
-     * 
-     * Loads data providers, broker, and strategies for live trading.
-     * 
-     * @return true if loading succeeded
-     * @return false if loading failed
-     */
-    bool load_config() override {
-        logger_->info("Loading live trading configuration from: {}", get_config_path());
-        
-        // Load and create live trading components from config
-        // TODO: Implement actual configuration loading for live trading
-        // This would include:
-        // 1. Creating appropriate data providers for live data
-        // 2. Creating a real broker connection
-        // 3. Loading and configuring strategies for live trading
-        
-        return true; // Replace with actual implementation
-    }
-
-    /**
-     * @brief Initialize broker for live trading
-     * 
-     * @return true if successful
-     * @return false if failed
-     */
-    bool initialize_broker() override {
-        // Connect to broker for live trading
-        if (!broker_->connect()) {
-            logger_->error("Failed to connect to broker");
-            return false;
-        }
-        
         return true;
-    }
-    
-    /**
-     * @brief Prepare data providers for live trading
-     * 
-     * @return true if successful
-     * @return false if failed
-     */
-    bool prepare_data_providers() override {
-        // Prepare data providers for real-time data
-        for (auto& data_provider : data_providers_) {
-            if (!data_provider->prepare_data()) {
-                logger_->error("Failed to prepare data provider: {}", data_provider->get_data_prefix());
-                return false;
-            }
-        }
-        
-        return true;
-    }
-    
-    /**
-     * @brief Clean up broker resources
-     */
-    void cleanup_broker() override {
-        // Disconnect from broker
-        if (broker_) {
-            broker_->disconnect();
-        }
     }
 
 private:
@@ -148,25 +77,25 @@ private:
      */
     void trading_loop() {
         // Start real-time data feeds
-        start_data_providers();
+        // start_data_providers();
         
-        // Register callbacks for real-time data and trading events
-        // TODO: Implement proper callback registration
+        // // Register callbacks for real-time data and trading events
+        // // TODO: Implement proper callback registration
         
-        // Main trading loop
-        while (!stop_flag_.load()) {
-            // Process any new data or trading events
-            process_strategies_on_tick();
-            process_strategies_on_bar();
+        // // Main trading loop
+        // while (!stop_flag_.load()) {
+        //     // Process any new data or trading events
+        //     process_strategies_on_tick();
+        //     process_strategies_on_bar();
             
-            // Process any trade signals
-            for (auto& strategy : strategies_) {
-                strategy->on_trade();
-            }
+        //     // Process any trade signals
+        //     for (auto& strategy : strategies_) {
+        //         strategy->on_trade();
+        //     }
             
-            // Sleep to prevent high CPU usage
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        }
+        //     // Sleep to prevent high CPU usage
+        //     std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        // }
     }
 
     std::shared_ptr<std::thread> trading_thread_;
