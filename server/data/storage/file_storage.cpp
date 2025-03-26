@@ -334,12 +334,12 @@ std::string FileStorage::get_data_file_path(const std::string& symbol,
 
 bool FileStorage::compress_data(const char* source, size_t source_size, std::vector<char>& dest) {
     // Estimate the buffer size needed for compression
-    uLongf dest_size = compressBound(source_size);
+    uLongf dest_size = static_cast<uLongf>(compressBound(static_cast<uLong>(source_size)));
     dest.resize(dest_size);
     
     // Compress the data
     int result = compress(reinterpret_cast<Bytef*>(dest.data()), &dest_size, 
-                          reinterpret_cast<const Bytef*>(source), source_size);
+                          reinterpret_cast<const Bytef*>(source), static_cast<uLong>(source_size));
     
     if (result != Z_OK) {
         logger_->error("Compression failed with error code: {}", result);
@@ -357,9 +357,9 @@ bool FileStorage::decompress_data(const char* source, size_t source_size,
     dest.resize(expected_size);
     
     // Decompress the data
-    uLongf dest_size = expected_size;
+    uLongf dest_size = static_cast<uLongf>(expected_size);
     int result = uncompress(reinterpret_cast<Bytef*>(dest.data()), &dest_size, 
-                           reinterpret_cast<const Bytef*>(source), source_size);
+                           reinterpret_cast<const Bytef*>(source), static_cast<uLong>(source_size));
     
     if (result != Z_OK) {
         logger_->error("Decompression failed with error code: {}", result);

@@ -196,9 +196,9 @@ bool DbStorage::store_bars(const std::string& symbol,
         sqlite3_bind_double(stmt, 4, bars.low[i]);
         sqlite3_bind_double(stmt, 5, bars.close[i]);
         
-        // Convert Decimal to string for storage
-        std::string volume_str = bars.volume[i].toString();
-        std::string wap_str = bars.wap[i].toString();
+        // Convert Decimal to string using DecimalFunctions
+        std::string volume_str = DecimalFunctions::decimalToString(bars.volume[i]);
+        std::string wap_str = DecimalFunctions::decimalToString(bars.wap[i]);
         
         sqlite3_bind_text(stmt, 6, volume_str.c_str(), -1, SQLITE_TRANSIENT);
         sqlite3_bind_text(stmt, 7, wap_str.c_str(), -1, SQLITE_TRANSIENT);
@@ -296,12 +296,21 @@ std::optional<BarSeries> DbStorage::load_bars(const std::string& symbol,
         double close = sqlite3_column_double(stmt, 4);
         int count = sqlite3_column_int(stmt, 7);
         
-        // Extract text fields and convert to Decimal
+        // Extract text fields and convert to Decimal using DecimalFunctions
         const char* volume_str = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 5));
         const char* wap_str = reinterpret_cast<const char*>(sqlite3_column_text(stmt, 6));
         
-        Decimal volume(volume_str ? volume_str : "0");
-        Decimal wap(wap_str ? wap_str : "0");
+        // Convert strings to Decimal values
+        Decimal volume = 0;
+        Decimal wap = 0;
+        
+        if (volume_str) {
+            volume = DecimalFunctions::stringToDecimal(volume_str);
+        }
+        
+        if (wap_str) {
+            wap = DecimalFunctions::stringToDecimal(wap_str);
+        }
         
         // Add data to the bar series
         bars.start_time.push_back(time);
