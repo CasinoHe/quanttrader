@@ -1,5 +1,6 @@
 #include "slope_strategy.h"
 #include "strategy/strategy_factory.h"
+#include "strategy/strategy_const.h"
 #include <memory>
 
 namespace quanttrader {
@@ -13,7 +14,7 @@ bool registerSlopeStrategy() {
         return std::static_pointer_cast<StrategyBase>(strategy);
     };
     
-    return StrategyFactory::instance()->register_strategy("slope", creatorFunc);
+    return StrategyFactory::instance()->register_strategy(SLOPE_STRATEGY_NAME, creatorFunc);
 }
 
 // Automatic registration
