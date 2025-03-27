@@ -1,5 +1,7 @@
 #pragma once
 
+#include "common/singleton.h"
+
 #include <unordered_map>
 #include <memory>
 #include <functional>
@@ -14,7 +16,7 @@ class StrategyBase;
 using StrategyCreateFuncParemType = std::unordered_map<std::string, std::any>;
 using StrategyCreateFuncType = std::function<std::shared_ptr<StrategyBase>(StrategyCreateFuncParemType &)>;
 
-class StrategyFactory {
+class StrategyFactory : public Singleton<StrategyFactory> {
 public:
     static bool register_strategy(const std::string &name, StrategyCreateFuncType create_func) {
         if (strategies_.find(name) != strategies_.end()) {
@@ -56,6 +58,12 @@ public:
     }
 
 private:
+    friend class Singleton<StrategyFactory>;
+    
+    // Private constructor to enforce Singleton pattern
+    StrategyFactory() = default;
+    ~StrategyFactory() = default;
+
     static inline std::unordered_map<std::string, StrategyCreateFuncType> strategies_;
 };
 
