@@ -1,6 +1,6 @@
 #include "strategy/strategy_base.h"
 #include "strategy/custom_strategy_helper.h"
-#include "data/bar_struct.h"
+#include "data/common/data_struct.h"
 #include <deque>
 #include <iostream>
 

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "strategy_base.h"
-#include "data/bar_struct.h"
+#include "data/common/data_struct.h"
 #include <deque>
 #include <vector>
 #include <string>

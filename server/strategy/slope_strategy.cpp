@@ -1,5 +1,5 @@
 #include "slope_strategy.h"
-#include "data/bar_struct.h"
+#include "data/common/data_struct.h"
 #include <numeric>
 #include <algorithm>
 
