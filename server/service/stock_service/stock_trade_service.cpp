@@ -41,6 +41,7 @@ bool StockTradeService::prepare_data_series() {
     for (const auto& prefix : data_names) {
         std::string provider_type = get_string_value(prefix + ".provider_type");
         auto provider_config = get_string_value(prefix + ".provider_config");
+        auto tickers = get_string_value(prefix + ".tickers");
         if (provider_type.empty()) {
             logger_->warn("Data provider type is empty for prefix: {}", prefix);
             continue;
@@ -52,28 +53,41 @@ bool StockTradeService::prepare_data_series() {
         config_loader.load_config();
         // TODO: Hot reload provider config
         
-        // get all params from configuration file
-        auto params = std::make_shared<std::unordered_map<std::string, std::any>>();
-        (*params)["data_name"] = prefix;
-        (*params)["broker_provider"] = broker_provider_;
-        config_loader.get_all_values(prefix, *params);
+        // each ticker has its own data provider, so we need to create a data provider for each ticker
+        std::stringstream ss(tickers);
+        std::string ticker;
+        while (std::getline(ss, ticker, ',')) {
+            if (ticker.empty()) {
+                continue;
+            }
 
-        auto provider = data::provider::DataProviderFactory::instance()->create_provider(provider_type, prefix, params);
-        if (!provider) {
-            logger_->error("Failed to create data provider with name: {} and type: {}", prefix, provider_type);
-            return false;
-        }
+            // get all params from configuration file
+            auto params = std::make_shared<std::unordered_map<std::string, std::any>>();
+            // read from config file and overwrite with crutial params
+            config_loader.get_all_values(prefix, *params);
+            (*params)["data_name"] = prefix;
+            (*params)["broker_provider"] = broker_provider_;
+            (*params)["provider_type"] = provider_type;
+            (*params)["provider_config"] = provider_config;
+            (*params)["ticker"] = ticker;
 
-        // set broker provider, the data provider may need a broker provider to get data
-        provider->set_broker(broker_provider_);
-        
-        if (!provider->prepare_data()) {
-            logger_->error("Failed to prepare data provider: {}", prefix);
-            return false;
+            auto provider = data::provider::DataProviderFactory::instance()->create_provider(provider_type, prefix, params);
+            if (!provider) {
+                logger_->error("Failed to create data provider with name: {} and type: {}", prefix, provider_type);
+                return false;
+            }
+
+            // set broker provider, the data provider may need a broker provider to get data
+            provider->set_broker(broker_provider_);
+            
+            if (!provider->prepare_data()) {
+                logger_->error("Failed to prepare data provider: {}", prefix);
+                return false;
+            }
+            
+            data_providers_.push_back(provider);
+            logger_->info("Created and prepared data provider: {} of type: {} for {}", prefix, provider_type, ticker);
         }
-        
-        data_providers_.push_back(provider);
-        logger_->info("Created and prepared data provider: {} of type: {}", prefix, provider_type);
     }
     return true;
 }

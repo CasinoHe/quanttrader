@@ -9,14 +9,17 @@ StockTradeService = {
 	daily_data = {
 		provider_type = "tws",
 		provider_config = "data_config.lua",  -- configuration for daily data provider
+		tickers = "AAPL,MSFT,GOOG",
 	},
 	min_data = {
 		provider_type = "tws",
 		provider_config = "data_config.lua",  -- configuration for min data provider
+		tickers = "AAPL,MSFT,GOOG",
 	},
 	sec_data = {
 		provider_type = "tws",
 		provider_config = "data_config.lua",  -- configuration for sec data provider
+		tickers = "AAPL,MSFT,GOOG",
 	},
 
 	-- setting for cerebro
@@ -52,39 +55,6 @@ apple_slope = {
 	runner_name = "StockRunner",
 	strategy_name = "slope",
 	data_series = "daily,min",
-	daily_ticker = "AAPL",
-	daily_type = "historical",
-	daily_start_date = "2024-08-01 00:00:00",
-	daily_end_date = "now",
-	daily_security_type = "STK",
-	daily_exchange = "SMART",
-	daily_currency = "USD",
-	daily_use_rth = false,
-	daily_timezone = "America/New_York",
-	daily_what = "TRADES",
-	-- Legal Historical data bar size are: 1 secs, 5 secs, 10 secs, 15 secs, 30 secs,
-	-- 1 min, 2 mins, 3 mins, 5 mins, 10 mins, 15 mins, 20 mins, 30 mins,
-	-- 1 hour, 2 hours, 3 hours, 4 hours, 8 hours, 
-	-- 1 day, 1W, 1M
-	daily_bar_type = "1 day",
-	daily_up_to_date = false,
-
-	min_ticker = "AAPL",
-	min_type = "historical",
-	min_start_date = "2024-08-01 00:00:00",
-	min_end_date = "now",
-	min_security_type = "STK",
-	min_exchange = "SMART",
-	min_currency = "USD",
-	min_use_rth = false,
-	min_timezone = "America/New_York",
-	min_what = "TRADES",
-	-- Legal Historical data bar size are: 1 secs, 5 secs, 10 secs, 15 secs, 30 secs,
-	-- 1 min, 2 mins, 3 mins, 5 mins, 10 mins, 15 mins, 20 mins, 30 mins,
-	-- 1 hour, 2 hours, 3 hours, 4 hours, 8 hours, 
-	-- 1 day, 1W, 1M
-	min_bar_type = "15 mins",
-	min_up_to_date = false,
 }
 
 
