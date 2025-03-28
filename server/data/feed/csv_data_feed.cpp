@@ -16,21 +16,21 @@ namespace quanttrader {
 namespace data {
 namespace feed {
 
-CsvDataFeed::CsvDataFeed(const std::string_view &data_prefix, provider::DataParamsType params)
-    : provider::DataProvider(data_prefix, params) {
+CsvDataFeed::CsvDataFeed(const std::string_view &data_name, provider::DataParamsType params)
+    : provider::DataProvider(data_name, params) {
     // Constructor implementation
 }
 
 bool CsvDataFeed::prepare_data() {
     // Extract configuration from parameters
-    csv_file_path_ = get_data_by_prefix<std::string>("_csv_file_path");
+    csv_file_path_ = get_config_value<std::string>("csv_file_path");
     if (csv_file_path_.empty()) {
-        logger_->error("CSV file path is missing for {}", get_data_prefix());
+        logger_->error("CSV file path is missing for {}", get_data_name());
         return false;
     }
     
     // Set the symbol name
-    symbol_ = get_data_by_prefix<std::string>("_symbol");
+    symbol_ = get_config_value<std::string>("symbol");
     if (symbol_.empty()) {
         // Try to extract symbol from filename
         fs::path file_path(csv_file_path_);
@@ -39,7 +39,7 @@ bool CsvDataFeed::prepare_data() {
     }
     
     // Parse bar type and size
-    std::string bar_type_str = get_data_by_prefix<std::string>("_bar_type", "1 day");
+    std::string bar_type_str = get_config_value<std::string>("bar_type", "1 day");
     auto [type, size] = get_bar_type_from_string(bar_type_str);
     if (type == BarType::NONE) {
         logger_->error("Invalid bar type: {}", bar_type_str);
@@ -49,23 +49,23 @@ bool CsvDataFeed::prepare_data() {
     bar_size_ = size;
     
     // Configure CSV parsing options
-    delimiter_ = get_data_by_prefix<char>("_delimiter", ',');
-    date_time_column_ = get_data_by_prefix<int>("_datetime_column", 0);
-    open_column_ = get_data_by_prefix<int>("_open_column", 1);
-    high_column_ = get_data_by_prefix<int>("_high_column", 2);
-    low_column_ = get_data_by_prefix<int>("_low_column", 3);
-    close_column_ = get_data_by_prefix<int>("_close_column", 4);
-    volume_column_ = get_data_by_prefix<int>("_volume_column", 5);
-    has_header_ = get_data_by_prefix<bool>("_has_header", true);
-    date_format_ = get_data_by_prefix<std::string>("_date_format", "%Y-%m-%d");
+    delimiter_ = get_config_value<char>("delimiter", ',');
+    date_time_column_ = get_config_value<int>("datetime_column", 0);
+    open_column_ = get_config_value<int>("open_column", 1);
+    high_column_ = get_config_value<int>("high_column", 2);
+    low_column_ = get_config_value<int>("low_column", 3);
+    close_column_ = get_config_value<int>("close_column", 4);
+    volume_column_ = get_config_value<int>("volume_column", 5);
+    has_header_ = get_config_value<bool>("has_header", true);
+    date_format_ = get_config_value<std::string>("date_format", "%Y-%m-%d");
     
     // Configure storage options
-    use_storage_ = get_data_by_prefix<bool>("_use_storage", false);
-    store_after_load_ = get_data_by_prefix<bool>("_store_after_load", false);
-    storage_path_ = get_data_by_prefix<std::string>("_storage_path", "./data");
+    use_storage_ = get_config_value<bool>("use_storage", false);
+    store_after_load_ = get_config_value<bool>("store_after_load", false);
+    storage_path_ = get_config_value<std::string>("storage_path", "./data");
     
     // Get storage type from configuration or use default
-    std::string storage_type = get_data_by_prefix<std::string>("_storage_type", "file");
+    std::string storage_type = get_config_value<std::string>("storage_type", "file");
     
     // Initialize the bar line
     bar_line_ = std::make_shared<util::BarLine>(0, bar_type_, bar_size_);

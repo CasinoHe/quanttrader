@@ -38,7 +38,7 @@ bool can_resample(BarType source_type, BarType target_type) {
 
 DataResampler::DataResampler(std::shared_ptr<provider::DataProvider> source_provider, 
                            BarType target_type, unsigned int target_size)
-    : DataProvider(source_provider->get_data_prefix() + "_resampled", 
+    : DataProvider(source_provider->get_data_name() + "_resampled", 
                   std::make_shared<std::unordered_map<std::string, std::any>>()),
       source_provider_(source_provider) {
     

@@ -18,8 +18,8 @@ namespace quanttrader {
 namespace data {
 namespace feed {
 
-YahooDataFeed::YahooDataFeed(const std::string_view &data_prefix, provider::DataParamsType params)
-    : provider::DataProvider(data_prefix, params) {
+YahooDataFeed::YahooDataFeed(const std::string_view &data_name, provider::DataParamsType params)
+    : provider::DataProvider(data_name, params) {
     // Initialize curl
     curl_global_init(CURL_GLOBAL_DEFAULT);
     curl_handle_ = curl_easy_init();
@@ -36,19 +36,19 @@ YahooDataFeed::~YahooDataFeed() {
 
 bool YahooDataFeed::prepare_data() {
     // Extract configuration from parameters
-    symbol_ = get_data_by_prefix<std::string>("_symbol");
+    symbol_ = get_config_value<std::string>("symbol");
     if (symbol_.empty()) {
         logger_->error("Symbol is required for Yahoo Finance data feed");
         return false;
     }
     
     // Parse time range parameters
-    start_date_ = get_data_by_prefix<std::string>("_start_date", "");
-    end_date_ = get_data_by_prefix<std::string>("_end_date", "");
+    start_date_ = get_config_value<std::string>("start_date", "");
+    end_date_ = get_config_value<std::string>("end_date", "");
     
     // Parse interval and period
-    interval_ = get_data_by_prefix<std::string>("_interval", "1d");
-    period_ = get_data_by_prefix<std::string>("_period", "1d");
+    interval_ = get_config_value<std::string>("interval", "1d");
+    period_ = get_config_value<std::string>("period", "1d");
     
     // Map Yahoo interval to our bar type
     if (interval_ == "1m" || interval_ == "2m" || interval_ == "5m" || 
@@ -85,12 +85,12 @@ bool YahooDataFeed::prepare_data() {
     }
     
     // Configure storage options
-    use_storage_ = get_data_by_prefix<bool>("_use_storage", false);
-    store_after_download_ = get_data_by_prefix<bool>("_store_after_download", false);
-    storage_path_ = get_data_by_prefix<std::string>("_storage_path", "./data");
+    use_storage_ = get_config_value<bool>("use_storage", false);
+    store_after_download_ = get_config_value<bool>("store_after_download", false);
+    storage_path_ = get_config_value<std::string>("storage_path", "./data");
     
     // Get storage type from configuration or use default
-    std::string storage_type = get_data_by_prefix<std::string>("_storage_type", "file");
+    std::string storage_type = get_config_value<std::string>("storage_type", "file");
     
     // Initialize the bar line
     bar_line_ = std::make_shared<util::BarLine>(0, bar_type_, bar_size_);

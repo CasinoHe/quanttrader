@@ -15,8 +15,8 @@ namespace qtime = quanttrader::time;
 
 using ResponseCallBackType = std::function<void(std::shared_ptr<broker::ResponseHeader>)>;
 
-TwsDataFeed::TwsDataFeed(const std::string_view &data_prefix, provider::DataParamsType params) 
-    : provider::DataProvider(data_prefix, params) {
+TwsDataFeed::TwsDataFeed(const std::string_view &data_name, provider::DataParamsType params) 
+    : provider::DataProvider(data_name, params) {
 }
 
 void TwsDataFeed::set_broker(std::shared_ptr<broker::BrokerProvider> broker_adapter) { 
@@ -25,26 +25,26 @@ void TwsDataFeed::set_broker(std::shared_ptr<broker::BrokerProvider> broker_adap
 
 bool TwsDataFeed::prepare_data() {
     // Extract configuration parameters using the data prefix
-    symbol_ = get_data_by_prefix<std::string>(DATA_TICK_NAME);
+    symbol_ = get_config_value<std::string>(DATA_TICK_NAME);
     if (symbol_.empty()) {
-        logger_->error("Cannot find the tick name for the data provider: {}", data_prefix_);
+        logger_->error("Cannot find the tick name for the data provider: {}", data_name_);
         return false;
     }
     
-    security_type_ = get_data_by_prefix<std::string>(DATA_SECURITY_TYPE_NAME, kDefaultSecurityType);
-    exchange_ = get_data_by_prefix<std::string>(DATA_EXCHANGE_NAME, kDefaultExchange);
-    currency_ = get_data_by_prefix<std::string>(DATA_CURRENCY_NAME, kDefaultCurrency);
-    use_rth_ = get_data_by_prefix<bool>(DATA_USE_RTH_NAME, kDefaultUseRth);
-    timezone_ = get_data_by_prefix<std::string>(DATA_TIMEZONE_NAME, kDefaultTimezone);
-    what_type_ = get_data_by_prefix<std::string>(DATA_TRADE_WHAT_NAME, kDefaultWhatToShow);
-    keep_up_to_date_ = get_data_by_prefix<bool>(KEEP_UP_TO_DATE_NAME, false);
+    security_type_ = get_config_value<std::string>(DATA_SECURITY_TYPE_NAME, kDefaultSecurityType);
+    exchange_ = get_config_value<std::string>(DATA_EXCHANGE_NAME, kDefaultExchange);
+    currency_ = get_config_value<std::string>(DATA_CURRENCY_NAME, kDefaultCurrency);
+    use_rth_ = get_config_value<bool>(DATA_USE_RTH_NAME, kDefaultUseRth);
+    timezone_ = get_config_value<std::string>(DATA_TIMEZONE_NAME, kDefaultTimezone);
+    what_type_ = get_config_value<std::string>(DATA_TRADE_WHAT_NAME, kDefaultWhatToShow);
+    keep_up_to_date_ = get_config_value<bool>(KEEP_UP_TO_DATE_NAME, false);
 
-    std::string data_type = get_data_by_prefix<std::string>(DATA_TYPE_NAME);
+    std::string data_type = get_config_value<std::string>(DATA_TYPE_NAME);
     if (data_type == "historical") {
         is_historical_ = true;
-        start_date_ = get_data_by_prefix<std::string>(DATA_START_DATE_NAME);
-        end_date_ = get_data_by_prefix<std::string>(DATA_END_DATE_NAME);
-        bar_type_str_ = get_data_by_prefix<std::string>(BAR_TYPE_NAME);
+        start_date_ = get_config_value<std::string>(DATA_START_DATE_NAME);
+        end_date_ = get_config_value<std::string>(DATA_END_DATE_NAME);
+        bar_type_str_ = get_config_value<std::string>(BAR_TYPE_NAME);
 
         // get bar type and bar size
         auto bar_type_size = get_bar_type_from_string(bar_type_str_);
@@ -60,7 +60,7 @@ bool TwsDataFeed::prepare_data() {
         is_realtime_ = true;
         
         // For realtime data, we still need a bar type for data structure
-        bar_type_str_ = get_data_by_prefix<std::string>(BAR_TYPE_NAME, "1 min");
+        bar_type_str_ = get_config_value<std::string>(BAR_TYPE_NAME, "1 min");
         auto bar_type_size = get_bar_type_from_string(bar_type_str_);
         if (bar_type_size.first == BarType::NONE) {
             logger_->error("Cannot parse the bar type: {}", bar_type_str_);

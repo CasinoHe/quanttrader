@@ -38,8 +38,8 @@ public:
         STEPPED     // Manual stepping through data
     };
 
-    DataProvider(const std::string_view &data_prefix, DataParamsType params)
-        : data_prefix_(data_prefix), params_(params) {
+    DataProvider(const std::string_view &data_name, DataParamsType params)
+        : data_name_(data_name), params_(params) {
         logger_ = quanttrader::log::get_common_rotation_logger("DataProvider", "data");
     }
     
@@ -91,7 +91,7 @@ public:
      * 
      * @return The data prefix
      */
-    std::string get_data_prefix() const { return data_prefix_; }
+    std::string get_data_name() const { return data_name_; }
 
     /**
      * @brief Get the symbol name
@@ -193,8 +193,7 @@ protected:
      * @return The retrieved value or the default value
      */
     template<typename T>
-    T get_data_by_prefix(const std::string &&data, std::optional<T> default_value=std::nullopt) {
-        std::string key = data_prefix_ + data;
+    T get_config_value(const std::string &&key, std::optional<T> default_value=std::nullopt) {
         auto iter = params_->find(key);
         if (iter == params_->end()) {
             if (default_value.has_value()) {
@@ -238,7 +237,7 @@ protected:
         }
     }
 
-    std::string data_prefix_ {};
+    std::string data_name_ {};
     DataParamsType params_ {nullptr};
     quanttrader::log::LoggerPtr logger_ {nullptr};
     

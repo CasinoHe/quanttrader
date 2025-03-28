@@ -3,18 +3,18 @@
 namespace quanttrader {
 namespace data {
 
-constexpr const char *DATA_TICK_NAME = "_ticker";
-constexpr const char *DATA_TYPE_NAME = "_type";
-constexpr const char *DATA_START_DATE_NAME = "_start_date";
-constexpr const char *DATA_END_DATE_NAME = "_end_date";
-constexpr const char *DATA_SECURITY_TYPE_NAME = "_security_type";
-constexpr const char *DATA_EXCHANGE_NAME = "_exchange";
-constexpr const char *DATA_CURRENCY_NAME = "_currency";
-constexpr const char *DATA_USE_RTH_NAME = "_use_rth";
-constexpr const char *DATA_TIMEZONE_NAME = "_timezone";
-constexpr const char *DATA_TRADE_WHAT_NAME = "_what";
-constexpr const char *BAR_TYPE_NAME = "_bar_type";
-constexpr const char *KEEP_UP_TO_DATE_NAME = "_up_to_date";
+constexpr const char *DATA_TICK_NAME = "ticker";
+constexpr const char *DATA_TYPE_NAME = "type";
+constexpr const char *DATA_START_DATE_NAME = "start_date";
+constexpr const char *DATA_END_DATE_NAME = "end_date";
+constexpr const char *DATA_SECURITY_TYPE_NAME = "security_type";
+constexpr const char *DATA_EXCHANGE_NAME = "exchange";
+constexpr const char *DATA_CURRENCY_NAME = "currency";
+constexpr const char *DATA_USE_RTH_NAME = "use_rth";
+constexpr const char *DATA_TIMEZONE_NAME = "timezone";
+constexpr const char *DATA_TRADE_WHAT_NAME = "what";
+constexpr const char *BAR_TYPE_NAME = "bar_type";
+constexpr const char *KEEP_UP_TO_DATE_NAME = "up_to_date";
 
 constexpr const char *kDefaultSecurityType = "STK";
 constexpr const char *kDefaultExchange = "SMART";

@@ -25,7 +25,7 @@ namespace feed {
  */
 class TwsDataFeed : public provider::DataProvider {
 public:
-    TwsDataFeed(const std::string_view &data_prefix, provider::DataParamsType params);
+    TwsDataFeed(const std::string_view &data_name, provider::DataParamsType params);
     ~TwsDataFeed() = default;
 
     // Implementation of DataProvider interface

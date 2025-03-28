@@ -20,7 +20,7 @@ namespace feed {
  */
 class YahooDataFeed : public provider::DataProvider {
 public:
-    YahooDataFeed(const std::string_view &data_prefix, provider::DataParamsType params);
+    YahooDataFeed(const std::string_view &data_name, provider::DataParamsType params);
     ~YahooDataFeed();
 
     // Implementation of DataProvider interface

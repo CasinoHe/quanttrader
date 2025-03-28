@@ -37,18 +37,18 @@ public:
      * @brief Create a data provider of the specified type
      * 
      * @param provider_type The type of provider to create
-     * @param data_prefix Prefix for data parameters
+     * @param data_name Prefix for data parameters
      * @param params Parameters for the provider
      * @return A shared pointer to the created provider or nullptr if the type is not registered
      */
     std::shared_ptr<DataProvider> create_provider(
         const std::string& provider_type, 
-        const std::string_view& data_prefix,
+        const std::string_view& data_name,
         DataParamsType params) {
         
         auto it = creators_.find(provider_type);
         if (it != creators_.end()) {
-            return it->second(data_prefix, params);
+            return it->second(data_name, params);
         }
         return nullptr;
     }

@@ -29,16 +29,16 @@ StockTradeService::StockTradeService(const std::string_view config_path) : Servi
 bool StockTradeService::prepare_data_series() {
     // Parse data provider configurations
     auto data_series = get_string_value("data_series");
-    std::vector<std::string> data_prefixes;
+    std::vector<std::string> data_names;
     std::stringstream ds_ss(data_series);
-    std::string data_prefix;
-    while (std::getline(ds_ss, data_prefix, ',')) {
-        if (!data_prefix.empty()) {
-            data_prefixes.push_back(data_prefix);
+    std::string data_name;
+    while (std::getline(ds_ss, data_name, ',')) {
+        if (!data_name.empty()) {
+            data_names.push_back(data_name);
         }
     }
 
-    for (const auto& prefix : data_prefixes) {
+    for (const auto& prefix : data_names) {
         std::string provider_type = get_string_value(prefix + ".provider_type");
         auto provider_config = get_string_value(prefix + ".provider_config");
         if (provider_type.empty()) {
@@ -54,13 +54,13 @@ bool StockTradeService::prepare_data_series() {
         
         // get all params from configuration file
         auto params = std::make_shared<std::unordered_map<std::string, std::any>>();
-        (*params)["data_prefix"] = prefix;
+        (*params)["data_name"] = prefix;
         (*params)["broker_provider"] = broker_provider_;
         config_loader.get_all_values(prefix, *params);
 
         auto provider = data::provider::DataProviderFactory::instance()->create_provider(provider_type, prefix, params);
         if (!provider) {
-            logger_->error("Failed to create data provider with prefix: {} and type: {}", prefix, provider_type);
+            logger_->error("Failed to create data provider with name: {} and type: {}", prefix, provider_type);
             return false;
         }
 
@@ -113,7 +113,7 @@ bool StockTradeService::prepare_cerebro() {
         // Add data providers to cerebro
         for (auto iter = data_providers_.begin(); iter != data_providers_.end(); iter++) {
             auto provider = *iter;
-            std::string data_name = provider->get_data_prefix();
+            std::string data_name = provider->get_data_name();
             if (!cerebro->add_data(data_name, provider)) {
                 logger_->error("Failed to add data provider {} to cerebro: {}", data_name, cerebro_name);
                 return false;

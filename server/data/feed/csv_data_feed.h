@@ -18,7 +18,7 @@ namespace feed {
  */
 class CsvDataFeed : public provider::DataProvider {
 public:
-    CsvDataFeed(const std::string_view &data_prefix, provider::DataParamsType params);
+    CsvDataFeed(const std::string_view &data_name, provider::DataParamsType params);
     ~CsvDataFeed() = default;
 
     // Implementation of DataProvider interface
