@@ -8,12 +8,15 @@ StockTradeService = {
 	data_series = "daily_data,min_data,sec_data",
 	daily_data = {
 		provider_type = "tws",
+		provider_config = "data_config.lua",  -- configuration for daily data provider
 	},
 	min_data = {
 		provider_type = "tws",
+		provider_config = "data_config.lua",  -- configuration for min data provider
 	},
 	sec_data = {
 		provider_type = "tws",
+		provider_config = "data_config.lua",  -- configuration for sec data provider
 	},
 
 	-- setting for cerebro
@@ -33,6 +36,7 @@ StockTradeService = {
 	engine = "fortune",  -- only forturn for now
 	mode = "backtest",  -- backtest or live
 }
+
 
 back_test_service = {
 	update_config_interval = 60000,

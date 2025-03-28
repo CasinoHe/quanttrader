@@ -40,21 +40,32 @@ bool StockTradeService::prepare_data_series() {
 
     for (const auto& prefix : data_prefixes) {
         std::string provider_type = get_string_value(prefix + ".provider_type");
+        auto provider_config = get_string_value(prefix + ".provider_config");
         if (provider_type.empty()) {
             logger_->warn("Data provider type is empty for prefix: {}", prefix);
             continue;
         }
+        if (provider_config == "this") {
+            provider_config = get_config_path();
+        }
+        auto config_loader = quanttrader::luascript::LuaConfigLoader(provider_config);
+        config_loader.load_config();
+        // TODO: Hot reload provider config
         
         // get all params from configuration file
         auto params = std::make_shared<std::unordered_map<std::string, std::any>>();
         (*params)["data_prefix"] = prefix;
         (*params)["broker_provider"] = broker_provider_;
-        get_all_values_in_table(prefix, *params);
+        config_loader.get_all_values(prefix, *params);
+
         auto provider = data::provider::DataProviderFactory::instance()->create_provider(provider_type, prefix, params);
         if (!provider) {
             logger_->error("Failed to create data provider with prefix: {} and type: {}", prefix, provider_type);
             return false;
         }
+
+        // set broker provider, the data provider may need a broker provider to get data
+        provider->set_broker(broker_provider_);
         
         if (!provider->prepare_data()) {
             logger_->error("Failed to prepare data provider: {}", prefix);

@@ -11,6 +11,7 @@ namespace broker {
 struct ResHistoricalData;
 struct ResRealtimeData;
 class TwsBrokerAdapter;
+class BrokerProvider;
 }
 
 namespace data {
@@ -33,6 +34,7 @@ public:
     bool terminate_request_data() override;
     bool is_data_ready() override;
     std::optional<BarStruct> next() override;
+    inline void set_broker(std::shared_ptr<broker::BrokerProvider> broker_adapter) override;
 
 protected:
     bool is_historical_completed() const { return historical_fetch_completed_.load(); }

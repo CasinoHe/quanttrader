@@ -14,6 +14,9 @@
 #include <condition_variable>
 
 namespace quanttrader {
+namespace broker {
+class BrokerProvider;
+}
 namespace data {
 namespace provider {
 
@@ -176,6 +179,10 @@ public:
      */
     static std::string get_bar_type_string(BarType type, unsigned int size);
 
+    virtual void set_broker(std::shared_ptr<broker::BrokerProvider> broker_provider) {
+        broker_provider_ = broker_provider;
+    }
+
 protected:
     /**
      * @brief Helper method to retrieve data from parameters by prefix
@@ -248,6 +255,7 @@ protected:
     bool step_ready_ {false};
     std::mutex step_mutex_;
     std::condition_variable step_cv_;
+    std::shared_ptr<broker::BrokerProvider> broker_provider_ {nullptr};
 };
 
 } // namespace provider
