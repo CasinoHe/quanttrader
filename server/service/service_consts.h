@@ -7,18 +7,8 @@ namespace service {
 
 // Common service name constants
 constexpr inline const char* STOCK_TRADE_SERVICE_NAME = "StockTradeService";
-constexpr inline const char* BACK_TEST_SERVICE_NAME = "BackTestService";
-// Add more service name constants here as needed
 
-constexpr char UPDATE_CONFIG_INTERVAL_VARIABLE[] = "update_config_interval";
-constexpr char HOST_VARIABLE[] = "host";
-constexpr char PORT_VARIABLE[] = "port";
-constexpr char CLIENTID_VARIABLE[] = "clientid";
-constexpr char RETRY_INTERVAL_VARIABLE[] = "retry_interval";
-constexpr char WAIT_TIMEOUT_VARIABLE[] = "wait_timeout";
-constexpr char RECORD_LOG_VARIABLE[] = "record_log";
 constexpr char VERSION_VARIABLE[] = "version";
-constexpr char STOP_FLAG_VARIABLE[] = "stop_flag";
 constexpr char STOP_BACK_TEST_VARIABLE[] = "stop_runner";
 constexpr char START_BACK_TEST_VARIABLE[] = "new_runner";
 constexpr char SPLIT_BACK_TEST_VARIABLE[] = ",";

@@ -1,5 +1,7 @@
 #include "tws_broker_adapter.h"
 #include "service/service_consts.h"
+#include "config/lua_config_loader.h"
+#include "broker/broker_consts.h"
 #include <chrono>
 
 namespace quanttrader {
@@ -175,20 +177,17 @@ bool TwsBrokerAdapter::prepare() {
     // Initialize client and queues
     requestQueue_ = std::make_shared<moodycamel::BlockingConcurrentQueue<std::shared_ptr<RequestHeader>>>();
     responseQueue_ = std::make_shared<moodycamel::BlockingConcurrentQueue<std::shared_ptr<ResponseHeader>>>();
-    
-    // Get configuration from config file
-    // Note: This would need to be implemented based on your config system
-    std::string host = "127.0.0.1";  // Default values
-    int port = 7496;
-    int clientId = 1;
-    
+
+    // load config
+    updateConfig();
+
     // Create the TWS client
-    client_ = std::make_shared<TwsClient>(host, port, clientId, static_cast<int>(waitTimeout_.count()));
+    client_ = std::make_shared<TwsClient>(host_, port_, clientId_, static_cast<int>(waitTimeout_.count()));
     
     // Set up the client's response queue
     client_->set_response_queue(responseQueue_);
     
-    logger_->info("TwsBrokerAdapter prepared with host {}, port {}, clientId {}", host, port, clientId);
+    logger_->info("TwsBrokerAdapter prepared with host {}, port {}, clientId {}", host_, port_, clientId_);
     return true;
 }
 
@@ -522,6 +521,7 @@ void TwsBrokerAdapter::runMonitor(std::atomic<int> &twsVersion) {
         if (std::chrono::duration_cast<std::chrono::milliseconds>(current - now) > updateConfigInterval_) {
             now = current;
             // Update configuration if needed
+            updateConfig();
         }
     }
 }
@@ -546,8 +546,27 @@ void TwsBrokerAdapter::initAfterConnected() {
     client_->set_error_queue(errorQueue_);
 }
 
-bool TwsBrokerAdapter::updateConfig(std::atomic<int> &twsVersion) {
-    // This would be implemented based on your configuration system
+bool TwsBrokerAdapter::updateConfig() {
+    auto loader = quanttrader::luascript::LuaConfigLoader(configPath_);
+    loader.load_config();
+
+    host_ = loader.get_string_value(TWS_PROVIDER_NAME, HOST_VARIABLE);
+    port_ = loader.get_int_value(TWS_PROVIDER_NAME, PORT_VARIABLE);
+    clientId_ = loader.get_int_value(TWS_PROVIDER_NAME, CLIENTID_VARIABLE);
+
+    retryInterval_ = std::chrono::milliseconds(loader.get_int_value(TWS_PROVIDER_NAME, RETRY_INTERVAL_VARIABLE));
+    waitTimeout_ = std::chrono::milliseconds(loader.get_int_value(TWS_PROVIDER_NAME, WAIT_TIMEOUT_VARIABLE));
+    updateConfigInterval_ = std::chrono::milliseconds(loader.get_int_value(TWS_PROVIDER_NAME, UPDATE_CONFIG_INTERVAL_VARIABLE));
+
+    bool stop_flag = loader.get_bool_value(TWS_PROVIDER_NAME, STOP_FLAG_VARIABLE);
+    bool record_log = loader.get_bool_value(TWS_PROVIDER_NAME, RECORD_LOG_VARIABLE);
+    stopFlag_.store(stop_flag);
+
+    if (record_log) {
+        logger_->info("Updated configuration: host {}, port {}, clientId {}, retryInterval {} ms, waitTimeout {} ms, updateConfigInterval {} ms stop flag {}",
+                    host_, port_, clientId_, retryInterval_.count(), waitTimeout_.count(), updateConfigInterval_.count(), stop_flag);
+    }
+
     return true;
 }
 

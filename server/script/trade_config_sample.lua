@@ -1,8 +1,8 @@
 -- stock trade service configuration
 StockTradeService = {
 	-- settings for broker
-	broker_service = "tws",
-	broker_config = "this",  -- "this" means we should load config from this file
+	broker_provider = "tws",
+	broker_config = "tws_config.lua",  -- "this" means we should load config from this file
 
 	-- settings for data series
 	data_series = "daily_data,min_data,sec_data",
@@ -32,18 +32,6 @@ StockTradeService = {
 	},
 	engine = "fortune",  -- only forturn for now
 	mode = "backtest",  -- backtest or live
-}
-
-tws_service = {
-	host = "127.0.0.1",
-	port = 8001,
-	clientid = 0,
-
-	retry_interval = 5000,  -- retry interval in milliseconds
-	wait_timeout = 10,      -- wait data from TWS timeout in milliseconds, not updated unless restart quanttrader, TODO
-	update_config_interval = 60000, -- update config interval in milliseconds
-	record_log = 0,         -- record log or not
-	stop_flag = 0,          -- stop flag
 }
 
 back_test_service = {

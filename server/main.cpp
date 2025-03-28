@@ -83,8 +83,8 @@ int main(int argc, const char* argv[]) {
         po::options_description global_desc("QuantTrader options");
         global_desc.add_options()
             ("help,h", "Display help message")
-            ("command", po::value<std::string>(), "Command to execute, choose from [test, strategy]")
-            ("config,c", po::value<std::string>(), "Path to the configuration file. All other parameters should be in this file");
+            ("command", po::value<std::string>()->default_value("strategy"), "Command to execute, choose from [test, strategy], default is strategy")
+            ("config,c", po::value<std::string>()->default_value("main_config.lua"), "Path to the configuration file. Default value is : main_config.lua");
 
         // Parse options
         po::variables_map global_vm;

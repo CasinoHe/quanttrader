@@ -98,7 +98,7 @@ private:
     void runResponse(std::atomic<int> &twsVersion);
     void runMonitor(std::atomic<int> &twsVersion);
     void distributeResponse(std::atomic<int> &twsVersion);
-    bool updateConfig(std::atomic<int> &twsVersion);
+    bool updateConfig();
     void keepAlive();
     void initAfterConnected();
 
@@ -124,6 +124,9 @@ private:
     std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::shared_ptr<ResErrorMsg>>> errorQueue_ = nullptr;
     
     // Configuration for timing
+    std::string host_{"127.0.0.1"};
+    int port_{0};
+    int clientId_{0};
     std::chrono::milliseconds retryInterval_{1000};    // Default 1 second
     std::chrono::milliseconds waitTimeout_{10};        // Default 10 milliseconds
     std::chrono::milliseconds updateConfigInterval_{30000};  // Default 30 seconds

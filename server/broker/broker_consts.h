@@ -19,5 +19,15 @@ enum class MessageType {
     END_REQUEST = 1000,
 };
 
+constexpr char HOST_VARIABLE[] = "host";
+constexpr char PORT_VARIABLE[] = "port";
+constexpr char CLIENTID_VARIABLE[] = "clientid";
+constexpr char TWS_PROVIDER_NAME[] = "tws_provider";
+constexpr char RETRY_INTERVAL_VARIABLE[] = "retry_interval";
+constexpr char WAIT_TIMEOUT_VARIABLE[] = "wait_timeout";
+constexpr char UPDATE_CONFIG_INTERVAL_VARIABLE[] = "update_config_interval";
+constexpr char STOP_FLAG_VARIABLE[] = "stop_flag";
+constexpr char RECORD_LOG_VARIABLE[] = "record_log";
+
 }
 }
