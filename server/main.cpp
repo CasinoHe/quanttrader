@@ -17,8 +17,24 @@
 namespace po = boost::program_options;
 namespace qlog = quanttrader::log;
 
+// Configuration table names in the Lua config files
 constexpr char STRATEGY_CONFIG_TABLE_NAME[] = "strategy_config";
 constexpr char TEST_CONFIG_TABLE_NAME[] = "test_config";
+
+/*
+ * Configuration and Data Flow:
+ * 1. Main config file (main_config.lua by default) is loaded first
+ * 2. For test mode: 
+ *    - Gets test function name from "test_config" table
+ *    - Executes the named test function
+ * 3. For strategy mode:
+ *    - Gets strategy config path from "strategy_config.config_path"
+ *    - Gets required services from "strategy_config.start_services"
+ *    - Initializes services using ServiceFactory
+ *    - All strategy parameters come from the specified config files
+ * 
+ * All configuration sample files are under the "script" directory.
+ */
 
 int run_test_command(const std::string &config_path) {
 #ifdef QUANTTRADER_BUILD_TEST
@@ -59,16 +75,18 @@ int run_strategy_command(const std::string &config_path) {
     } else {
         qlog::Info("Running strategy using configuration: {}", config_path);
     }
+    // Get strategy configuration path and services to start from the main config
     auto strategy_config_path = config_loader.get_string_value(STRATEGY_CONFIG_TABLE_NAME, "config_path");
     auto need_start_service = config_loader.get_string_value(STRATEGY_CONFIG_TABLE_NAME, "start_services");
 
     namespace qservice = quanttrader::service;
-    // All strategy parameters are now in the config file
+    // Create service based on configuration and initialize the backtesting/trading process
     auto service = qservice::ServiceFactory::instance()->createService(need_start_service, strategy_config_path);
     if (!service->prepare()) {
         std::cout << "Cannot prepare the service. Check log/service.log for more information." << std::endl;
         return EXIT_FAILURE;
     } else {
+        // Service::run() contains the main execution loop for backtesting or live trading
         service->run();
         return EXIT_SUCCESS;
     }
