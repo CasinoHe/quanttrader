@@ -197,14 +197,25 @@ void TwsBrokerAdapter::run() {
         return;
     }
     
-    // Start the TWS thread
+    // Start the TWS thread without joining it
+    // This allows the thread to run in the background
     clientThread_ = std::make_shared<std::thread>(&TwsBrokerAdapter::runTws, this);
-    clientThread_->join();
+    
+    // Don't join the thread here, that would block the calling thread
+    // The thread will continue to run in the background
+    logger_->info("TWS client thread started in background");
 }
 
 void TwsBrokerAdapter::stop() {
     stopFlag_.store(true);
     logger_->info("Stop flag set");
+    
+    // Join the client thread if it exists and is joinable
+    if (clientThread_ && clientThread_->joinable()) {
+        logger_->info("Waiting for TWS client thread to finish...");
+        clientThread_->join();
+        logger_->info("TWS client thread joined successfully");
+    }
 }
 
 bool TwsBrokerAdapter::isPrepared() const {
