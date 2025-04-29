@@ -100,6 +100,13 @@ public:
      */
     virtual bool stop();
 
+    /**
+     * @brief Set wait data ready timeout
+     */
+    inline void set_wait_data_ready_timeout(long long timeout) {
+        wait_data_timeout_ = timeout;
+    }
+
 protected:
     /**
      * @brief Process the next set of data
@@ -125,6 +132,7 @@ protected:
     std::string name_;
     std::shared_ptr<broker::BrokerProvider> broker_;
     std::atomic<bool> stop_flag_;
+    long long wait_data_timeout_ = 60000; // 60 seconds
 };
 
 } // namespace cerebro

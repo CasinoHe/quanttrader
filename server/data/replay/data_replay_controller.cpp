@@ -51,13 +51,6 @@ bool DataReplayController::start() {
     // Start and prepare all data providers
     for (auto& [name, provider] : providers_) {
         provider->set_replay_mode(replay_mode_);
-        
-        if (!provider->prepare_data()) {
-            auto logger = quanttrader::log::get_common_rotation_logger("DataReplayController", "data");
-            logger->error("Failed to prepare data provider: {}", name);
-            success = false;
-            continue;
-        }
 
         if (!provider->start_request_data()) {
             auto logger = quanttrader::log::get_common_rotation_logger("DataReplayController", "data");

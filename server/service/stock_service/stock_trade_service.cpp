@@ -130,6 +130,7 @@ bool StockTradeService::prepare_cerebro() {
             continue;
         }
         auto cerebro_type = get_string_value(cerebro_name + ".cerebro_type");
+        int wait_data_timeout = get_int_value(cerebro_name + ".wait_data_timeout");
 
         // Create cerebro instance
         auto cerebro = cerebro::CerebroFactory::instance()->create_cerebro(cerebro_type, cerebro_name);
@@ -137,6 +138,11 @@ bool StockTradeService::prepare_cerebro() {
             logger_->error("Failed to create the cerebro: {}, please check the configuration file.", cerebro_name);
             qlog::Error("Failed to create the cerebro: {}, please check the configuration file.", cerebro_name);
             return false;
+        }
+
+        // Set wait data ready timeout
+        if (wait_data_timeout > 0) {
+            cerebro->set_wait_data_ready_timeout(wait_data_timeout);
         }
         
         // Add data providers to cerebro

@@ -124,7 +124,7 @@ bool CerebroBase::prepare() {
     
     // Wait for all data to be ready
     int wait_time = 0;
-    const int max_wait_time = 60;  // seconds
+    const int max_wait_time = static_cast<int>(wait_data_timeout_ / 1000);  // seconds
     bool all_ready = false;
     
     while (wait_time < max_wait_time) {
@@ -139,7 +139,7 @@ bool CerebroBase::prepare() {
     }
     
     if (!all_ready) {
-        logger_->error("Timed out waiting for data providers to be ready");
+        logger_->error("Timed out({} seconds) waiting for data providers to be ready", max_wait_time);
         return false;
     }
     
