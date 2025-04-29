@@ -22,6 +22,9 @@ StockTradeService = {
 		tickers = "AAPL,MSFT,GOOG",
 	},
 
+	-- settings for strategy
+	strategy_names = "apple_slope,msft_slope",
+
 	-- setting for cerebro
 	cerebro_names = "backtest_cerebro,live_cerebro",
 	backtest_cerebro = {
@@ -54,6 +57,7 @@ apple_slope = {
 	version = 1,                            -- before each operation, increment the version number
 	runner_name = "StockRunner",
 	strategy_name = "slope",
+	symbol = "AAPL",
 	data_series = "daily,min",
 }
 
