@@ -40,6 +40,7 @@ private:
     StockTradeService(const std::string_view config_path);
     ~StockTradeService() = default;
 
+    bool prepare_broker_service();
     bool prepare_data_series();
     bool prepare_cerebro();
     bool prepare_strategyes();

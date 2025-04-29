@@ -1,7 +1,7 @@
 #pragma once
 
 #include "cerebro_consts.h"
-#include "data/data_provider.h"
+#include "data/common/data_provider.h"
 #include "data/replay/data_replay_controller.h"
 #include "strategy/strategy_base.h"
 #include "logger/quantlogger.h"

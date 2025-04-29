@@ -1,5 +1,5 @@
 #include "cerebro.h"
-#include "data/data_provider.h"
+#include "data/common/data_provider.h"
 #include "broker/broker_provider_factory.h"
 #include "strategy/strategy_factory.h"
 #include <iostream>

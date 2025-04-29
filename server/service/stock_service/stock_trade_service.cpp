@@ -1,7 +1,7 @@
 #include "stock_trade_service.h"
 #include "service/service_consts.h"
 #include "broker/broker_provider_factory.h"
-#include "data/data_provider_factory.h"
+#include "data/common/data_provider_factory.h"
 #include "strategy/strategy_factory.h"
 #include "cerebro/cerebro_factory.h"
 #include "config/lua_config_loader.h"
@@ -23,6 +23,30 @@ StockTradeService::StockTradeService(const std::string_view config_path) : Servi
         qlog::Error("Cannot set the configuration file path: {}, please check the existence of the file and the config file should be a regular lua file.", config_path);
     } else {
         logger_->info("instance created with config file: {}", config_path);
+    }
+}
+
+bool StockTradeService::prepare_broker_service() {
+    // Get and prepare broker provider
+    auto broker_provider_name = get_string_value("broker_provider");
+    auto broker_provider_config = get_string_value("broker_config");
+    // if the broker provider config is set to "this", then use the current config file
+    if (broker_provider_config == "this") {
+        broker_provider_config = get_config_path();
+    }
+    if (!broker_provider_name.empty()) {
+        broker_provider_ = broker::BrokerProviderFactory::instance()->createProvider(broker_provider_name, broker_provider_config);
+        if (!broker_provider_) {
+            logger_->error("Failed to create the broker provider: {}, please check the configuration file.", broker_provider_name);
+            qlog::Error("Failed to create the broker provider: {}, please check the configuration file.", broker_provider_name);
+            return false;
+        }
+        logger_->info("Created broker provider: {}", broker_provider_name);
+        return true;
+    } else {
+        logger_->warn("Broker provider name is empty. Please check the {}.broker_provider section of configuration file {}.", get_service_name(), get_config_path());
+        qlog::Warn("Broker provider name is empty. Please check the {}.broker_provider section of configuration file {}.", get_service_name(), get_config_path());
+        return false;
     }
 }
 
@@ -225,24 +249,10 @@ bool StockTradeService::prepare() {
         return false;
     }
 
-    // Get and prepare broker provider
-    auto broker_provider_name = get_string_value("broker_provider");
-    auto broker_provider_config = get_string_value("broker_config");
-    // if the broker provider config is set to "this", then use the current config file
-    if (broker_provider_config == "this") {
-        broker_provider_config = get_config_path();
-    }
-    if (!broker_provider_name.empty()) {
-        broker_provider_ = broker::BrokerProviderFactory::instance()->createProvider(broker_provider_name, broker_provider_config);
-        if (!broker_provider_) {
-            logger_->error("Failed to create the broker provider: {}, please check the configuration file.", broker_provider_name);
-            qlog::Error("Failed to create the broker provider: {}, please check the configuration file.", broker_provider_name);
-            return false;
-        }
-        logger_->info("Created broker provider: {}", broker_provider_name);
-    } else {
-        logger_->warn("Broker provider name is empty. Please check the {}.broker_provider section of configuration file {}.", get_service_name(), get_config_path());
-        qlog::Warn("Broker provider name is empty. Please check the {}.broker_provider section of configuration file {}.", get_service_name(), get_config_path());
+    // prepare broker service
+    if (!prepare_broker_service()) {
+        logger_->error("Failed to prepare broker service. Please check the configuration file.");
+        return false;
     }
 
     // prepare data series 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "data/data_provider.h"
+#include "data/common/data_provider.h"
 #include "data/common/data_consts.h"
 #include <atomic>
 #include <string>

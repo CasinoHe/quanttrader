@@ -1,4 +1,4 @@
-#include "data/data_provider_factory.h"
+#include "data/common/data_provider_factory.h"
 #include "data/feed/tws_data_feed.h"
 #include "data/feed/csv_data_feed.h"
 #include "data/feed/yahoo_data_feed.h"
