@@ -29,11 +29,11 @@ StockTradeService = {
 	cerebro_names = "backtest_cerebro,live_cerebro",
 	backtest_cerebro = {
 		cerebro_type = "backtest",
-		cerebro_config = "cerebro_config.lua",
+		replay_mode = "stepped",
 	},
 	live_cerebro = {
 		cerebro_type = "live",
-		cerebro_config = "cerebro_config.lua",
+		replay_mode = "realtime",
 	},
 	risk_manager = {
 		"to_be_implemented",

@@ -143,14 +143,6 @@ bool CerebroBase::prepare() {
         return false;
     }
     
-    // Initialize all strategies
-    for (auto& strategy : strategies_) {
-        if (!strategy->initialize()) {
-            logger_->error("Failed to initialize strategy: {}", strategy->get_name());
-            return false;
-        }
-    }
-    
     is_prepared_ = true;
     logger_->info("CerebroBase preparation completed successfully");
     return true;

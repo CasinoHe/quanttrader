@@ -130,16 +130,6 @@ bool StockTradeService::prepare_cerebro() {
             continue;
         }
         auto cerebro_type = get_string_value(cerebro_name + ".cerebro_type");
-        auto cerebro_config = get_string_value(cerebro_name + ".cerebro_config");
-        if (cerebro_type.empty() || cerebro_config.empty()) {
-            logger_->warn("Cerebro type or config is empty. Please check the {}.cerebro_names section of configuration file {}.", get_service_name(), get_config_path());
-            qlog::Warn("Cerebro type or config is empty. Please check the {}.cerebro_names section of configuration file {}.", get_service_name(), get_config_path());
-            continue;
-        }
-
-        if (cerebro_config == "this") {
-            cerebro_config = get_config_path();
-        }
 
         // Create cerebro instance
         auto cerebro = cerebro::CerebroFactory::instance()->create_cerebro(cerebro_type, cerebro_name);
@@ -161,16 +151,19 @@ bool StockTradeService::prepare_cerebro() {
             }
             
             // Check if we need to resample this data
-            std::string resample_key = cerebro_name + "." + data_name + ".resample";
-            auto resample_str = get_string_value(resample_key);
-            if (!resample_str.empty()) {
-                auto [target_type, target_size] = data::provider::DataProvider::get_bar_type_from_string(resample_str);
+            if (provider->need_resample()) {
+                auto resample_size = provider->get_resample_size();
+                if (resample_size.empty()) {
+                    logger_->error("Resample size is empty for data provider: {}", data_name);
+                    return false;
+                }
+                auto [target_type, target_size] = data::provider::DataProvider::get_bar_type_from_string(resample_size);
                 if (target_type != data::BarType::NONE) {
                     if (!cerebro->resample_data(data_name, target_type, target_size)) {
-                        logger_->error("Failed to resample data {} to {}", data_name, resample_str);
+                        logger_->error("Failed to resample data {} to {}", data_name, resample_size);
                         return false;
                     }
-                    logger_->info("Resampled data {} to {}", data_name, resample_str);
+                    logger_->info("Resampled data {} to {}", data_name, resample_size);
                 }
             }
         }
