@@ -1,7 +1,7 @@
 #pragma once
 
 #include "data/common/data_struct.h"
-#include "data/util/bar_line.h"
+#include "data/common/bar_line.h"
 #include "logger/quantlogger.h"
 #include <string>
 #include <memory>
