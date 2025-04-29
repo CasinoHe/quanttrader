@@ -76,10 +76,10 @@ bool TwsDataFeed::prepare_data() {
     }
 
     // Check if broker adapter is available
-    if (!broker_adapter_ || !broker_adapter_->isConnected()) {
-        logger_->error("TWS Broker adapter is not available or not connected");
-        return false;
-    }
+    // if (!broker_adapter_ || !broker_adapter_->isConnected()) {
+    //     logger_->error("TWS Broker adapter is not available or not connected");
+    //     return false;
+    // }
 
     return true;
 }

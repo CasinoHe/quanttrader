@@ -258,16 +258,19 @@ bool StockTradeService::prepare() {
 
     // prepare data series 
     if (!prepare_data_series()) {
+        logger_->error("Failed to prepare data series. Please check the configuration file.");
         return false;
     }
 
     // prepare strategies
     if (!prepare_strategyes()) {
+        logger_->error("Failed to prepare strategies. Please check the configuration file.");
         return false;
     }
 
     // prepare cerebro
     if (!prepare_cerebro()) {
+        logger_->error("Failed to prepare cerebro. Please check the configuration file.");
         return false;
     }
 

@@ -7,6 +7,6 @@ tws_provider = {
 	retry_interval = 10000,  -- retry interval in milliseconds
 	wait_timeout = 10,      -- wait data from TWS timeout in milliseconds, not updated unless restart quanttrader, TODO
 	update_config_interval = 60000, -- update config interval in milliseconds
-	record_log = 0,         -- record log or not
-	stop_flag = 0,          -- stop flag
+	record_log = false,         -- record log or not
+	stop_flag = false,          -- stop flag
 }
