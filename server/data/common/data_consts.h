@@ -15,6 +15,8 @@ constexpr const char *DATA_TIMEZONE_NAME = "timezone";
 constexpr const char *DATA_TRADE_WHAT_NAME = "what";
 constexpr const char *BAR_TYPE_NAME = "bar_type";
 constexpr const char *KEEP_UP_TO_DATE_NAME = "up_to_date";
+constexpr const char *NEED_RESAMPLE = "resample";
+constexpr const char *RESAMPLE_BAR_SIZE = "resample_bar_size";
 
 constexpr const char *kDefaultSecurityType = "STK";
 constexpr const char *kDefaultExchange = "SMART";

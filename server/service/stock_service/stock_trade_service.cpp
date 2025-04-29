@@ -87,17 +87,18 @@ bool StockTradeService::prepare_data_series() {
 
             // get all params from configuration file
             auto params = std::make_shared<std::unordered_map<std::string, std::any>>();
+            auto data_name = prefix + "_" + ticker;
             // read from config file and overwrite with crutial params
             config_loader.get_all_values(prefix, *params);
-            (*params)["data_name"] = prefix;
+            (*params)["data_name"] = data_name;
             (*params)["broker_provider"] = broker_provider_;
             (*params)["provider_type"] = provider_type;
             (*params)["provider_config"] = provider_config;
             (*params)["ticker"] = ticker;
 
-            auto provider = data::provider::DataProviderFactory::instance()->create_provider(provider_type, prefix, params);
+            auto provider = data::provider::DataProviderFactory::instance()->create_provider(provider_type, data_name, params);
             if (!provider) {
-                logger_->error("Failed to create data provider with name: {} and type: {}", prefix, provider_type);
+                logger_->error("Failed to create data provider with name: {} and type: {}", data_name, provider_type);
                 return false;
             }
 

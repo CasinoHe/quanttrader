@@ -16,6 +16,8 @@ daily_data = {
 	-- 1 day, 1W, 1M
 	bar_type = "1 day",
 	up_to_date = false,
+	resample = false,  -- resample data or not
+	resample_bar_size = "1 day",  -- resample bar type
 }
 
 
@@ -35,9 +37,12 @@ min_data = {
 	-- 1 day, 1W, 1M
 	bar_type = "15 mins",
 	up_to_date = false,
+	resample = false,  -- resample data or not
+	resample_bar_size = "15 mins",  -- resample bar type
 }
 
 
 sec_data = {
-
+	resample = false,  -- resample data or not
+	resample_bar_size = "1 secs",  -- resample bar type
 }

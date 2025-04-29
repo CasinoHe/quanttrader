@@ -183,26 +183,48 @@ public:
         broker_provider_ = broker_provider;
     }
 
+    inline bool need_resample() const { return get_config_value<bool>(NEED_RESAMPLE, false); }
+    inline std::string get_resample_size() const { return get_config_value<std::string>(RESAMPLE_BAR_SIZE); }
+
 protected:
     /**
      * @brief Helper method to retrieve data from parameters by prefix
      * 
      * @tparam T the type of the data to retrieve
-     * @param data the key suffix to look for
+     * @param key the key to look for
      * @param default_value optional default value if key is not found
      * @return The retrieved value or the default value
      */
     template<typename T>
-    T get_config_value(const std::string &&key, std::optional<T> default_value=std::nullopt) {
+    T get_config_value(const std::string& key, const T& default_value) const {
+        if (!params_) {
+            return default_value;
+        }
         auto iter = params_->find(key);
         if (iter == params_->end()) {
-            if (default_value.has_value()) {
-                return default_value.value();
-            } else {
-                return {};
-            }
+            return default_value;
         }
-        return std::any_cast<T>(iter->second);
+        try {
+            return std::any_cast<T>(iter->second);
+        } catch (const std::bad_any_cast&) {
+            return default_value;
+        }
+    }
+
+    template<typename T>
+    T get_config_value(const std::string& key) const {
+        if (!params_) {
+            return T{};
+        }
+        auto iter = params_->find(key);
+        if (iter == params_->end()) {
+            return T{};
+        }
+        try {
+            return std::any_cast<T>(iter->second);
+        } catch (const std::bad_any_cast&) {
+            return T{};
+        }
     }
 
     /**
