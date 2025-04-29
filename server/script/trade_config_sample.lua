@@ -46,18 +46,18 @@ StockTradeService = {
 }
 
 apple_slope = {
+	strategy_type = "slope",
 	version = 1,                            -- before each operation, increment the version number
 	runner_name = "StockRunner",
-	strategy_name = "slope",
 	symbol = "AAPL",
 	data_series = "daily,min",
 }
 
 
 msft_slope = {
+	strategy_type = "slope",
 	version = 1,                            -- before each operation, increment the version number
 	runner_name = "StockRunner",
-	strategy_name = "slope",
 	symbol = "MSFT",
 	start_date = "2016-01-01 00:00:00",
 	end_date = "2024-12-31 23:59:59",

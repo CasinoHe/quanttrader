@@ -49,8 +49,8 @@ public:
         return strategies_.find(name) != strategies_.end();
     }
 
-    static std::shared_ptr<StrategyBase> create_strategy(const std::string &name, StrategyCreateFuncParemType &params) {
-        auto it = strategies_.find(name);
+    static std::shared_ptr<StrategyBase> create_strategy(const std::string &strategy_type, StrategyCreateFuncParemType &params) {
+        auto it = strategies_.find(strategy_type);
         if (it != strategies_.end()) {
             return it->second(params);
         }

@@ -227,8 +227,9 @@ bool StockTradeService::prepare_strategyes() {
         auto params = std::make_shared<std::unordered_map<std::string, std::any>>();
         get_all_values_in_table(strategy_name, *params);
         (*params)["strategy_name"] = strategy_name;
-        
-        auto strategy = strategy::StrategyFactory::create_strategy(strategy_name, *params);
+        const auto strategy_type = get_string_value_in_table(strategy_name, "strategy_type");
+
+        auto strategy = strategy::StrategyFactory::create_strategy(strategy_type, *params);
         if (!strategy) {
             logger_->error("Failed to create strategy: {}", strategy_name);
             return false;
