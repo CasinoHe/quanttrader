@@ -43,16 +43,6 @@ StockTradeService = {
 	mode = "backtest",  -- backtest or live
 }
 
-
-back_test_service = {
-	update_config_interval = 60000,
-	wait_timeout = 1000,                   -- timeout on each threads in back test loop in milliseconds
-	-- stop_runner = "apple_daily,msft_weekly",  -- which test to stop
-	new_runner = "apple_slope,msft_slope",  -- config table name, split by comma
-	-- restart_runner = "apple_daily,msft_weekly", -- which test to restart
-	stop_flag = 0,
-}
-
 apple_slope = {
 	version = 1,                            -- before each operation, increment the version number
 	runner_name = "StockRunner",
