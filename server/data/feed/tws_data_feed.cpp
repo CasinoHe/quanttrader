@@ -177,7 +177,7 @@ std::optional<std::string> TwsDataFeed::get_duration() {
         auto seconds2 = time2.value().get_seconds_epoch();
         duration = seconds2 - seconds1;
     } else {
-        auto time2 = qtime::TimeWithZone::from_zone_string(end_date_);
+        auto time2 = qtime::TimeWithZone::from_datetime_string(end_date_, timezone_);
         if (!time2.has_value()) {
             logger_->error("Cannot parse the end date: {}", end_date_);
             return std::nullopt;
