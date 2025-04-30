@@ -132,23 +132,30 @@ bool TwsDataFeed::start_request_data() {
 long TwsDataFeed::subscribe_realtime_data() {
     if (!broker_adapter_) return -1;
 
-    // Register a callback for real-time data
-    broker_adapter_->registerTradeCallback([this](const std::string& symbol, double price, Decimal size) {
-        // Basic processing of real-time data
-        logger_->info("Received real-time data for {}: price={}, size={}", symbol.empty() ? symbol_ : symbol, price, size);
-        
-        // In a real implementation, we'd update the bar_line_ with this data
-        // For now, just mark data as ready
-        data_ready_ = true;
-    });
-
-    // Request real-time data
-    return broker_adapter_->requestRealTimeData(
+    // First request realtime data to get the correct request ID
+    long requestId = broker_adapter_->requestRealTimeData(
         symbol_,
         security_type_,
         exchange_,
         currency_
     );
+    
+    // Only register the callback if we got a valid request ID
+    if (requestId > 0) {
+        // Register a callback for real-time data using the returned request ID
+        broker_adapter_->registerTradeCallback([this](const std::string& symbol, double price, Decimal size) {
+            // Basic processing of real-time data
+            logger_->info("Received real-time data for {}: price={}, size={}", symbol.empty() ? symbol_ : symbol, price, size);
+            
+            // In a real implementation, we'd update the bar_line_ with this data
+            // For now, just mark data as ready
+            data_ready_ = true;
+        });
+    } else {
+        logger_->error("Failed to request realtime data for: {}", symbol_);
+    }
+
+    return requestId;
 }
 
 std::optional<std::string> TwsDataFeed::get_duration() {
@@ -215,32 +222,8 @@ long TwsDataFeed::fetch_historical_data() {
                 keep_up_to_date_
                 );
     
-    // Register a callback for historical data
-    long requestId = broker_adapter_->getNextRequestId();
-    broker_adapter_->registerBarDataCallback(requestId, [this](const broker::BarData& barData) {
-        if (barData.is_last) {
-            historical_fetch_completed_.store(true);
-            data_ready_ = true;
-            logger_->info("Historical data response for: {} is completed.", symbol_);
-            return;
-        }
-
-        // Push historical bar data into the bar line
-        if (bar_line_->push_data(
-                barData.time,
-                barData.open,
-                barData.high,
-                barData.low,
-                barData.close,
-                barData.volume,
-                barData.wap,
-                barData.count)) {
-            historical_data_length_++;
-        }
-    });
-
-    // Request historical data
-    return broker_adapter_->requestHistoricalData(
+    // Request historical data first to get the correct request ID
+    long requestId = broker_adapter_->requestHistoricalData(
         symbol_,
         security_type_,
         exchange_,
@@ -252,6 +235,36 @@ long TwsDataFeed::fetch_historical_data() {
         use_rth_,
         keep_up_to_date_
     );
+    
+    // Only register the callback if we got a valid request ID
+    if (requestId > 0) {
+        // Register a callback for historical data using the returned request ID
+        broker_adapter_->registerBarDataCallback(requestId, [this](const broker::BarData& barData) {
+            if (barData.is_last) {
+                historical_fetch_completed_.store(true);
+                data_ready_ = true;
+                logger_->info("Historical data response for: {} is completed.", symbol_);
+                return;
+            }
+
+            // Push historical bar data into the bar line
+            if (bar_line_->push_data(
+                    barData.time,
+                    barData.open,
+                    barData.high,
+                    barData.low,
+                    barData.close,
+                    barData.volume,
+                    barData.wap,
+                    barData.count)) {
+                historical_data_length_++;
+            }
+        });
+    } else {
+        logger_->error("Failed to request historical data for: {}", symbol_);
+    }
+
+    return requestId;
 }
 
 bool TwsDataFeed::is_data_ready() {
