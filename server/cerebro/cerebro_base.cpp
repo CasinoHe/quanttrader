@@ -109,7 +109,6 @@ bool CerebroBase::resample_data(const std::string& name, data::BarType target_ty
 
 bool CerebroBase::prepare() {
     if (is_prepared_) {
-        logger_->warn("{} CerebroBase is already prepared", name_);
         return true;
     }
     
