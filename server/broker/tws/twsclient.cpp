@@ -54,6 +54,32 @@ bool TwsClient::connect() {
     }
 }
 
+std::string TwsClient::translate_time_format(const std::string& time_str) {
+    if (time_str.empty()) {
+        return "";
+    }
+
+    try {
+        // Parse the input string
+        std::tm tm = {};
+        std::istringstream ss(time_str);
+        ss >> std::get_time(&tm, "%Y-%m-%d %H:%M:%S");
+        
+        if (ss.fail()) {
+            return time_str;
+        }
+        
+        // Format the output string
+        char buffer[20];
+        std::strftime(buffer, sizeof(buffer), "%Y%m%d %H:%M:%S", &tm);
+        
+        return std::string(buffer);
+    } catch (const std::exception& e) {
+        logger_->debug("Error translating time format: {}", e.what());
+        return time_str;
+    }
+}
+
 void TwsClient::disconnect() {
     if (client_socket_.isConnected()) {
         client_socket_.eDisconnect();
@@ -85,9 +111,10 @@ void TwsClient::cancel_real_time_data(TickerId request_id) {
 void TwsClient::request_historical_data(TickerId request_id, const Contract &contract, const std::string &end_time,
                                         const std::string &duration, const std::string &bar_size,
                                         const std::string &what_to_show, int use_rth, bool keep_up_to_date) {
-    client_socket_.reqHistoricalData(request_id, contract, end_time, duration, bar_size, what_to_show, use_rth, 1, keep_up_to_date, {});
+    std::string translated_end_time = translate_time_format(end_time);
+    client_socket_.reqHistoricalData(request_id, contract, translated_end_time, duration, bar_size, what_to_show, use_rth, 1, keep_up_to_date, {});
     logger_->info("Requested historical data for request ID: {}, Symbol: {}, SecType: {}, Exchange: {}, Currency: {}, EndTime: {}, Duration: {}, BarSize: {}, WhatToShow: {}, UseRTH: {}, KeepUpToDate: {}", 
-                  request_id, contract.symbol, contract.secType, contract.exchange, contract.currency, end_time, duration, bar_size, what_to_show, use_rth, keep_up_to_date);
+                  request_id, contract.symbol, contract.secType, contract.exchange, contract.currency, translated_end_time, duration, bar_size, what_to_show, use_rth, keep_up_to_date);
 }
 
 void TwsClient::cancel_historical_data(TickerId request_id) {

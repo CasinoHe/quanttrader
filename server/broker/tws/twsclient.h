@@ -49,7 +49,9 @@ public:
                                   const std::string &duration, const std::string &bar_size,
                                   const std::string &what_to_show, int use_rth, bool keep_up_to_date);
     void cancel_historical_data(TickerId request_id);
-
+    
+    // Utility functions
+    std::string translate_time_format(const std::string& time_str);
 
     // EWrapper callbacks
     void tickPrice(TickerId ticker_id, TickType field, double price, const TickAttrib &attrib) override;
