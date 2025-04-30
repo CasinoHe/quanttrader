@@ -243,7 +243,7 @@ long TwsDataFeed::fetch_historical_data() {
             if (barData.is_last) {
                 historical_fetch_completed_.store(true);
                 data_ready_ = true;
-                logger_->info("Historical data response for: {} is completed.", symbol_);
+                logger_->info("Historical data {} response for: {} is completed.", data_name_, symbol_);
                 return;
             }
 
