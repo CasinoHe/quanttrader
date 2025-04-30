@@ -84,6 +84,8 @@ long TwsBrokerAdapter::requestHistoricalData(
         if (callbackIt != barDataCallbacks_.end() && callbackIt->second) {
             BarData barData = convertToBarData(*histResponse);
             callbackIt->second(barData);
+        } else {
+            logger_->warn("Callback not found for request ID: {}", histResponse->request_id);
         }
     };
     
@@ -124,6 +126,7 @@ void TwsBrokerAdapter::cancelHistoricalData(long requestId) {
     // Remove any registered callbacks for this request
     barDataCallbacks_.erase(requestId);
     removeCallback(requestId);
+    logger_->info("Cancelled historical data for request ID: {}", requestId);
 }
 
 void TwsBrokerAdapter::cancelRealTimeData(long requestId) {
@@ -133,6 +136,7 @@ void TwsBrokerAdapter::cancelRealTimeData(long requestId) {
     
     // Remove any registered callbacks for this request
     removeCallback(requestId);
+    logger_->info("Cancelled real-time data for request ID: {}", requestId);
 }
 
 // Not implemented in this version, would need additional message types
@@ -158,6 +162,7 @@ void TwsBrokerAdapter::cancelOrder(long orderId) {
 
 void TwsBrokerAdapter::registerBarDataCallback(long requestId, BarDataCallback callback) {
     barDataCallbacks_[requestId] = callback;
+    logger_->info("Registered bar data callback for request ID: {}", requestId);
 }
 
 void TwsBrokerAdapter::registerTradeCallback(TradeCallback callback) {
