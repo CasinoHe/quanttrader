@@ -152,7 +152,7 @@ long TwsDataFeed::subscribe_realtime_data() {
 }
 
 std::optional<std::string> TwsDataFeed::get_duration() {
-    auto time1 = qtime::TimeWithZone::from_zone_string(start_date_);
+    auto time1 = qtime::TimeWithZone::from_datetime_string(start_date_, timezone_);
     if (!time1.has_value()) {
         logger_->error("Cannot parse the start date: {}", start_date_);
         return {};

@@ -83,6 +83,38 @@ std::optional<TimeWithZone> TimeWithZone::from_zone_string(const std::string& da
     }
 }
 
+std::optional<TimeWithZone> TimeWithZone::from_datetime_string(const std::string& datetime, const std::string& timezone) {
+    std::istringstream iss(datetime);
+    std::chrono::local_time<std::chrono::nanoseconds> tp;
+
+    if (iss >> std::chrono::parse("%F %T", tp)) {
+        // Validate and get the canonical timezone name
+        auto canonical_zone = TimeWithZone::get_canonical_zone_name(timezone);
+        if (!canonical_zone.empty()) {
+            return TimeWithZone(canonical_zone, tp);
+        } else {
+            qlog::Error("Invalid timezone specified: {}", timezone);
+            return std::nullopt;
+        }
+    } else {
+        // Try with a different format (YYYY-MM-DD)
+        iss.clear();
+        iss.seekg(0, std::ios::beg);
+        if (iss >> std::chrono::parse("%F", tp)) {
+            auto canonical_zone = TimeWithZone::get_canonical_zone_name(timezone);
+            if (!canonical_zone.empty()) {
+                return TimeWithZone(canonical_zone, tp);
+            } else {
+                qlog::Error("Invalid timezone specified: {}", timezone);
+                return std::nullopt;
+            }
+        } else {
+            qlog::Error("Failed to parse datetime string: {}, Underlying error: {}", datetime, iss.fail());
+            return std::nullopt;
+        }
+    }
+}
+
 std::optional<TimeWithZone> TimeWithZone::from_ibapi_string(const std::string& data, const std::string_view zone_name) {
     std::istringstream iss(data);
     std::chrono::local_time<std::chrono::nanoseconds> tp;

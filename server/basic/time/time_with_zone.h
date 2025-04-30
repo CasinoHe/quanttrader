@@ -43,6 +43,8 @@ public:
     static std::optional<TimeWithZone> from_zone_string(const std::string& data);
     // parse from a time string from IB API historical data like "20240510 09:29:30 US/Eastern"
     static std::optional<TimeWithZone> from_ibapi_string(const std::string& data, const std::string_view zone_name);
+    // parse from a datetime string with a specified timezone
+    static std::optional<TimeWithZone> from_datetime_string(const std::string& datetime, const std::string& timezone);
     static std::optional<std::string> find_zone_by_offset(std::chrono::seconds &offset);
     static bool is_valid_time_zone(const std::string_view time_zone);
     static std::string_view get_canonical_zone_name(std::string_view time_zone);
