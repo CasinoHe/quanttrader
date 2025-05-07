@@ -38,10 +38,16 @@ public:
     virtual void on_bar(const std::string& data_name, const data::BarStruct& bar) {}
     virtual void on_trade(const std::string& symbol, double price, int quantity, bool is_buy) {}
     virtual void on_order(const std::string& order_id, const std::string& status) {}
-    virtual void on_data(const std::map<std::string, std::vector<std::optional<data::BarStruct>>>& data_map);
     
-    // New method for accessing bar data in TA-Lib compatible format
-    virtual void on_bar_series(const std::map<std::string, data::BarSeries>& bar_series_map);
+    /**
+     * @brief Called when new data is available
+     * 
+     * This method receives all historical bar data as a map of vectors of BarStruct,
+     * and converts it to TA-Lib compatible BarSeries for strategy processing.
+     * 
+     * @param data_map Map of data provider names to vectors of bars
+     */
+    virtual void on_data(const std::map<std::string, std::vector<std::optional<data::BarStruct>>>& data_map);
     
     // Lifecycle methods
     virtual bool initialize();

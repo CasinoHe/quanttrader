@@ -92,18 +92,8 @@ void StrategyBase::on_data(const std::map<std::string, std::vector<std::optional
         }
     }
     
-    // Call the new on_bar_series method with TA-Lib compatible data
-    if (!bar_series_map.empty()) {
-        on_bar_series(bar_series_map);
-    }
-    
     // Call the next() method which derived strategies should implement
     next();
-}
-
-void StrategyBase::on_bar_series(const std::map<std::string, data::BarSeries>& bar_series_map) {
-    // Default implementation is empty, derived classes should override this
-    // method to implement TA-Lib based indicators and strategies
 }
 
 void StrategyBase::buy(const std::string& symbol, int quantity, double price) {
