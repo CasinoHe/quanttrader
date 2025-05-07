@@ -29,12 +29,12 @@ StockTradeService = {
 	cerebro_names = "backtest_cerebro,live_cerebro",
 	backtest_cerebro = {
 		cerebro_type = "backtest",
-		replay_mode = "stepped",
+		replay_mode = "normal",
 		wait_data_timeout = 120000, -- wait data from data provider timeout in milliseconds, not updated unless restart quanttrader
 	},
 	live_cerebro = {
 		cerebro_type = "live",
-		replay_mode = "realtime",
+		replay_mode = "normal",
 		wait_data_timeout = 120000, -- wait data from data provider timeout in milliseconds, not updated unless restart quanttrader
 	},
 	risk_manager = {
