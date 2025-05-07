@@ -163,6 +163,18 @@ public:
     virtual bool rewind();
 
     /**
+     * @brief Rollback the last retrieved bar and make it available again
+     * 
+     * This method is used in synchronized replay to ensure all data providers
+     * move forward in time order. When a provider returns a bar with a timestamp
+     * that is newer than the current synchronized time, this method is called
+     * to put that bar back so it can be retrieved again on the next call.
+     * 
+     * @return true if rollback was successful, false otherwise
+     */
+    virtual bool rollback() { return false; }
+
+    /**
      * @brief Convert a string representation of bar type to enum and size
      * 
      * @param bar_type_str String representation of bar type (e.g., "1 day", "5 min")

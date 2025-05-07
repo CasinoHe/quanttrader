@@ -82,8 +82,7 @@ std::map<std::string, std::optional<BarStruct>> DataReplayController::next_synch
 
     // Find the provider with the earliest timestamp
     uint64_t earliest_time = std::numeric_limits<uint64_t>::max();
-    std::string earliest_provider;
-
+    
     // First, check if we need to fetch new data for any provider
     for (auto& [name, provider] : providers_) {
         if (!has_more_data_[name]) {
@@ -105,7 +104,6 @@ std::map<std::string, std::optional<BarStruct>> DataReplayController::next_synch
         // Find the earliest timestamp among available bars
         if (latest_bars_[name].has_value() && latest_bars_[name]->time < earliest_time) {
             earliest_time = latest_bars_[name]->time;
-            earliest_provider = name;
         }
     }
 
@@ -117,14 +115,22 @@ std::map<std::string, std::optional<BarStruct>> DataReplayController::next_synch
     // Prepare the result map
     std::map<std::string, std::optional<BarStruct>> result;
     
-    // The provider with the earliest time gets its bar included and needs a new one
-    for (auto& [name, _] : providers_) {
-        if (name == earliest_provider) {
-            result[name] = latest_bars_[name];
-            // Clear this provider's cached bar so it fetches a new one next time
-            latest_bars_[name] = std::nullopt;
+    // Process each provider based on its timestamp compared to the earliest time
+    for (auto& [name, provider] : providers_) {
+        if (latest_bars_.find(name) != latest_bars_.end() && latest_bars_[name].has_value()) {
+            // This provider has data
+            if (latest_bars_[name]->time == earliest_time) {
+                // This provider has the earliest timestamp, include its data
+                result[name] = latest_bars_[name];
+                // Clear this provider's cached bar so it fetches a new one next time
+                latest_bars_[name] = std::nullopt;
+            } else {
+                // This provider's data is from a future time, roll it back
+                provider->rollback();
+                result[name] = std::nullopt;
+            }
         } else {
-            // Other providers don't advance
+            // No data for this provider
             result[name] = std::nullopt;
         }
     }

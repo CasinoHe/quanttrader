@@ -35,6 +35,19 @@ public:
     bool is_data_ready() override;
     std::optional<BarStruct> next() override;
     inline void set_broker(std::shared_ptr<broker::BrokerProvider> broker_adapter) override;
+    
+    /**
+     * @brief Rollback the last retrieved bar and make it available again
+     * 
+     * @return true if rollback was successful, false otherwise
+     */
+    bool rollback() override {
+        // Delegate to the BarLine's rollback method
+        if (bar_line_) {
+            return bar_line_->rollback();
+        }
+        return false;
+    }
 
 protected:
     bool is_historical_completed() const { return historical_fetch_completed_.load(); }

@@ -74,6 +74,20 @@ public:
     }
 
     std::optional<BarStruct> next();
+    
+    /**
+     * @brief Rollback the cursor position by one, making the last retrieved bar available again
+     * 
+     * @return true if rollback was successful, false if already at the beginning
+     */
+    bool rollback() {
+        std::unique_lock lock(bar_mutex_);
+        if (cur_ > 0) {
+            cur_--;
+            return true;
+        }
+        return false;
+    }
 
     template<typename T, size_t N>
     std::optional<std::array<T, N>> get_bar_data(const std::string &data_name) {
