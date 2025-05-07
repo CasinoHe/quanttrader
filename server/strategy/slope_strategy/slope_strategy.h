@@ -5,15 +5,16 @@
 #include <deque>
 #include <vector>
 #include <string>
+#include <map>
 
 namespace quanttrader {
 namespace strategy {
 
 /**
- * @brief Simple moving average crossover strategy
+ * @brief Example strategy using TA-Lib for technical indicators
  * 
- * This strategy buys when a fast moving average crosses above a slow moving average,
- * and sells when the fast moving average crosses below the slow moving average.
+ * This strategy demonstrates how to use the BarSeries data structure with TA-Lib.
+ * It calculates a simple moving average using TA-Lib and generates buy/sell signals.
  */
 class SlopeStrategy : public StrategyBase {
 public:
@@ -25,6 +26,7 @@ public:
     
     // Event handlers 
     void on_bar(const std::string& data_name, const data::BarStruct& bar) override;
+    void on_bar_series(const std::map<std::string, data::BarSeries>& bar_series_map) override;
     
 protected:
     // Implementation of the next method required by StrategyBase
@@ -32,9 +34,14 @@ protected:
 
 private:
     // Strategy parameters
-    int fast_period_ = 20;
-    int slow_period_ = 50;
+    int slow_ma_period_ = 20;
+    int fast_ma_period_ = 5;
     std::string symbol_;
+    
+    // Internal state
+    bool in_position_ = false;
+    std::vector<double> slow_ma_values_;
+    std::vector<double> fast_ma_values_;
     
     // Data storage for moving averages
     std::deque<double> prices_;

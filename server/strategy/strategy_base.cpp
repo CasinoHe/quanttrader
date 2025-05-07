@@ -37,16 +37,73 @@ bool StrategyBase::on_stop() {
     return true;
 }
 
-void StrategyBase::on_data(const std::map<std::string, std::optional<data::BarStruct>>& data_map) {
+void StrategyBase::on_data(const std::map<std::string, std::vector<std::optional<data::BarStruct>>>& data_map) {
     // Process each data feed and trigger appropriate callbacks
-    for (const auto& [data_name, bar_opt] : data_map) {
-        if (bar_opt.has_value()) {
-            on_bar(data_name, bar_opt.value());
+    // For the most recent bar in each feed
+    for (const auto& [data_name, bars] : data_map) {
+        if (!bars.empty() && bars.back().has_value()) {
+            // Pass the most recent bar to on_bar for backward compatibility
+            on_bar(data_name, bars.back().value());
         }
+    }
+    
+    // Convert the vector of BarStruct to BarSeries for TA-Lib compatibility
+    std::map<std::string, data::BarSeries> bar_series_map;
+    
+    for (const auto& [data_name, bars] : data_map) {
+        if (bars.empty()) {
+            continue;
+        }
+        
+        // Create a BarSeries instance for this data feed
+        data::BarSeries series;
+        
+        // Reserve space for efficiency
+        size_t valid_count = 0;
+        for (const auto& bar_opt : bars) {
+            if (bar_opt.has_value()) valid_count++;
+        }
+        
+        series.start_time.reserve(valid_count);
+        series.open.reserve(valid_count);
+        series.high.reserve(valid_count);
+        series.low.reserve(valid_count);
+        series.close.reserve(valid_count);
+        series.volume.reserve(valid_count);
+        series.count.reserve(valid_count);
+        
+        // Fill the arrays from the valid bar data
+        for (const auto& bar_opt : bars) {
+            if (bar_opt.has_value()) {
+                const auto& bar = bar_opt.value();
+                series.start_time.push_back(bar.time);
+                series.open.push_back(bar.open);
+                series.high.push_back(bar.high);
+                series.low.push_back(bar.low);
+                series.close.push_back(bar.close);
+                series.volume.push_back(bar.volume);
+                series.count.push_back(bar.count);
+            }
+        }
+        
+        // Add to the map if we have valid data
+        if (!series.close.empty()) {
+            bar_series_map[data_name] = std::move(series);
+        }
+    }
+    
+    // Call the new on_bar_series method with TA-Lib compatible data
+    if (!bar_series_map.empty()) {
+        on_bar_series(bar_series_map);
     }
     
     // Call the next() method which derived strategies should implement
     next();
+}
+
+void StrategyBase::on_bar_series(const std::map<std::string, data::BarSeries>& bar_series_map) {
+    // Default implementation is empty, derived classes should override this
+    // method to implement TA-Lib based indicators and strategies
 }
 
 void StrategyBase::buy(const std::string& symbol, int quantity, double price) {

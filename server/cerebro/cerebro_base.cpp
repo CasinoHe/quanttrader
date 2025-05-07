@@ -187,9 +187,23 @@ bool CerebroBase::process_next() {
         return false;
     }
     
-    // Feed the data to all strategies
+    // Update our historical data storage with the new data points
+    for (const auto& [name, bar] : data_map) {
+        if (historical_data_.find(name) == historical_data_.end()) {
+            historical_data_[name] = std::vector<std::optional<data::BarStruct>>();
+        }
+        historical_data_[name].push_back(bar);
+    }
+    
+    // Create a map of data provider names to vectors of all historical bars for each strategy
+    std::map<std::string, std::vector<std::optional<data::BarStruct>>> complete_data;
+    for (const auto& [name, bars] : historical_data_) {
+        complete_data[name] = bars;
+    }
+    
+    // Feed the complete historical data to all strategies
     for (auto& strategy : strategies_) {
-        strategy->on_data(data_map);
+        strategy->on_data(complete_data);
     }
     
     return true;

@@ -1,5 +1,6 @@
 #include "slope_strategy.h"
 #include "data/common/data_struct.h"
+#include "ta_libc.h" // TA-Lib header
 #include <numeric>
 #include <algorithm>
 
@@ -8,107 +9,121 @@ namespace strategy {
 
 SlopeStrategy::SlopeStrategy(StrategyCreateFuncParemType params)
     : StrategyBase(params) {
+    // Extract strategy parameters
+    symbol_ = get_param<std::string>("symbol", "AAPL");
+    slow_ma_period_ = get_param<int>("slow_ma_period", 20);
+    fast_ma_period_ = get_param<int>("fast_ma_period", 5);
     
-    // Get strategy parameters
-    fast_period_ = get_param<int>("fast_period", 20);
-    slow_period_ = get_param<int>("slow_period", 50);
-    symbol_ = get_param<std::string>("symbol", "");
-    
-    logger_->info("Created SlopeStrategy with fast_period={}, slow_period={}, symbol={}",
-                fast_period_, slow_period_, symbol_);
+    logger_->info("Created SlopeStrategy for symbol: {}, with fast MA: {}, slow MA: {}", 
+                 symbol_, fast_ma_period_, slow_ma_period_);
 }
 
 bool SlopeStrategy::initialize() {
-    StrategyBase::initialize();
-    
-    // Ensure slow period is greater than fast period
-    if (fast_period_ >= slow_period_) {
-        logger_->error("Fast period must be less than slow period");
-        return false;
+    bool result = StrategyBase::initialize();
+    if (result) {
+        logger_->info("Initialized SlopeStrategy for symbol: {}", symbol_);
     }
-    
-    // Ensure symbol is set
-    if (symbol_.empty()) {
-        logger_->error("Symbol must be specified");
-        return false;
-    }
-    
-    logger_->info("Initialized SlopeStrategy");
-    return true;
+    return result;
 }
 
 void SlopeStrategy::on_bar(const std::string& data_name, const data::BarStruct& bar) {
-    // Only process data for our symbol
-    if (data_name != symbol_) {
+    // This method is called with the most recent bar for backward compatibility
+    // We'll use on_bar_series for the TA-Lib calculations instead
+    logger_->debug("Received bar for {}: time={}, close={}", 
+                  data_name, bar.time, bar.close);
+}
+
+void SlopeStrategy::on_bar_series(const std::map<std::string, data::BarSeries>& bar_series_map) {
+    // Find our symbol in the bar series map
+    auto it = bar_series_map.find(symbol_);
+    if (it == bar_series_map.end()) {
+        return; // Our symbol is not in the data map
+    }
+    
+    const auto& series = it->second;
+    
+    // Make sure we have enough data
+    if (series.close.size() < static_cast<size_t>(slow_ma_period_)) {
+        logger_->debug("Not enough data yet for calculating indicators: {} < {}", 
+                      series.close.size(), slow_ma_period_);
         return;
     }
     
-    // Store the closing price
-    prices_.push_back(bar.close);
+    // Calculate moving averages using TA-Lib
+    int begin_idx = 0;
+    int num_elements = 0;
     
-    // Keep only enough data for our calculations
-    if (prices_.size() > slow_period_) {
-        prices_.pop_front();
+    // Vectors to store TA-Lib output
+    std::vector<double> slow_ma(series.close.size());
+    std::vector<double> fast_ma(series.close.size());
+    
+    // Use TA-Lib to calculate Simple Moving Averages
+    TA_RetCode slow_result = TA_MA(
+        0,                          // startIdx
+        static_cast<int>(series.close.size() - 1),  // endIdx
+        series.close.data(),        // inReal
+        slow_ma_period_,           // optInTimePeriod
+        TA_MAType_SMA,             // optInMAType
+        &begin_idx,                // outBegIdx
+        &num_elements,             // outNBElement
+        slow_ma.data()             // outReal
+    );
+    
+    TA_RetCode fast_result = TA_MA(
+        0,                          // startIdx
+        static_cast<int>(series.close.size() - 1),  // endIdx
+        series.close.data(),        // inReal
+        fast_ma_period_,           // optInTimePeriod
+        TA_MAType_SMA,             // optInMAType
+        &begin_idx,                // outBegIdx
+        &num_elements,             // outNBElement
+        fast_ma.data()             // outReal
+    );
+    
+    if (slow_result != TA_SUCCESS || fast_result != TA_SUCCESS) {
+        logger_->error("Error calculating moving averages with TA-Lib");
+        return;
     }
     
-    // Update moving averages
-    update_moving_averages();
+    // Store the latest MA values for use in the next() method
+    slow_ma_values_ = std::move(slow_ma);
+    fast_ma_values_ = std::move(fast_ma);
+    
+    // Log the current values
+    int last_idx = slow_ma_values_.size() - 1;
+    logger_->debug("Latest values - Close: {}, Fast MA: {}, Slow MA: {}", 
+                  series.close.back(), 
+                  fast_ma_values_[last_idx], 
+                  slow_ma_values_[last_idx]);
 }
 
 void SlopeStrategy::next() {
-    // Wait until we have enough data
-    if (prices_.size() < slow_period_) {
-        logger_->debug("Not enough data for SlopeStrategy, current size={}", prices_.size());
+    // Skip if we don't have enough data
+    if (slow_ma_values_.empty() || fast_ma_values_.empty()) {
         return;
     }
     
-    // Check for crossover (fast MA crosses above slow MA)
-    static double prev_fast_ma = 0.0;
-    static double prev_slow_ma = 0.0;
+    // Get the latest values
+    int last_idx = slow_ma_values_.size() - 1;
+    double current_fast_ma = fast_ma_values_[last_idx];
+    double current_slow_ma = slow_ma_values_[last_idx];
     
-    bool crossover_up = prev_fast_ma <= prev_slow_ma && fast_ma_ > slow_ma_;
-    bool crossover_down = prev_fast_ma >= prev_slow_ma && fast_ma_ < slow_ma_;
-    
-    if (crossover_up && !position_open_) {
-        // Buy signal
-        buy(symbol_, 100);  // Buy 100 shares at market price
-        position_open_ = true;
-        logger_->info("Buy signal triggered: fast_ma={:.2f}, slow_ma={:.2f}", fast_ma_, slow_ma_);
+    // Simple crossover strategy
+    if (current_fast_ma > current_slow_ma && !in_position_) {
+        // Fast MA crossed above slow MA - BUY signal
+        buy(symbol_, 100);
+        in_position_ = true;
+        logger_->info("BUY SIGNAL: Fast MA {} crossed above Slow MA {}", 
+                     current_fast_ma, current_slow_ma);
     }
-    else if (crossover_down && position_open_) {
-        // Sell signal
-        sell(symbol_, 100);  // Sell 100 shares at market price
-        position_open_ = false;
-        logger_->info("Sell signal triggered: fast_ma={:.2f}, slow_ma={:.2f}", fast_ma_, slow_ma_);
-    }
-    
-    // Store current values for next comparison
-    prev_fast_ma = fast_ma_;
-    prev_slow_ma = slow_ma_;
-}
-
-double SlopeStrategy::calculate_ma(int period) const {
-    if (prices_.size() < period) {
-        return 0.0;
-    }
-    
-    auto end = prices_.end();
-    auto start = end - period;
-    
-    double sum = std::accumulate(start, end, 0.0);
-    return sum / period;
-}
-
-void SlopeStrategy::update_moving_averages() {
-    // Calculate moving averages if we have enough data
-    if (prices_.size() >= fast_period_) {
-        fast_ma_ = calculate_ma(fast_period_);
-    }
-    
-    if (prices_.size() >= slow_period_) {
-        slow_ma_ = calculate_ma(slow_period_);
+    else if (current_fast_ma < current_slow_ma && in_position_) {
+        // Fast MA crossed below slow MA - SELL signal
+        sell(symbol_, 100);
+        in_position_ = false;
+        logger_->info("SELL SIGNAL: Fast MA {} crossed below Slow MA {}", 
+                     current_fast_ma, current_slow_ma);
     }
 }
 
-}
-}
+}  // namespace strategy
+}  // namespace quanttrader

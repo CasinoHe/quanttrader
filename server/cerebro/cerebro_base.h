@@ -120,6 +120,9 @@ protected:
     // Data management
     std::shared_ptr<data::replay::DataReplayController> replay_controller_;
     
+    // Historical data storage - maps data provider name to accumulated bar history
+    std::map<std::string, std::vector<std::optional<data::BarStruct>>> historical_data_;
+    
     // Strategy management
     std::vector<std::shared_ptr<strategy::StrategyBase>> strategies_;
     
