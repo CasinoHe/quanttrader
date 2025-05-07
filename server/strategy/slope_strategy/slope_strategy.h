@@ -25,8 +25,7 @@ public:
     bool initialize() override;
     
     // Event handlers 
-    void on_bar(const std::string& data_name, const data::BarStruct& bar) override;
-    void on_data(const std::map<std::string, std::vector<std::optional<data::BarStruct>>>& data_map) override;
+    void on_bar(const std::string& data_name, const data::BarSeries& bar_series) override;
     
 protected:
     // Implementation of the next method required by StrategyBase

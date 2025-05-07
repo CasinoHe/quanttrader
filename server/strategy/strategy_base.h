@@ -35,7 +35,7 @@ public:
 
     // Core event handlers
     virtual void on_tick(const std::string& data_name, const std::any& tick_data) {}
-    virtual void on_bar(const std::string& data_name, const data::BarStruct& bar) {}
+    virtual void on_bar(const std::string& data_name, const data::BarSeries& bar_series) {}
     virtual void on_trade(const std::string& symbol, double price, int quantity, bool is_buy) {}
     virtual void on_order(const std::string& order_id, const std::string& status) {}
     

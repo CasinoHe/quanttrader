@@ -38,15 +38,6 @@ bool StrategyBase::on_stop() {
 }
 
 void StrategyBase::on_data(const std::map<std::string, std::vector<std::optional<data::BarStruct>>>& data_map) {
-    // Process each data feed and trigger appropriate callbacks
-    // For the most recent bar in each feed
-    for (const auto& [data_name, bars] : data_map) {
-        if (!bars.empty() && bars.back().has_value()) {
-            // Pass the most recent bar to on_bar for backward compatibility
-            on_bar(data_name, bars.back().value());
-        }
-    }
-    
     // Convert the vector of BarStruct to BarSeries for TA-Lib compatibility
     std::map<std::string, data::BarSeries> bar_series_map;
     
@@ -90,6 +81,11 @@ void StrategyBase::on_data(const std::map<std::string, std::vector<std::optional
         if (!series.close.empty()) {
             bar_series_map[data_name] = std::move(series);
         }
+    }
+    
+    // Call on_bar with TA-Lib compatible data for each feed
+    for (const auto& [data_name, bar_series] : bar_series_map) {
+        on_bar(data_name, bar_series);
     }
     
     // Call the next() method which derived strategies should implement

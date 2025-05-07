@@ -26,81 +26,33 @@ bool SlopeStrategy::initialize() {
     return result;
 }
 
-void SlopeStrategy::on_bar(const std::string& data_name, const data::BarStruct& bar) {
-    // This method is called with the most recent bar for backward compatibility
-    logger_->debug("Received bar for {}: time={}, close={}", 
-                  data_name, bar.time, bar.close);
-}
-
-void SlopeStrategy::on_data(const std::map<std::string, std::vector<std::optional<data::BarStruct>>>& data_map) {
-    // Call the parent class implementation first to ensure proper setup
-    StrategyBase::on_data(data_map);
-
-    // Find our symbol in the data map
-    auto it = data_map.find(symbol_);
-    if (it == data_map.end()) {
-        return; // Our symbol is not in the data map
+void SlopeStrategy::on_bar(const std::string& data_name, const data::BarSeries& bar_series) {
+    // Check if this is the data feed we're interested in
+    if (data_name != symbol_) {
+        return;
     }
-    
-    const auto& bars = it->second;
     
     // Make sure we have enough data
-    if (bars.size() < static_cast<size_t>(slow_ma_period_)) {
+    if (bar_series.close.size() < static_cast<size_t>(slow_ma_period_)) {
         logger_->debug("Not enough data yet for calculating indicators: {} < {}", 
-                      bars.size(), slow_ma_period_);
+                      bar_series.close.size(), slow_ma_period_);
         return;
     }
-
-    // Convert to BarSeries for TA-Lib processing
-    data::BarSeries series;
     
-    // Reserve space for efficiency
-    size_t valid_count = 0;
-    for (const auto& bar_opt : bars) {
-        if (bar_opt.has_value()) valid_count++;
-    }
-    
-    series.start_time.reserve(valid_count);
-    series.open.reserve(valid_count);
-    series.high.reserve(valid_count);
-    series.low.reserve(valid_count);
-    series.close.reserve(valid_count);
-    series.volume.reserve(valid_count);
-    series.count.reserve(valid_count);
-    
-    // Fill the arrays from the valid bar data
-    for (const auto& bar_opt : bars) {
-        if (bar_opt.has_value()) {
-            const auto& bar = bar_opt.value();
-            series.start_time.push_back(bar.time);
-            series.open.push_back(bar.open);
-            series.high.push_back(bar.high);
-            series.low.push_back(bar.low);
-            series.close.push_back(bar.close);
-            series.volume.push_back(bar.volume);
-            series.count.push_back(bar.count);
-        }
-    }
-    
-    // Skip if we don't have enough valid data
-    if (series.close.size() < static_cast<size_t>(slow_ma_period_)) {
-        return;
-    }
-
-    // Calculate moving averages using TA-Lib
+    // Calculate moving averages using TA-Lib directly with the provided BarSeries
     int begin_idx = 0;
     int num_elements = 0;
     
     // Vectors to store TA-Lib output
-    std::vector<double> slow_ma(series.close.size());
-    std::vector<double> fast_ma(series.close.size());
+    std::vector<double> slow_ma(bar_series.close.size());
+    std::vector<double> fast_ma(bar_series.close.size());
     
     // Use TA-Lib to calculate Simple Moving Averages
     TA_RetCode slow_result = TA_MA(
         0,                          // startIdx
-        static_cast<int>(series.close.size() - 1),  // endIdx
-        series.close.data(),        // inReal
-        slow_ma_period_,           // optInTimePeriod
+        static_cast<int>(bar_series.close.size() - 1),  // endIdx
+        bar_series.close.data(),    // inReal - direct access to the close price array!
+        slow_ma_period_,            // optInTimePeriod
         TA_MAType_SMA,             // optInMAType
         &begin_idx,                // outBegIdx
         &num_elements,             // outNBElement
@@ -109,8 +61,8 @@ void SlopeStrategy::on_data(const std::map<std::string, std::vector<std::optiona
     
     TA_RetCode fast_result = TA_MA(
         0,                          // startIdx
-        static_cast<int>(series.close.size() - 1),  // endIdx
-        series.close.data(),        // inReal
+        static_cast<int>(bar_series.close.size() - 1),  // endIdx
+        bar_series.close.data(),    // inReal - direct access to the close price array!
         fast_ma_period_,           // optInTimePeriod
         TA_MAType_SMA,             // optInMAType
         &begin_idx,                // outBegIdx
@@ -131,7 +83,7 @@ void SlopeStrategy::on_data(const std::map<std::string, std::vector<std::optiona
     int last_idx = static_cast<int>(slow_ma_values_.size()) - 1;
     if (last_idx >= 0) {
         logger_->debug("Latest values - Close: {}, Fast MA: {}, Slow MA: {}", 
-                      series.close.back(), 
+                      bar_series.close.back(), 
                       fast_ma_values_[last_idx], 
                       slow_ma_values_[last_idx]);
     }
