@@ -119,7 +119,7 @@ std::map<std::string, std::optional<BarStruct>> DataReplayController::next_synch
     for (auto& [name, provider] : providers_) {
         if (latest_bars_.find(name) != latest_bars_.end() && latest_bars_[name].has_value()) {
             // This provider has data
-            if (latest_bars_[name]->time == earliest_time) {
+            if (latest_bars_[name]->time <= earliest_time) {
                 // This provider has the earliest timestamp, include its data
                 result[name] = latest_bars_[name];
                 // Clear this provider's cached bar so it fetches a new one next time

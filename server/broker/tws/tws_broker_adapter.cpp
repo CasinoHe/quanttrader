@@ -2,6 +2,7 @@
 #include "service/service_consts.h"
 #include "config/lua_config_loader.h"
 #include "broker/broker_consts.h"
+#include "time/time_with_zone.h"
 #include <chrono>
 
 namespace quanttrader {
@@ -280,8 +281,16 @@ BarData TwsBrokerAdapter::convertToBarData(const ResHistoricalData& resData) {
     
     // Handle the variant type for date
     if (std::holds_alternative<std::string>(resData.date)) {
-        // TODO: Convert string date to uint64_t timestamp
-        barData.time = 0;
+        // Convert string date to uint64_t timestamp using TimeWithZone
+        std::string dateStr = std::get<std::string>(resData.date);
+        auto timeWithZone = quanttrader::time::TimeWithZone::from_ibapi_string(dateStr, "America/New_York");
+        if (timeWithZone.has_value()) {
+            // Convert to milliseconds epoch for barData.time
+            barData.time = timeWithZone.value().get_nano_epoch();
+        } else {
+            logger_->error("Failed to parse date string: {}", dateStr);
+            barData.time = 0;
+        }
     } else if (std::holds_alternative<int>(resData.date)) {
         barData.time = std::get<int>(resData.date);
     }
