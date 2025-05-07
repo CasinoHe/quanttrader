@@ -182,6 +182,9 @@ bool StockTradeService::prepare_cerebro() {
                 mode = data::provider::DataProvider::ReplayMode::REALTIME;
             } else if (replay_mode_str == "stepped") {
                 mode = data::provider::DataProvider::ReplayMode::STEPPED;
+            } else if (replay_mode_str != "normal") {
+                logger_->error("Invalid replay mode: {} for cerebro: {}", replay_mode_str, cerebro_name);
+                return false;
             }
             cerebro->set_replay_mode(mode);
             logger_->info("Set replay mode to {} for cerebro: {}", replay_mode_str, cerebro_name);
