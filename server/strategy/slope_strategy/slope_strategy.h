@@ -35,7 +35,6 @@ private:
     // Strategy parameters
     int slow_ma_period_ = 20;
     int fast_ma_period_ = 5;
-    std::string symbol_;
     
     // Internal state
     bool in_position_ = false;

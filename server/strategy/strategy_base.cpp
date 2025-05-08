@@ -17,6 +17,17 @@ StrategyBase::StrategyBase(StrategyCreateFuncParemType params) : params_(params)
         }
     }
     
+    // Extract symbol from parameters if available
+    auto symbol_it = params_.find("symbol");
+    if (symbol_it != params_.end()) {
+        try {
+            symbol_ = std::any_cast<std::string>(symbol_it->second);
+        } catch (const std::bad_any_cast&) {
+            symbol_ = "";
+            logger_->warn("Symbol parameter has incorrect type");
+        }
+    }
+    
     // Initialize logger
     logger_ = quanttrader::log::get_common_rotation_logger(strategy_name_, "strategy");
     logger_->info("Created strategy: {}", strategy_name_);

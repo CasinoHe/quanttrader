@@ -10,7 +10,6 @@ namespace strategy {
 SlopeStrategy::SlopeStrategy(StrategyCreateFuncParemType params)
     : StrategyBase(params) {
     // Extract strategy parameters
-    symbol_ = get_param<std::string>("symbol", "AAPL");
     slow_ma_period_ = get_param<int>("slow_ma_period", 20);
     fast_ma_period_ = get_param<int>("fast_ma_period", 5);
     
@@ -27,8 +26,16 @@ bool SlopeStrategy::initialize() {
 }
 
 void SlopeStrategy::on_bar(const std::string& data_name, const data::BarSeries& bar_series) {
-    // Check if this is the data feed we're interested in
-    if (data_name != symbol_) {
+    // Extract the symbol from data_name by finding the part after the last underscore
+    std::string bar_symbol = data_name;
+    size_t last_underscore_pos = data_name.find_last_of('_');
+    if (last_underscore_pos != std::string::npos) {
+        bar_symbol = data_name.substr(last_underscore_pos + 1);
+    }
+    
+    // Check if this is the data feed we're interested in by comparing with symbol_
+    if (bar_symbol != symbol_) {
+        logger_->debug("Ignoring bar data for symbol: {} (expected: {})", bar_symbol, symbol_);
         return;
     }
     

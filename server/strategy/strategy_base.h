@@ -67,6 +67,7 @@ protected:
     
     // Strategy parameters
     std::string strategy_name_ = "BaseStrategy";
+    std::string symbol_ = "";  // Added symbol as a base class member
     StrategyCreateFuncParemType params_;
     
     // Derived strategies should implement this method
