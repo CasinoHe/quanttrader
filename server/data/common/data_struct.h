@@ -4,6 +4,10 @@
 #include <memory>
 #include <chrono>
 #include <vector>
+#include <chrono>
+#include <iomanip>
+#include <ctime>
+#include <sstream>
 
 namespace quanttrader {
 namespace data {
@@ -30,6 +34,30 @@ struct BarStruct {
     Decimal swap;  // swap
     int count;     // count
 
+    std::string to_string() const {
+        std::time_t timestamp = time / 1000000000; // convert nanoseconds to seconds
+        std::tm tm_utc;
+
+        // Convert to tm (local time)
+#ifdef _WIN32
+        // Windows uses gmtime_s(result, &timestamp)
+        if (gmtime_s(&tm_utc, &timestamp) != 0) {
+            throw std::runtime_error("gmtime_s failed");
+        }
+#else
+        // POSIX uses gmtime_r(&timestamp, result)
+        if (gmtime_r(&timestamp, &tm_utc) == nullptr) {
+            throw std::runtime_error("gmtime_r failed");
+        }
+#endif
+        std::ostringstream ss;
+        ss << std::put_time(&tm_utc, "%Y-%m-%d %H:%M:%S");
+
+        // nanoseconds to date string
+        return ss.str() + "UTC " + std::to_string(time) + " " + std::to_string(open) + " " + std::to_string(high) + " " +
+               std::to_string(low) + " " + std::to_string(close) + " " + std::to_string(volume) +
+               " " + std::to_string(swap) + " " + std::to_string(count);
+    }
     BarStruct() {memset(this, 0, sizeof(BarStruct));}
 };
 
