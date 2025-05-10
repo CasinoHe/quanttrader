@@ -88,7 +88,7 @@ class BuildDependencies(BuildBase):
             if sys.platform == "win32":
                 return self._run_command(self.vcpkg_dir, "bootstrap-vcpkg.bat", [])
             else:
-                return self._run_command(self.vcpkg_dir, "bootstrap-vcpkg.sh", [])
+                return self._run_command(self.vcpkg_dir, "bash", ["bootstrap-vcpkg.sh",])
 
         if not os.path.exists(self.vcpkg_path):
             # compile vcpkg
