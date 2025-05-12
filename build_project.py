@@ -60,7 +60,12 @@ class BuildBase(object):
         if self.args.triplet:
             return self.args.triplet
         else:
-            return "x64-windows-static-release" if sys.platform == "win32" else "x64-linux-release"
+            if sys.platform == "win32":
+              triplet = "x64-windows-static-release" 
+            elif sys.platform == "darwin": 
+              triplet = "arm64-osx"
+            else:
+              triplet = "x64-linux-release"
 
     def build(self):
         raise NotImplementedError("Build method not implemented")
@@ -120,7 +125,12 @@ class BuildDependencies(BuildBase):
         if self.args.triplet:
             triplet = self.args.triplet
         else:
-            triplet = "x64-windows-static-release" if sys.platform == "win32" else "x64-linux-release"
+            if sys.platform == "win32":
+              triplet = "x64-windows-static-release" 
+            elif sys.platform == "darwin": 
+              triplet = "arm64-osx"
+            else:
+              triplet = "x64-linux-release"
 
         # set build variant
         env = os.environ.copy()
