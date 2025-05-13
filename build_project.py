@@ -191,6 +191,11 @@ class BuildProject(BuildBase):
             f"{workdir}"
         ]
 
+        # make CMake use Xcode to generate the project on macOS
+        if sys.platform == "darwin":
+          args.insert(0, "Xcode")
+          args.insert(0, "-G")
+
         build_dir = os.path.join(workdir, "build")
         if not os.path.exists(build_dir):
             os.makedirs(build_dir)
