@@ -1,6 +1,7 @@
 *.vscode
 *.vs
 *.code-workspace
+*.DS_Store
 
 *.sln
 build
