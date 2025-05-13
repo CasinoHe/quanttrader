@@ -45,7 +45,11 @@ find_package(unofficial-concurrentqueue CONFIG REQUIRED)
 find_package(CURL REQUIRED)
 find_package(unofficial-sqlite3 CONFIG REQUIRED)
 find_package(RapidJSON CONFIG REQUIRED)
-find_package(date CONFIG REQUIRED)
+
+# find date library only on Apple platform
+if (APPLE)
+    find_package(date CONFIG REQUIRED)
+endif()
 
 # --------------------- build lua start ---------------------------
 set(LUA_ROOT "${THIRDPARTY_DIR}/lua")
@@ -91,9 +95,11 @@ target_link_libraries(${PROJECT_NAME} PRIVATE fmt::fmt
                                 CURL::libcurl
                                 unofficial::sqlite3::sqlite3
                                 rapidjson
-                                date::date
-                                date::date-tz
                                 )
+
+if (APPLE)
+    target_link_libraries(${PROJECT_NAME} PRIVATE date::date date-tz)
+endif()
 
 if (WIN32)
     # target_link_libraries(${PROJECT_NAME} PUBLIC ws2_32)
