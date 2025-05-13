@@ -27,7 +27,7 @@ public:
     using ZonedTime = date::zoned_time<std::chrono::nanoseconds>;
     using SysTime = std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds>;
 #else
-    using LocalTime = std::chrono::sys_time<std::chrono::nanoseconds>;
+    using LocalTime = std::chrono::local_time<std::chrono::nanoseconds>;
     using ZonedTime = std::chrono::zoned_time<std::chrono::nanoseconds>;
     using SysTime = std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds>;
 #endif
@@ -169,7 +169,11 @@ public:
 
     // Print the time (for demonstration purposes)
     friend std::ostream& operator<<(std::ostream& os, const TimeWithZone& t) {
+#if defined(__APPLE__)
         os << date::format("{:%F %T%z}", t.zoned_time_);
+#else
+        os << std::format("{:%F %T%z}", t.zoned_time_);
+#endif
         return os;
     }
 
@@ -177,7 +181,11 @@ private:
     ZonedTime zoned_time_ {};
     mutable std::optional<std::string> cached_to_string_;
     mutable std::optional<std::string> cached_to_string_with_name_;
+#if defined(__APPLE__)
     static const date::tzdb& tzdb_;
+#else
+    static const std::chrono::tzdb& tzdb_;
+#endif
 
 private:
     TimeWithZone() = delete;

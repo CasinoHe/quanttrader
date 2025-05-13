@@ -15,11 +15,9 @@ const date::tzdb& TimeWithZone::tzdb_ = date::get_tzdb();
 // Helper macro for cross-platform parse/format (only inside function bodies)
 #if defined(__APPLE__)
 #define CHRONO_PARSE date::parse
-#define CHRONO_FORMAT date::format
 #define CHRONO_CURRENT_ZONE date::current_zone
 #else
 #define CHRONO_PARSE std::chrono::parse
-#define CHRONO_FORMAT std::chrono::format
 #define CHRONO_CURRENT_ZONE std::chrono::current_zone
 #endif
 
@@ -54,7 +52,7 @@ std::string TimeWithZone::to_string() const {
     return date::format("%F %T%z", zoned_time_);
 #else
     std::ostringstream oss;
-    oss << std::chrono::format("%F %T%z", zoned_time_);
+    oss << std::format("%F %T%z", zoned_time_);
     return oss.str();
 #endif
 }
@@ -68,7 +66,7 @@ std::string TimeWithZone::to_string_with_name() const {
     return date::format("%F %T %Z", zoned_time_);
 #else
     std::ostringstream oss;
-    oss << std::chrono::format("%F %T %Z", zoned_time_);
+    oss << std::format("%F %T %Z", zoned_time_);
     return oss.str();
 #endif
 }
@@ -320,7 +318,6 @@ const std::map<std::string, std::string>& TimeWithZone::get_legacy_zone_to_canon
 }
 
 #undef CHRONO_PARSE
-#undef CHRONO_FORMAT
 #undef CHRONO_CURRENT_ZONE
 
 } // namespace time
