@@ -1,23 +1,62 @@
 #include "time_with_zone.h"
 #include "logger/quantlogger.h"
-
-#include <iostream>
 #include <sstream>
+#include <cstring>
+#include <optional>
 #include <map>
-
 
 namespace quanttrader {
 namespace time {
 
-namespace qlog = quanttrader::log;
-
+#if defined(__APPLE__)
 const date::tzdb& TimeWithZone::tzdb_ = date::get_tzdb();
+#endif
+
+// Helper macro for cross-platform parse/format (only inside function bodies)
+#if defined(__APPLE__)
+#define CHRONO_PARSE date::parse
+#define CHRONO_FORMAT date::format
+#define CHRONO_CURRENT_ZONE date::current_zone
+#else
+#define CHRONO_PARSE std::chrono::parse
+#define CHRONO_FORMAT std::chrono::format
+#define CHRONO_CURRENT_ZONE std::chrono::current_zone
+#endif
+
+TimeWithZone::TimeWithZone(std::string_view time_zone, LocalTime local_time)
+#if defined(__APPLE__)
+    : zoned_time_(std::string(time_zone), local_time)
+#else
+    : zoned_time_(std::string(time_zone), local_time)
+#endif
+{}
+
+TimeWithZone::TimeWithZone(std::string_view time_zone, SysTime sys_time)
+    : zoned_time_(std::string(time_zone), sys_time) {}
+
+TimeWithZone::TimeWithZone(const ZonedTime& zoned_time)
+    : zoned_time_(zoned_time) {}
+
+TimeWithZone::TimeWithZone(ZonedTime&& zoned_time) noexcept
+    : zoned_time_(std::move(zoned_time)) {}
+
+TimeWithZone::TimeWithZone(const TimeWithZone& other)
+    : zoned_time_(other.zoned_time_) {}
+
+TimeWithZone::TimeWithZone(TimeWithZone&& other) noexcept
+    : zoned_time_(std::move(other.zoned_time_)) {}
+
+TimeWithZone::TimeWithZone(uint64_t nanoseconds_epoch, const std::string& zone_name)
+    : zoned_time_(get_zoned_time(nanoseconds_epoch, zone_name)) {}
 
 std::string TimeWithZone::to_string() const {
-    if (!cached_to_string_) {
-        cached_to_string_ = date::format("%F %T%z", zoned_time_);
-    }
-    return *cached_to_string_;
+#if defined(__APPLE__)
+    return date::format("%F %T%z", zoned_time_);
+#else
+    std::ostringstream oss;
+    oss << std::chrono::format("%F %T%z", zoned_time_);
+    return oss.str();
+#endif
 }
 
 std::string TimeWithZone::to_string_with_offset() const {
@@ -25,17 +64,28 @@ std::string TimeWithZone::to_string_with_offset() const {
 }
 
 std::string TimeWithZone::to_string_with_name() const {
-    if (!cached_to_string_with_name_) {
-        cached_to_string_with_name_ = date::format("%F %T %Z", zoned_time_);
-    }
-    return *cached_to_string_with_name_;
+#if defined(__APPLE__)
+    return date::format("%F %T %Z", zoned_time_);
+#else
+    std::ostringstream oss;
+    oss << std::chrono::format("%F %T %Z", zoned_time_);
+    return oss.str();
+#endif
+}
+
+std::optional<TimeWithZone> TimeWithZone::from_now() {
+#if defined(__APPLE__)
+    return TimeWithZone(date::zoned_time<std::chrono::nanoseconds>(date::current_zone(), std::chrono::system_clock::now()));
+#else
+    return TimeWithZone(std::chrono::zoned_time<std::chrono::nanoseconds>(std::chrono::current_zone(), std::chrono::system_clock::now()));
+#endif
 }
 
 std::optional<TimeWithZone> TimeWithZone::from_offset_string(const std::string& data) {
     std::istringstream iss(data);
-    date::local_time<std::chrono::nanoseconds> tp;
+    LocalTime tp;
     std::chrono::minutes offset;
-    if (iss >> date::parse("%F %T %z", tp, offset)) {
+    if (iss >> CHRONO_PARSE("%F %T %z", tp, offset)) {
         auto seconds = std::chrono::duration_cast<std::chrono::seconds>(offset);
         auto zone_name = find_zone_by_offset(seconds);
         if (zone_name.has_value()) {
@@ -52,9 +102,9 @@ std::optional<TimeWithZone> TimeWithZone::from_offset_string(const std::string& 
 
 std::optional<TimeWithZone> TimeWithZone::from_zone_string(const std::string& data) {
     std::istringstream iss(data);
-    date::local_time<std::chrono::nanoseconds> tp;
+    LocalTime tp;
     std::string abbrev;
-    if (iss >> date::parse("%F %T %Z", tp, abbrev)) {
+    if (iss >> CHRONO_PARSE("%F %T %Z", tp, abbrev)) {
         auto zone_name = get_canonical_zone_name(abbrev);
         if (!zone_name.empty()) {
             return TimeWithZone(zone_name, tp);
@@ -70,9 +120,9 @@ std::optional<TimeWithZone> TimeWithZone::from_zone_string(const std::string& da
 
 std::optional<TimeWithZone> TimeWithZone::from_ibapi_string(const std::string& data, std::string_view zone_name) {
     std::istringstream iss(data);
-    date::local_time<std::chrono::nanoseconds> tp;
+    LocalTime tp;
     std::string abbrev;
-    if (iss >> date::parse("%Y%m%d %T %Z", tp, abbrev)) {
+    if (iss >> CHRONO_PARSE("%Y%m%d %T %Z", tp, abbrev)) {
         auto canonical_zone = get_canonical_zone_name(abbrev);
         if (!canonical_zone.empty()) {
             return TimeWithZone(canonical_zone, tp);
@@ -83,12 +133,12 @@ std::optional<TimeWithZone> TimeWithZone::from_ibapi_string(const std::string& d
     } else {
         iss.clear();
         iss.seekg(0, std::ios::beg);
-        if (iss >> date::parse("%Y%m%d %T", tp)) {
+        if (iss >> CHRONO_PARSE("%Y%m%d %T", tp)) {
             return TimeWithZone(zone_name, tp);
         } else {
             iss.clear();
             iss.seekg(0, std::ios::beg);
-            if (iss >> date::parse("%Y%m%d", tp)) {
+            if (iss >> CHRONO_PARSE("%Y%m%d", tp)) {
                 return TimeWithZone(zone_name, tp);
             } else {
                 log::Error("Failed to parse IB API time string: {}, Underlying error: {}", data, iss.fail());
@@ -100,8 +150,8 @@ std::optional<TimeWithZone> TimeWithZone::from_ibapi_string(const std::string& d
 
 std::optional<TimeWithZone> TimeWithZone::from_datetime_string(const std::string& datetime, const std::string& timezone) {
     std::istringstream iss(datetime);
-    date::local_time<std::chrono::nanoseconds> tp;
-    if (iss >> date::parse("%F %T", tp)) {
+    LocalTime tp;
+    if (iss >> CHRONO_PARSE("%F %T", tp)) {
         auto canonical_zone = get_canonical_zone_name(timezone);
         if (!canonical_zone.empty()) {
             return TimeWithZone(canonical_zone, tp);
@@ -112,7 +162,7 @@ std::optional<TimeWithZone> TimeWithZone::from_datetime_string(const std::string
     } else {
         iss.clear();
         iss.seekg(0, std::ios::beg);
-        if (iss >> date::parse("%F", tp)) {
+        if (iss >> CHRONO_PARSE("%F", tp)) {
             auto canonical_zone = get_canonical_zone_name(timezone);
             if (!canonical_zone.empty()) {
                 return TimeWithZone(canonical_zone, tp);
@@ -128,21 +178,38 @@ std::optional<TimeWithZone> TimeWithZone::from_datetime_string(const std::string
 }
 
 std::optional<std::string> TimeWithZone::find_zone_by_offset(std::chrono::seconds &offset) {
+#if defined(__APPLE__)
     for (const auto& zone : tzdb_.zones) {
         const auto& current_offset = zone.get_info(std::chrono::system_clock::now()).offset;
         if (current_offset == offset) {
             return std::string(zone.name());
         }
     }
+#else
+    for (const auto& zone : std::chrono::get_tzdb().zones) {
+        const auto& current_offset = zone.get_info(std::chrono::system_clock::now()).offset;
+        if (current_offset == offset) {
+            return std::string(zone.name());
+        }
+    }
+#endif
     return std::nullopt;
 }
 
 bool TimeWithZone::is_valid_time_zone(std::string_view time_zone) {
+#if defined(__APPLE__)
     for (const auto& zone : tzdb_.zones) {
         if (zone.name() == time_zone) {
             return true;
         }
     }
+#else
+    for (const auto& zone : std::chrono::get_tzdb().zones) {
+        if (zone.name() == time_zone) {
+            return true;
+        }
+    }
+#endif
     return false;
 }
 
@@ -162,24 +229,24 @@ const TimeWithZone::ZonedTime& TimeWithZone::get_zoned_time() const {
     return zoned_time_;
 }
 
-date::local_time<std::chrono::nanoseconds> TimeWithZone::get_local_time() const {
+TimeWithZone::LocalTime TimeWithZone::get_local_time() const {
     return zoned_time_.get_local_time();
 }
 
-std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds> TimeWithZone::get_utc_time() const {
+TimeWithZone::SysTime TimeWithZone::get_utc_time() const {
     return zoned_time_.get_sys_time();
 }
 
-std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds> TimeWithZone::get_sys_time() const {
+TimeWithZone::SysTime TimeWithZone::get_sys_time() const {
     return zoned_time_.get_sys_time();
 }
 
-date::local_time<std::chrono::nanoseconds> TimeWithZone::get_zone_time(const std::string &zone_name) const {
+TimeWithZone::LocalTime TimeWithZone::get_zone_time(const std::string &zone_name) const {
     if (!is_valid_time_zone(zone_name)) {
         log::Warn("Invalid time zone: '{}'", zone_name);
         return zoned_time_.get_local_time();
     }
-    auto dest_time = date::zoned_time<std::chrono::nanoseconds>(zone_name, zoned_time_.get_sys_time());
+    auto dest_time = TimeWithZone::ZonedTime(zone_name, zoned_time_.get_sys_time());
     return dest_time.get_local_time();
 }
 
@@ -227,17 +294,18 @@ std::optional<TimeWithZone> TimeWithZone::unserialize_from_buffer(const uint8_t*
     return TimeWithZone(get_zoned_time(nano_epoch, ""));
 }
 
-date::zoned_time<std::chrono::nanoseconds> TimeWithZone::get_zoned_time(uint64_t nano_epoch, const std::string_view zone_name) {
+// Use ZonedTime as return type, and only use macros inside function body
+TimeWithZone::ZonedTime TimeWithZone::get_zoned_time(uint64_t nano_epoch, const std::string_view zone_name) {
     if (nano_epoch < kMinimumNanosecondsEpoch) {
         log::Error("The nanoseconds epoch value is too small: {}, it may be milliseconds or seconds", nano_epoch);
     }
     std::chrono::nanoseconds duration_since_epoch(nano_epoch);
     std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds> time_point_ns(duration_since_epoch);
     if (!zone_name.empty()) {
-        return date::zoned_time<std::chrono::nanoseconds>(std::string(zone_name), time_point_ns);
+        return ZonedTime(std::string(zone_name), time_point_ns);
     } else {
-        auto timezone = date::current_zone();
-        return date::zoned_time<std::chrono::nanoseconds>(timezone, time_point_ns);
+        auto tz_ptr = CHRONO_CURRENT_ZONE();
+        return ZonedTime(tz_ptr, time_point_ns);
     }
 }
 
@@ -250,6 +318,10 @@ const std::map<std::string, std::string>& TimeWithZone::get_legacy_zone_to_canon
     };
     return legacy_zone_to_canonical;
 }
+
+#undef CHRONO_PARSE
+#undef CHRONO_FORMAT
+#undef CHRONO_CURRENT_ZONE
 
 } // namespace time
 } // namespace quanttrader
