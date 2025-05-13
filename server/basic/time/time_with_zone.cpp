@@ -8,12 +8,14 @@
 namespace quanttrader {
 namespace time {
 
-#if defined(__APPLE__)
+#if USE_DATE_LIBRARY
 const date::tzdb& TimeWithZone::tzdb_ = date::get_tzdb();
+#else
+const std::chrono::tzdb& TimeWithZone::tzdb_ = std::chrono::get_tzdb();
 #endif
 
 // Helper macro for cross-platform parse/format (only inside function bodies)
-#if defined(__APPLE__)
+#if USE_DATE_LIBRARY
 #define CHRONO_PARSE date::parse
 #define CHRONO_CURRENT_ZONE date::current_zone
 #else
@@ -22,7 +24,7 @@ const date::tzdb& TimeWithZone::tzdb_ = date::get_tzdb();
 #endif
 
 TimeWithZone::TimeWithZone(std::string_view time_zone, LocalTime local_time)
-#if defined(__APPLE__)
+#if USE_DATE_LIBRARY
     : zoned_time_(std::string(time_zone), local_time)
 #else
     : zoned_time_(std::string(time_zone), local_time)
@@ -48,7 +50,7 @@ TimeWithZone::TimeWithZone(uint64_t nanoseconds_epoch, const std::string& zone_n
     : zoned_time_(get_zoned_time(nanoseconds_epoch, zone_name)) {}
 
 std::string TimeWithZone::to_string() const {
-#if defined(__APPLE__)
+#if USE_DATE_LIBRARY
     return date::format("%F %T%z", zoned_time_);
 #else
     std::ostringstream oss;
@@ -62,7 +64,7 @@ std::string TimeWithZone::to_string_with_offset() const {
 }
 
 std::string TimeWithZone::to_string_with_name() const {
-#if defined(__APPLE__)
+#if USE_DATE_LIBRARY
     return date::format("%F %T %Z", zoned_time_);
 #else
     std::ostringstream oss;
@@ -72,11 +74,7 @@ std::string TimeWithZone::to_string_with_name() const {
 }
 
 std::optional<TimeWithZone> TimeWithZone::from_now() {
-#if defined(__APPLE__)
-    return TimeWithZone(date::zoned_time<std::chrono::nanoseconds>(date::current_zone(), std::chrono::system_clock::now()));
-#else
-    return TimeWithZone(std::chrono::zoned_time<std::chrono::nanoseconds>(std::chrono::current_zone(), std::chrono::system_clock::now()));
-#endif
+    return TimeWithZone(TimeWithZone::ZonedTime(CHRONO_CURRENT_ZONE(), std::chrono::system_clock::now()));
 }
 
 std::optional<TimeWithZone> TimeWithZone::from_offset_string(const std::string& data) {
@@ -176,38 +174,21 @@ std::optional<TimeWithZone> TimeWithZone::from_datetime_string(const std::string
 }
 
 std::optional<std::string> TimeWithZone::find_zone_by_offset(std::chrono::seconds &offset) {
-#if defined(__APPLE__)
     for (const auto& zone : tzdb_.zones) {
         const auto& current_offset = zone.get_info(std::chrono::system_clock::now()).offset;
         if (current_offset == offset) {
             return std::string(zone.name());
         }
     }
-#else
-    for (const auto& zone : std::chrono::get_tzdb().zones) {
-        const auto& current_offset = zone.get_info(std::chrono::system_clock::now()).offset;
-        if (current_offset == offset) {
-            return std::string(zone.name());
-        }
-    }
-#endif
     return std::nullopt;
 }
 
 bool TimeWithZone::is_valid_time_zone(std::string_view time_zone) {
-#if defined(__APPLE__)
     for (const auto& zone : tzdb_.zones) {
         if (zone.name() == time_zone) {
             return true;
         }
     }
-#else
-    for (const auto& zone : std::chrono::get_tzdb().zones) {
-        if (zone.name() == time_zone) {
-            return true;
-        }
-    }
-#endif
     return false;
 }
 

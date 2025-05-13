@@ -1,6 +1,10 @@
 #pragma once
 
 #if defined(__APPLE__)
+#define USE_DATE_LIBRARY 1
+#endif
+
+#if USE_DATE_LIBRARY
 #include "date/date.h"
 #include "date/tz.h"
 #else
@@ -22,7 +26,7 @@ namespace time {
 class TimeWithZone {
 
 public:
-#if defined(__APPLE__)
+#if USE_DATE_LIBRARY
     using LocalTime = date::local_time<std::chrono::nanoseconds>;
     using ZonedTime = date::zoned_time<std::chrono::nanoseconds>;
     using SysTime = std::chrono::time_point<std::chrono::system_clock, std::chrono::nanoseconds>;
@@ -169,7 +173,7 @@ public:
 
     // Print the time (for demonstration purposes)
     friend std::ostream& operator<<(std::ostream& os, const TimeWithZone& t) {
-#if defined(__APPLE__)
+#if USE_DATE_LIBRARY
         os << date::format("{:%F %T%z}", t.zoned_time_);
 #else
         os << std::format("{:%F %T%z}", t.zoned_time_);
@@ -181,7 +185,7 @@ private:
     ZonedTime zoned_time_ {};
     mutable std::optional<std::string> cached_to_string_;
     mutable std::optional<std::string> cached_to_string_with_name_;
-#if defined(__APPLE__)
+#if USE_DATE_LIBRARY
     static const date::tzdb& tzdb_;
 #else
     static const std::chrono::tzdb& tzdb_;
