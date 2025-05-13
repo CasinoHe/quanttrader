@@ -66,6 +66,7 @@ class BuildBase(object):
               triplet = "arm64-osx"
             else:
               triplet = "x64-linux-release"
+            return triplet
 
     def build(self):
         raise NotImplementedError("Build method not implemented")
