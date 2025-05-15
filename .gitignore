@@ -10,4 +10,4 @@ server/vcpkg_installed
 client/vcpkg_installed
 
 server/script/config.lua
-server/test/config
+server/test/debug
