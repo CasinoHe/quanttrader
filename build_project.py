@@ -191,9 +191,9 @@ class BuildProject(BuildBase):
             f"{workdir}"
         ]
 
-        # make CMake use Xcode to generate the project on macOS
-        if sys.platform == "darwin":
-          args.insert(0, "Xcode")
+        # choose generator when needed
+        if self.args.cmake_generator != "Default":
+          args.insert(0, self.args.cmake_generator)
           args.insert(0, "-G")
 
         build_dir = os.path.join(workdir, "build")
@@ -263,6 +263,7 @@ def parse_args(args):
     project_parser.add_argument("--triplet", type=str, required=False, help="Set vcpkg triplet, example: x64-windows-static")
     project_parser.add_argument("--clean", action="store_true", default=False, help="Clean build directory")
     project_parser.add_argument("--build-test", action="store_true", default=False, help="build test executable")
+    project_parser.add_argument("--cmake-generator", type=str, required=False, default="Default", help="CMake generator to use")
 
     return parser.parse_args(args), parser
 
