@@ -184,6 +184,10 @@ std::optional<std::string> TimeWithZone::find_zone_by_offset(std::chrono::second
 }
 
 bool TimeWithZone::is_valid_time_zone(std::string_view time_zone) {
+    // TODO: There is an library error, that the tzdb_.zones is not valid on Mac OS.
+#if defined(__APPLE__)
+    return true;
+#endif
     for (const auto& zone : tzdb_.zones) {
         if (zone.name() == time_zone) {
             return true;
