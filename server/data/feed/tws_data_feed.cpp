@@ -213,15 +213,6 @@ long TwsDataFeed::fetch_historical_data() {
         return -1;
     }
     
-    logger_->info("Request historical data for: {} security {} bar size {} rth {} duration {} up to date {}", 
-                symbol_,
-                security_type_,
-                bar_type_str_,
-                use_rth_,
-                duration.value(),
-                keep_up_to_date_
-                );
-    
     // Request historical data first to get the correct request ID
     long requestId = broker_adapter_->requestHistoricalData(
         symbol_,
@@ -260,8 +251,27 @@ long TwsDataFeed::fetch_historical_data() {
                 historical_data_length_++;
             }
         });
+
+        logger_->info("Request historical data succeed: request id:{} symbol: {} security {} bar size {} rth {} duration {} up to date {}", 
+                    requestId,
+                    symbol_,
+                    security_type_,
+                    bar_type_str_,
+                    use_rth_,
+                    duration.value(),
+                    keep_up_to_date_
+                    );
+    
     } else {
-        logger_->error("Failed to request historical data for: {}", symbol_);
+        logger_->error("Request historical data failed: request id:{} symbol: {} security {} bar size {} rth {} duration {} up to date {}", 
+                    requestId,
+                    symbol_,
+                    security_type_,
+                    bar_type_str_,
+                    use_rth_,
+                    duration.value(),
+                    keep_up_to_date_
+                    );
     }
 
     return requestId;

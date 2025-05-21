@@ -278,6 +278,11 @@ bool TwsBrokerAdapter::removeCallback(long requestId) {
 // Helper methods
 BarData TwsBrokerAdapter::convertToBarData(const ResHistoricalData& resData) {
     BarData barData;
+    if (resData.is_end) {
+        logger_->info("Received end of historical data for request ID: {}", resData.request_id);
+        barData.is_last = true;
+        return barData;
+    }
     
     // Handle the variant type for date
     if (std::holds_alternative<std::string>(resData.date)) {
@@ -288,7 +293,7 @@ BarData TwsBrokerAdapter::convertToBarData(const ResHistoricalData& resData) {
             // Convert to milliseconds epoch for barData.time
             barData.time = timeWithZone.value().get_nano_epoch();
         } else {
-            logger_->error("Failed to parse date string: {}", dateStr);
+            logger_->error("Failed to parse date string: {} open:{} high:{} low:{} close:{}", dateStr, resData.open, resData.high, resData.low, resData.close);
             barData.time = 0;
         }
     } else if (std::holds_alternative<int>(resData.date)) {
