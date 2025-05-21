@@ -230,11 +230,11 @@ long TwsDataFeed::fetch_historical_data() {
     // Only register the callback if we got a valid request ID
     if (requestId > 0) {
         // Register a callback for historical data using the returned request ID
-        broker_adapter_->registerBarDataCallback(requestId, [this](const broker::BarData& barData) {
+        broker_adapter_->registerBarDataCallback(requestId, [this, requestId](const broker::BarData& barData) {
             if (barData.is_last) {
                 historical_fetch_completed_.store(true);
                 data_ready_ = true;
-                logger_->info("Historical data {} response for: {} is completed.", data_name_, symbol_);
+                logger_->info("Historical data {} response for: {} is completed, request id {}", data_name_, symbol_, requestId);
                 return;
             }
 
