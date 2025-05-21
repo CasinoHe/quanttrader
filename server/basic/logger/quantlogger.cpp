@@ -152,7 +152,7 @@ LoggerPtr QuantLogger::get_logger(const std::string &name, const std::string &lo
     std::string log_path = get_log_path(logname);
     std::vector<spdlog::sink_ptr> sinks;
 
-    while (std::getline(ss, key, '.')) {
+    while (std::getline(ss, key, ',')) {
         if (key == quanttrader::logger::LOGGER_SINK_DAILY_FILE_TYPE) {
             auto sink = std::make_shared<spdlog::sinks::daily_file_sink_mt>(log_path, 0, 0);
             sink->set_pattern(quanttrader::kSpdLogPattern);
