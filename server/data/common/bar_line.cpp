@@ -6,7 +6,7 @@ namespace util {
 
 std::optional<BarStruct> BarLine::next() {
     std::shared_lock lock(bar_mutex_);
-    if (cur_ > bars_.start_time.size()) {
+    if (cur_ >= bars_.start_time.size()) {
         return std::nullopt;
     }
 
