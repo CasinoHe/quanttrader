@@ -15,6 +15,7 @@ namespace strategy {
  * 
  * This strategy demonstrates how to use the BarSeries data structure with TA-Lib.
  * It calculates a simple moving average using TA-Lib and generates buy/sell signals.
+ * Uses incremental calculation for improved performance.
  */
 class SlopeStrategy : public StrategyBase {
 public:
@@ -47,9 +48,28 @@ private:
     double slow_ma_ = 0.0;
     bool position_open_ = false;
     
+    // Cache for performance optimization
+    // Keeps track of the last processed size to avoid redundant calculations
+    size_t last_processed_size_ = 0;
+    
+    // Cached copy of all close prices to avoid copying data for each calculation
+    std::vector<double> cached_close_prices_;
+    
     // Helper methods
     double calculate_ma(int period) const;
     void update_moving_averages();
+    
+    /**
+     * @brief Efficient calculation of moving averages using TA-Lib with caching
+     * 
+     * This method implements a caching strategy that:
+     * 1. Stores previously calculated values to avoid redundant calculations
+     * 2. Only calculates new values for new data points
+     * 3. Uses the optimal TA-Lib lookback period for efficiency
+     * 
+     * @param bar_series The input bar series data
+     */
+    void calculate_moving_averages_incremental(const data::BarSeries& bar_series);
 };
 
 }
