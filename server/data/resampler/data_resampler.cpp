@@ -109,6 +109,9 @@ bool DataResampler::start_request_data() {
                 resampled_bar.swap,
                 resampled_bar.count
             );
+
+            // Start aggregation for the current bar that triggered completion
+            add_to_aggregation(bar.value());
         }
     }
     
