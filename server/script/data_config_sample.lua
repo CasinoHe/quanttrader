@@ -58,5 +58,5 @@ sec_data = {
 	bar_type = "5 secs",
 	up_to_date = false,
 	resample = false,  -- resample data or not
-	resample_bar_size = "1 secs",  -- resample bar type
+	resample_bar_size = "5 secs",  -- resample bar type
 }
