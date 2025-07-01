@@ -90,7 +90,7 @@ public:
 private:
     friend class Singleton<TwsBrokerAdapter>;
     TwsBrokerAdapter(const std::string_view configPath);
-    ~TwsBrokerAdapter() = default;
+    ~TwsBrokerAdapter();
 
     // TWS client handling methods
     void runTws();
