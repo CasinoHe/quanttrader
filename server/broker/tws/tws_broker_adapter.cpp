@@ -14,6 +14,11 @@ TwsBrokerAdapter::TwsBrokerAdapter(const std::string_view configPath) : configPa
     logger_->info("TwsBrokerAdapter instance created with config file: {}", configPath);
 }
 
+TwsBrokerAdapter::~TwsBrokerAdapter() {
+    // Ensure background thread is properly terminated before destruction
+    stop();
+}
+
 // Implementation of BrokerProvider interface methods
 bool TwsBrokerAdapter::connect() {
     if (!client_) {
