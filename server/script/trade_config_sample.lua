@@ -50,6 +50,7 @@ apple_slope = {
 	version = 1,                            -- before each operation, increment the version number
 	symbol = "AAPL",
 	data_series = "daily,min",
+	log_data = true,  -- key data debug switch
 }
 
 
@@ -60,4 +61,5 @@ msft_slope = {
 	start_date = "2016-01-01 00:00:00",
 	end_date = "2024-12-31 23:59:59",
 	timezone = "America/New_York",
+	log_data = false,  -- key data debug switch
 }

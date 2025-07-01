@@ -69,7 +69,10 @@ protected:
     std::string strategy_name_ = "BaseStrategy";
     std::string symbol_ = "";  // Added symbol as a base class member
     StrategyCreateFuncParemType params_;
-    
+
+    // key data debug switch
+    bool log_data_ = false; // Added key data debug switch
+
     // Derived strategies should implement this method
     virtual void next() = 0;
     

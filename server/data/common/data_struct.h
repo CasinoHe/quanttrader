@@ -71,6 +71,21 @@ struct BarSeries {
     std::vector<Decimal> wap;   // weighted average price
     std::vector<Decimal> volume;  // volume
     std::vector<int> count;
+
+    std::string last_one_to_string() const {
+        if (close.empty()) {
+            return "BarSeries is empty";
+        }
+        BarStruct last_bar;
+        last_bar.time = start_time.back();
+        last_bar.open = open.back();
+        last_bar.high = high.back();
+        last_bar.low = low.back();
+        last_bar.close = close.back();
+        last_bar.volume = volume.back();
+        last_bar.count = count.back();
+        return last_bar.to_string();
+    }
 };
 
 }

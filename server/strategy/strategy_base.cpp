@@ -27,6 +27,19 @@ StrategyBase::StrategyBase(StrategyCreateFuncParemType params) : params_(params)
             logger_->warn("Symbol parameter has incorrect type");
         }
     }
+
+    // Check if the date output debug switch is set
+    auto log_data_it = params_.find("log_data");
+    if (log_data_it != params_.end()) {
+        try {
+            log_data_ = std::any_cast<bool>(log_data_it->second);
+        } catch (const std::bad_any_cast&) {
+            log_data_ = false; // Default to false if type is incorrect
+            logger_->warn("log_data parameter has incorrect type, defaulting to false");
+        }
+    } else {
+        log_data_ = false; // Default to false if not set
+    }
     
     // Initialize logger
     logger_ = quanttrader::log::get_common_rotation_logger(strategy_name_, "strategy");
@@ -51,10 +64,21 @@ bool StrategyBase::on_stop() {
     
 void StrategyBase::on_data_series(const std::map<std::string, data::BarSeries>& bar_series_map) {
     // Call on_bar with TA-Lib compatible data for each feed
+    if (log_data_) {
+        logger_->info("Processing data series for strategy: {}", strategy_name_);
+    }
     for (const auto& [data_name, bar_series] : bar_series_map) {
         if (!bar_series.close.empty()) {
             on_bar(data_name, bar_series);
         }
+
+        if (log_data_) {
+            // Log the last bar of the series for debugging
+            logger_->info("Data series {} last bar: {}", data_name, bar_series.last_one_to_string());
+        }
+    }
+    if (log_data_) {
+        logger_->info("Finished processing data series for strategy: {}", strategy_name_);
     }
     
     // Call the next() method which derived strategies should implement
