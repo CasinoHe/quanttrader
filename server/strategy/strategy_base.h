@@ -45,7 +45,7 @@ public:
      * This method receives all historical bar data as a map of vectors of BarStruct,
      * and converts it to TA-Lib compatible BarSeries for strategy processing.
      * 
-     * @param data_map Map of data provider names to vectors of bars
+     * @param data_map Map of data provider names to vectors of bars (readonly)
      */
     virtual void on_data(const std::map<std::string, std::vector<std::optional<data::BarStruct>>>& data_map);
     

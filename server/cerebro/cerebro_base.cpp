@@ -195,15 +195,9 @@ bool CerebroBase::process_next() {
         historical_data_[name].push_back(bar);
     }
     
-    // Create a map of data provider names to vectors of all historical bars for each strategy
-    std::map<std::string, std::vector<std::optional<data::BarStruct>>> complete_data;
-    for (const auto& [name, bars] : historical_data_) {
-        complete_data[name] = bars;
-    }
-    
-    // Feed the complete historical data to all strategies
+    // Feed the historical data directly to all strategies (readonly access)
     for (auto& strategy : strategies_) {
-        strategy->on_data(complete_data);
+        strategy->on_data(historical_data_);
     }
     
     return true;
