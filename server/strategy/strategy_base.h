@@ -40,14 +40,14 @@ public:
     virtual void on_order(const std::string& order_id, const std::string& status) {}
     
     /**
-     * @brief Called when new data is available
+     * @brief Called when new data is available (optimized version)
      * 
-     * This method receives all historical bar data as a map of vectors of BarStruct,
-     * and converts it to TA-Lib compatible BarSeries for strategy processing.
+     * This method receives cached TA-Lib compatible BarSeries directly from CerebroBase,
+     * avoiding the need to recreate BarSeries objects on each call.
      * 
-     * @param data_map Map of data provider names to vectors of bars (readonly)
+     * @param bar_series_map Map of data provider names to cached BarSeries (readonly)
      */
-    virtual void on_data(const std::map<std::string, std::vector<std::optional<data::BarStruct>>>& data_map);
+    virtual void on_data_series(const std::map<std::string, data::BarSeries>& bar_series_map);
     
     // Lifecycle methods
     virtual bool initialize();

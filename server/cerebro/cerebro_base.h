@@ -109,6 +109,16 @@ public:
 
 protected:
     /**
+     * @brief Update cached BarSeries with new bar data
+     * 
+     * This method efficiently updates the cached BarSeries when new bars are available.
+     * 
+     * @param data_provider_name The name of the data provider
+     * @param new_bar The new bar to add to the series
+     */
+    void update_cached_bar_series(const std::string& data_provider_name, const std::optional<data::BarStruct>& new_bar);
+
+    /**
      * @brief Process the next set of data
      * 
      * This method fetches the next data point and passes it to strategies.
@@ -122,6 +132,9 @@ protected:
     
     // Historical data storage - maps data provider name to accumulated bar history
     std::map<std::string, std::vector<std::optional<data::BarStruct>>> historical_data_;
+    
+    // Cached BarSeries for efficient strategy access - maps data provider name to TA-Lib compatible series
+    std::map<std::string, data::BarSeries> cached_bar_series_;
     
     // Strategy management
     std::vector<std::shared_ptr<strategy::StrategyBase>> strategies_;

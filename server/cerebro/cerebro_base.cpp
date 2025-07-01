@@ -144,6 +144,9 @@ bool CerebroBase::prepare() {
         return false;
     }
     
+    // Initialize cached BarSeries for all data providers
+    cached_bar_series_.clear();
+    
     is_prepared_ = true;
     logger_->info("CerebroBase {} preparation completed successfully", name_);
     return true;
@@ -158,6 +161,9 @@ bool CerebroBase::stop() {
     // Stop all data providers
     replay_controller_->stop();
     
+    // Clear cached data for clean restart
+    cached_bar_series_.clear();
+    
     // Close all strategies
     for (auto& strategy : strategies_) {
         strategy->on_stop();
@@ -166,6 +172,26 @@ bool CerebroBase::stop() {
     is_running_ = false;
     logger_->info("{} CerebroBase stopped successfully", name_);
     return true;
+}
+
+void CerebroBase::update_cached_bar_series(const std::string& data_provider_name, const std::optional<data::BarStruct>& new_bar) {
+    if (!new_bar.has_value()) {
+        return;
+    }
+    
+    const auto& bar = new_bar.value();
+    
+    // Get or create the cached series for this data provider
+    auto& series = cached_bar_series_[data_provider_name];
+    
+    // Add the new bar data to the series
+    series.start_time.push_back(bar.time);
+    series.open.push_back(bar.open);
+    series.high.push_back(bar.high);
+    series.low.push_back(bar.low);
+    series.close.push_back(bar.close);
+    series.volume.push_back(bar.volume);
+    series.count.push_back(bar.count);
 }
 
 bool CerebroBase::process_next() {
@@ -193,11 +219,14 @@ bool CerebroBase::process_next() {
             historical_data_[name] = std::vector<std::optional<data::BarStruct>>();
         }
         historical_data_[name].push_back(bar);
+        
+        // Update cached BarSeries for efficient strategy access
+        update_cached_bar_series(name, bar);
     }
     
-    // Feed the historical data directly to all strategies (readonly access)
+    // Feed the cached BarSeries directly to all strategies (readonly access)
     for (auto& strategy : strategies_) {
-        strategy->on_data(historical_data_);
+        strategy->on_data_series(cached_bar_series_);
     }
     
     return true;

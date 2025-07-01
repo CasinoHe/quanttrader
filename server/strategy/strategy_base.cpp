@@ -48,55 +48,13 @@ bool StrategyBase::on_stop() {
     return true;
 }
 
-void StrategyBase::on_data(const std::map<std::string, std::vector<std::optional<data::BarStruct>>>& data_map) {
-    // Convert the vector of BarStruct to BarSeries for TA-Lib compatibility
-    std::map<std::string, data::BarSeries> bar_series_map;
     
-    for (const auto& [data_name, bars] : data_map) {
-        if (bars.empty()) {
-            continue;
-        }
-        
-        // Create a BarSeries instance for this data feed
-        data::BarSeries series;
-        
-        // Reserve space for efficiency
-        size_t valid_count = 0;
-        for (const auto& bar_opt : bars) {
-            if (bar_opt.has_value()) valid_count++;
-        }
-        
-        series.start_time.reserve(valid_count);
-        series.open.reserve(valid_count);
-        series.high.reserve(valid_count);
-        series.low.reserve(valid_count);
-        series.close.reserve(valid_count);
-        series.volume.reserve(valid_count);
-        series.count.reserve(valid_count);
-        
-        // Fill the arrays from the valid bar data
-        for (const auto& bar_opt : bars) {
-            if (bar_opt.has_value()) {
-                const auto& bar = bar_opt.value();
-                series.start_time.push_back(bar.time);
-                series.open.push_back(bar.open);
-                series.high.push_back(bar.high);
-                series.low.push_back(bar.low);
-                series.close.push_back(bar.close);
-                series.volume.push_back(bar.volume);
-                series.count.push_back(bar.count);
-            }
-        }
-        
-        // Add to the map if we have valid data
-        if (!series.close.empty()) {
-            bar_series_map[data_name] = std::move(series);
-        }
-    }
-    
+void StrategyBase::on_data_series(const std::map<std::string, data::BarSeries>& bar_series_map) {
     // Call on_bar with TA-Lib compatible data for each feed
     for (const auto& [data_name, bar_series] : bar_series_map) {
-        on_bar(data_name, bar_series);
+        if (!bar_series.close.empty()) {
+            on_bar(data_name, bar_series);
+        }
     }
     
     // Call the next() method which derived strategies should implement
