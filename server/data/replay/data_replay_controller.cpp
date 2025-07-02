@@ -1,5 +1,6 @@
 #include "data_replay_controller.h"
 #include "basic/time/time_util.h"
+#include "basic/time/time_with_zone.h"
 #include <algorithm>
 #include <limits>
 #include <ctime>
@@ -76,160 +77,139 @@ void DataReplayController::set_replay_mode(provider::DataProvider::ReplayMode mo
     }
 }
 
+void compare_time_changes(uint64_t previous_time, uint64_t current_time, const std::string& timezone, SynchronizedDataResult& result, const std::shared_ptr<spdlog::logger>& logger, std::string_view data_name) {
+    if (previous_time > 0) {
+        quanttrader::time::TimeWithZone prev_twz(previous_time, timezone);
+        quanttrader::time::TimeWithZone curr_twz(current_time, timezone);
+
+        auto prev_local = prev_twz.get_local_time();
+        auto curr_local = curr_twz.get_local_time();
+
+        auto prev_days = std::chrono::floor<std::chrono::days>(prev_local);
+        auto curr_days = std::chrono::floor<std::chrono::days>(curr_local);
+        if (prev_days != curr_days) {
+            result.day_changed = true;
+            logger->debug("Day changed (epoch): {} -> {}", prev_days.time_since_epoch().count(), curr_days.time_since_epoch().count());
+        }
+
+        auto prev_hour = std::chrono::floor<std::chrono::hours>(prev_local);
+        auto curr_hour = std::chrono::floor<std::chrono::hours>(curr_local);
+        if (prev_hour != curr_hour || result.day_changed) {
+            result.hour_changed = true;
+            logger->debug("Hour changed (epoch): {} -> {}", prev_hour.time_since_epoch().count(), curr_hour.time_since_epoch().count());
+        }
+
+        auto prev_min = std::chrono::floor<std::chrono::minutes>(prev_local);
+        auto curr_min = std::chrono::floor<std::chrono::minutes>(curr_local);
+        if (prev_min != curr_min || result.hour_changed) {
+            result.minute_changed = true;
+            logger->debug("Minute changed (epoch): {} -> {}", prev_min.time_since_epoch().count(), curr_min.time_since_epoch().count());
+        }
+        logger->info("Current aligned time: {} (ns: {}), data {}", curr_twz.to_string_with_name(), current_time, data_name);
+    } else {
+        quanttrader::time::TimeWithZone curr_twz(current_time, timezone);
+        logger->info("Initializing with time: {} (ns: {}), data {}", curr_twz.to_string_with_name(), current_time, data_name);
+    }
+}
+
+// Helper: fetch next valid bar for a provider
+void fetch_next_valid_bar(const std::string& name, std::shared_ptr<provider::DataProvider> provider, std::map<std::string, std::optional<BarStruct>>& latest_bars_, std::map<std::string, bool>& has_more_data_, uint64_t previous_time_, const std::shared_ptr<spdlog::logger>& logger) {
+    bool need_new_data = false;
+    if (latest_bars_.find(name) == latest_bars_.end() || !latest_bars_[name].has_value()) {
+        need_new_data = true;
+    } else if (previous_time_ > 0 && latest_bars_[name]->time < previous_time_) {
+        need_new_data = true;
+        logger->debug("Advancing provider {} past old cached time {} (current time: {})", name, latest_bars_[name]->time, previous_time_);
+    }
+    if (need_new_data) {
+        std::optional<BarStruct> next_bar;
+        do {
+            next_bar = provider->next();
+            if (next_bar.has_value()) {
+                logger->debug("Fetched bar for provider {}: time={}", name, next_bar->time);
+                if (previous_time_ == 0 || next_bar->time >= previous_time_) {
+                    latest_bars_[name] = next_bar;
+                    break;
+                } else {
+                    logger->info("Skipping old bar for provider {} (time: {} < current: {})", name, next_bar->time, previous_time_);
+                }
+            } else {
+                has_more_data_[name] = false;
+                latest_bars_[name] = std::nullopt;
+                logger->debug("No more data for provider {}", name);
+                break;
+            }
+        } while (next_bar.has_value() && next_bar->time < previous_time_);
+    }
+}
+
+// Helper: find earliest timestamp among all providers
+void find_earliest_time(const std::map<std::string, std::optional<BarStruct>>& latest_bars_, const std::map<std::string, bool>& has_more_data_, uint64_t previous_time_, uint64_t& earliest_time, std::string_view& data_name) {
+    earliest_time = std::numeric_limits<uint64_t>::max();
+    for (const auto& [name, bar_opt] : latest_bars_) {
+        if (!has_more_data_.at(name)) continue;
+        if (bar_opt.has_value() && (previous_time_ == 0 || bar_opt->time >= previous_time_) && bar_opt->time < earliest_time) {
+            earliest_time = bar_opt->time;
+            data_name = name;
+        }
+    }
+}
+
+// Helper: process each provider for result.data
+void process_providers_for_result(const std::map<std::string, std::optional<BarStruct>>& latest_bars_, std::map<std::string, std::optional<BarStruct>>& result_data, uint64_t earliest_time, const std::shared_ptr<spdlog::logger>& logger) {
+    for (const auto& [name, bar_opt] : latest_bars_) {
+        if (bar_opt.has_value()) {
+            if (bar_opt->time <= earliest_time) {
+                result_data[name] = bar_opt;
+                logger->debug("Including data from provider {} at time {}", name, bar_opt->time);
+            } else {
+                result_data[name] = std::nullopt;
+                logger->debug("Keeping future data from provider {} (future time: {} vs current: {})", name, bar_opt->time, earliest_time);
+            }
+        } else {
+            result_data[name] = std::nullopt;
+            logger->debug("No data available for provider {}", name);
+        }
+    }
+}
+
 SynchronizedDataResult DataReplayController::next_synchronized() {
     SynchronizedDataResult result;
-    
     if (providers_.empty()) {
         logger_->debug("No providers available for synchronization");
         return result;
     }
 
-    // Find the provider with the earliest timestamp
-    uint64_t earliest_time = std::numeric_limits<uint64_t>::max();
-    std::string_view data_name;
-    
-    // First, check if we need to fetch new data for any provider
+    // Step 1: Fetch next valid bar for each provider
     for (auto& [name, provider] : providers_) {
-        if (!has_more_data_[name]) {
-            continue;  // Skip providers with no more data
-        }
-
-        // Check if we need to advance this provider's data
-        bool need_new_data = false;
-        if (latest_bars_.find(name) == latest_bars_.end() || !latest_bars_[name].has_value()) {
-            need_new_data = true;
-        } else if (previous_time_ > 0 && latest_bars_[name]->time < previous_time_) {
-            // Current cached bar is older than our current time, need to advance
-            need_new_data = true;
-            logger_->debug("Advancing provider {} past old cached time {} (current time: {})", 
-                         name, latest_bars_[name]->time, previous_time_);
-        }
-
-        if (need_new_data) {
-            // Fetch next bar(s) for this provider until we get one >= current time
-            std::optional<BarStruct> next_bar;
-            do {
-                next_bar = provider->next();
-                if (next_bar.has_value()) {
-                    logger_->debug("Fetched bar for provider {}: time={}", name, next_bar->time);
-                    if (previous_time_ == 0 || next_bar->time >= previous_time_) {
-                        // This bar is valid (at or after current time)
-                        latest_bars_[name] = next_bar;
-                        break;
-                    } else {
-                        // This bar is too old, skip it and fetch next
-                        logger_->debug("Skipping old bar for provider {} (time: {} < current: {})", 
-                                     name, next_bar->time, previous_time_);
-                    }
-                } else {
-                    has_more_data_[name] = false;
-                    latest_bars_[name] = std::nullopt;
-                    logger_->debug("No more data for provider {}", name);
-                    break;
-                }
-            } while (next_bar.has_value() && next_bar->time < previous_time_);
-        }
-
-        // Find the earliest timestamp among available bars that are >= current time
-        if (latest_bars_[name].has_value() && 
-            (previous_time_ == 0 || latest_bars_[name]->time >= previous_time_) &&
-            latest_bars_[name]->time < earliest_time) {
-            earliest_time = latest_bars_[name]->time;
-            data_name = name;
-        }
+        if (!has_more_data_[name]) continue;
+        fetch_next_valid_bar(name, provider, latest_bars_, has_more_data_, previous_time_, logger_);
     }
 
-    // If no valid bar was found, return empty result
+    // Step 2: Find the earliest timestamp among all providers
+    uint64_t earliest_time = std::numeric_limits<uint64_t>::max();
+    std::string_view data_name;
+    find_earliest_time(latest_bars_, has_more_data_, previous_time_, earliest_time, data_name);
+
+    // Step 3: If no valid bar was found, return empty result
     if (earliest_time == std::numeric_limits<uint64_t>::max()) {
         logger_->debug("No valid bars found, returning empty result");
         return result;
     }
 
     result.current_time = earliest_time;
-    
-    // Check for time switches if we have a previous time
-    if (previous_time_ > 0) {
-        // Convert timestamps to tm structures for comparison
-        std::time_t prev_seconds = previous_time_ / 1000000000ULL;
-        std::time_t curr_seconds = earliest_time / 1000000000ULL;
-        
-        std::tm prev_tm = {};
-        std::tm curr_tm = {};
-        
-#ifdef _WIN32
-        gmtime_s(&prev_tm, &prev_seconds);
-        gmtime_s(&curr_tm, &curr_seconds);
-#else
-        gmtime_r(&prev_seconds, &prev_tm);
-        gmtime_r(&curr_seconds, &curr_tm);
-#endif
 
-        // Check for day change
-        if (prev_tm.tm_year != curr_tm.tm_year || 
-            prev_tm.tm_mon != curr_tm.tm_mon || 
-            prev_tm.tm_mday != curr_tm.tm_mday) {
-            result.day_changed = true;
-            logger_->debug("Day changed from {}-{:02d}-{:02d} to {}-{:02d}-{:02d}", 
-                         prev_tm.tm_year + 1900, prev_tm.tm_mon + 1, prev_tm.tm_mday,
-                         curr_tm.tm_year + 1900, curr_tm.tm_mon + 1, curr_tm.tm_mday);
-        }
-        
-        // Check for hour change
-        if (prev_tm.tm_hour != curr_tm.tm_hour || result.day_changed) {
-            result.hour_changed = true;
-            logger_->debug("Hour changed from {:02d} to {:02d}", prev_tm.tm_hour, curr_tm.tm_hour);
-        }
-        
-        // Check for minute change
-        if (prev_tm.tm_min != curr_tm.tm_min || result.hour_changed) {
-            result.minute_changed = true;
-            logger_->debug("Minute changed from {:02d} to {:02d}", prev_tm.tm_min, curr_tm.tm_min);
-        }
-        
-        // Log current aligned time
-        logger_->info("Current aligned time: {}-{:02d}-{:02d} {:02d}:{:02d}:{:02d} (ns: {}), data {}",
-                     curr_tm.tm_year + 1900, curr_tm.tm_mon + 1, curr_tm.tm_mday,
-                     curr_tm.tm_hour, curr_tm.tm_min, curr_tm.tm_sec, earliest_time, data_name);
-    } else {
-        // First time initialization
-        std::time_t curr_seconds = earliest_time / 1000000000ULL;
-        std::tm curr_tm = {};
-        
-#ifdef _WIN32
-        gmtime_s(&curr_tm, &curr_seconds);
-#else
-        gmtime_r(&curr_seconds, &curr_tm);
-#endif
-        
-        logger_->info("Initializing with time: {}-{:02d}-{:02d} {:02d}:{:02d}:{:02d} (ns: {}), data {}",
-                     curr_tm.tm_year + 1900, curr_tm.tm_mon + 1, curr_tm.tm_mday,
-                     curr_tm.tm_hour, curr_tm.tm_min, curr_tm.tm_sec, earliest_time, data_name);
+    // Step 4: Compare time changes (day/hour/minute)
+    std::string timezone = "UTC";
+    if (!providers_.empty()) {
+        timezone = providers_.begin()->second->get_timezone();
     }
+    compare_time_changes(previous_time_, earliest_time, timezone, result, logger_, data_name);
 
-    // Process each provider based on its timestamp compared to the earliest time
-    for (auto& [name, provider] : providers_) {
-        if (latest_bars_.find(name) != latest_bars_.end() && latest_bars_[name].has_value()) {
-            // This provider has data
-            if (latest_bars_[name]->time <= earliest_time) {
-                // This provider has the earliest timestamp, include its data
-                result.data[name] = latest_bars_[name];
-                logger_->debug("Including data from provider {} at time {}", name, latest_bars_[name]->time);
-                // Clear this provider's cached bar so it fetches a new one next time
-                latest_bars_[name] = std::nullopt;
-            } else {
-                // This provider's data is from a future time, keep it cached for later
-                result.data[name] = std::nullopt;
-                logger_->debug("Keeping future data from provider {} (future time: {} vs current: {})", 
-                             name, latest_bars_[name]->time, earliest_time);
-            }
-        } else {
-            // No data for this provider
-            result.data[name] = std::nullopt;
-            logger_->debug("No data available for provider {}", name);
-        }
-    }
+    // Step 5: Process each provider for result.data and clear used bars
+    process_providers_for_result(latest_bars_, result.data, earliest_time, logger_);
 
-    // Update previous time for next iteration
+    // Step 6: Update previous time for next iteration
     previous_time_ = earliest_time;
 
     return result;
