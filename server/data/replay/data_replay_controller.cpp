@@ -94,22 +94,46 @@ SynchronizedDataResult DataReplayController::next_synchronized() {
             continue;  // Skip providers with no more data
         }
 
+        // Check if we need to advance this provider's data
+        bool need_new_data = false;
         if (latest_bars_.find(name) == latest_bars_.end() || !latest_bars_[name].has_value()) {
-            // Fetch next bar for this provider
-            auto next_bar = provider->next();
-            if (next_bar.has_value()) {
-                latest_bars_[name] = next_bar;
-                logger_->debug("Fetched new bar for provider {}: time={}", name, next_bar->time);
-            } else {
-                has_more_data_[name] = false;
-                latest_bars_[name] = std::nullopt;
-                logger_->debug("No more data for provider {}", name);
-                continue;  // No more data for this provider
-            }
+            need_new_data = true;
+        } else if (previous_time_ > 0 && latest_bars_[name]->time < previous_time_) {
+            // Current cached bar is older than our current time, need to advance
+            need_new_data = true;
+            logger_->debug("Advancing provider {} past old cached time {} (current time: {})", 
+                         name, latest_bars_[name]->time, previous_time_);
         }
 
-        // Find the earliest timestamp among available bars
-        if (latest_bars_[name].has_value() && latest_bars_[name]->time < earliest_time) {
+        if (need_new_data) {
+            // Fetch next bar(s) for this provider until we get one >= current time
+            std::optional<BarStruct> next_bar;
+            do {
+                next_bar = provider->next();
+                if (next_bar.has_value()) {
+                    logger_->debug("Fetched bar for provider {}: time={}", name, next_bar->time);
+                    if (previous_time_ == 0 || next_bar->time >= previous_time_) {
+                        // This bar is valid (at or after current time)
+                        latest_bars_[name] = next_bar;
+                        break;
+                    } else {
+                        // This bar is too old, skip it and fetch next
+                        logger_->debug("Skipping old bar for provider {} (time: {} < current: {})", 
+                                     name, next_bar->time, previous_time_);
+                    }
+                } else {
+                    has_more_data_[name] = false;
+                    latest_bars_[name] = std::nullopt;
+                    logger_->debug("No more data for provider {}", name);
+                    break;
+                }
+            } while (next_bar.has_value() && next_bar->time < previous_time_);
+        }
+
+        // Find the earliest timestamp among available bars that are >= current time
+        if (latest_bars_[name].has_value() && 
+            (previous_time_ == 0 || latest_bars_[name]->time >= previous_time_) &&
+            latest_bars_[name]->time < earliest_time) {
             earliest_time = latest_bars_[name]->time;
             data_name = name;
         }
@@ -193,10 +217,9 @@ SynchronizedDataResult DataReplayController::next_synchronized() {
                 // Clear this provider's cached bar so it fetches a new one next time
                 latest_bars_[name] = std::nullopt;
             } else {
-                // This provider's data is from a future time, roll it back
-                provider->rollback();
+                // This provider's data is from a future time, keep it cached for later
                 result.data[name] = std::nullopt;
-                logger_->debug("Rolling back provider {} (future time: {} vs current: {})", 
+                logger_->debug("Keeping future data from provider {} (future time: {} vs current: {})", 
                              name, latest_bars_[name]->time, earliest_time);
             }
         } else {
