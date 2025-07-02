@@ -63,7 +63,6 @@ private:
     std::string exchange_ {kDefaultExchange};
     std::string currency_ {kDefaultCurrency};
     bool use_rth_ {kDefaultUseRth};
-    std::string timezone_ {kDefaultTimezone};
     std::string what_type_ {kDefaultWhatToShow};
     bool keep_up_to_date_ {false};
 

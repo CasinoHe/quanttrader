@@ -38,6 +38,37 @@ public:
         STEPPED     // Manual stepping through data
     };
 
+    /**
+     * @brief Get the timezone used by this data provider
+     *
+     * @return The timezone string (e.g., "UTC", "Asia/Shanghai")
+     */
+    virtual std::string get_timezone() const {
+        return timezone_;
+    }
+
+    /**
+     * @brief Fetch and cache the timezone from params. Should be called in prepare_data().
+     *        If not found, logs error and throws std::runtime_error.
+     */
+    void fetch_timezone_or_throw() {
+        if (params_) {
+            auto iter = params_->find("timezone");
+            if (iter != params_->end()) {
+                try {
+                    timezone_ = std::any_cast<std::string>(iter->second);
+                } catch (const std::bad_any_cast&) {
+                    logger_->error("DataProvider: timezone param exists but is not a string");
+                    throw std::runtime_error("DataProvider: timezone param is not a string");
+                }
+            }
+        }
+        if (timezone_.empty()) {
+            logger_->error("DataProvider: timezone information is missing in params. Timezone is required.");
+            throw std::runtime_error("DataProvider: timezone information is missing in params. Timezone is required.");
+        }
+    }
+
     DataProvider(const std::string_view &data_name, DataParamsType params)
         : data_name_(data_name), params_(params) {
         logger_ = quanttrader::log::get_common_rotation_logger("DataProvider", "data");
@@ -199,6 +230,7 @@ public:
     inline std::string get_resample_size() const { return get_config_value<std::string>(RESAMPLE_BAR_SIZE); }
 
 protected:
+    std::string timezone_;
     /**
      * @brief Helper method to retrieve data from parameters by prefix
      * 

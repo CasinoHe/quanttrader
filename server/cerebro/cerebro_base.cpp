@@ -122,31 +122,48 @@ bool CerebroBase::prepare() {
         logger_->error("{} Failed to start data providers", name_);
         return false;
     }
-    
+
+    // Check timezone consistency among all providers
+    std::string first_timezone;
+    bool timezone_inconsistent = false;
+    for (const auto& [name, provider] : replay_controller_->get_providers()) {
+        std::string tz = provider->get_timezone();
+        if (first_timezone.empty()) {
+            first_timezone = tz;
+        } else if (tz != first_timezone) {
+            logger_->error("{} Data provider '{}' has timezone '{}', expected '{}'", name_, name, tz, first_timezone);
+            timezone_inconsistent = true;
+        }
+    }
+    if (timezone_inconsistent) {
+        logger_->error("{} Timezone inconsistency detected among data providers. All data must use the same timezone.", name_);
+        return false;
+    }
+
     // Wait for all data to be ready
     int wait_time = 0;
     const int max_wait_time = static_cast<int>(wait_data_timeout_ / 1000);  // seconds
     bool all_ready = false;
-    
+
     while (wait_time < max_wait_time) {
         if (replay_controller_->all_data_ready()) {
             all_ready = true;
             break;
         }
-        
+
         logger_->info("{} Waiting for data providers to be ready, elapsed: {}s", name_, wait_time);
         std::this_thread::sleep_for(std::chrono::seconds(1));
         wait_time++;
     }
-    
+
     if (!all_ready) {
         logger_->error("{} Timed out({} seconds) waiting for data providers to be ready", name_, max_wait_time);
         return false;
     }
-    
+
     // Initialize cached BarSeries for all data providers
     cached_bar_series_.clear();
-    
+
     is_prepared_ = true;
     logger_->info("CerebroBase {} preparation completed successfully", name_);
     return true;
