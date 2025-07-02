@@ -1,7 +1,9 @@
 #include "data_replay_controller.h"
 #include "logger/quantlogger.h"
+#include "basic/time/time_util.h"
 #include <algorithm>
 #include <limits>
+#include <ctime>
 
 // Avoid macro conflicts with std::numeric_limits::max
 #undef min
@@ -75,9 +77,13 @@ void DataReplayController::set_replay_mode(provider::DataProvider::ReplayMode mo
     }
 }
 
-std::map<std::string, std::optional<BarStruct>> DataReplayController::next_synchronized() {
+SynchronizedDataResult DataReplayController::next_synchronized() {
+    SynchronizedDataResult result;
+    auto logger = quanttrader::log::get_common_rotation_logger("DataReplayController", "data");
+    
     if (providers_.empty()) {
-        return {};
+        logger->debug("No providers available for synchronization");
+        return result;
     }
 
     // Find the provider with the earliest timestamp
@@ -94,9 +100,11 @@ std::map<std::string, std::optional<BarStruct>> DataReplayController::next_synch
             auto next_bar = provider->next();
             if (next_bar.has_value()) {
                 latest_bars_[name] = next_bar;
+                logger->debug("Fetched new bar for provider {}: time={}", name, next_bar->time);
             } else {
                 has_more_data_[name] = false;
                 latest_bars_[name] = std::nullopt;
+                logger->debug("No more data for provider {}", name);
                 continue;  // No more data for this provider
             }
         }
@@ -109,31 +117,97 @@ std::map<std::string, std::optional<BarStruct>> DataReplayController::next_synch
 
     // If no valid bar was found, return empty result
     if (earliest_time == std::numeric_limits<uint64_t>::max()) {
-        return {};
+        logger->debug("No valid bars found, returning empty result");
+        return result;
     }
 
-    // Prepare the result map
-    std::map<std::string, std::optional<BarStruct>> result;
+    result.current_time = earliest_time;
     
+    // Check for time switches if we have a previous time
+    if (previous_time_ > 0) {
+        // Convert timestamps to tm structures for comparison
+        std::time_t prev_seconds = previous_time_ / 1000000000ULL;
+        std::time_t curr_seconds = earliest_time / 1000000000ULL;
+        
+        std::tm prev_tm = {};
+        std::tm curr_tm = {};
+        
+#ifdef _WIN32
+        gmtime_s(&prev_tm, &prev_seconds);
+        gmtime_s(&curr_tm, &curr_seconds);
+#else
+        gmtime_r(&prev_seconds, &prev_tm);
+        gmtime_r(&curr_seconds, &curr_tm);
+#endif
+
+        // Check for day change
+        if (prev_tm.tm_year != curr_tm.tm_year || 
+            prev_tm.tm_mon != curr_tm.tm_mon || 
+            prev_tm.tm_mday != curr_tm.tm_mday) {
+            result.day_changed = true;
+            logger->debug("Day changed from {}-{:02d}-{:02d} to {}-{:02d}-{:02d}", 
+                         prev_tm.tm_year + 1900, prev_tm.tm_mon + 1, prev_tm.tm_mday,
+                         curr_tm.tm_year + 1900, curr_tm.tm_mon + 1, curr_tm.tm_mday);
+        }
+        
+        // Check for hour change
+        if (prev_tm.tm_hour != curr_tm.tm_hour || result.day_changed) {
+            result.hour_changed = true;
+            logger->debug("Hour changed from {:02d} to {:02d}", prev_tm.tm_hour, curr_tm.tm_hour);
+        }
+        
+        // Check for minute change
+        if (prev_tm.tm_min != curr_tm.tm_min || result.hour_changed) {
+            result.minute_changed = true;
+            logger->debug("Minute changed from {:02d} to {:02d}", prev_tm.tm_min, curr_tm.tm_min);
+        }
+        
+        // Log current aligned time
+        logger->debug("Current aligned time: {}-{:02d}-{:02d} {:02d}:{:02d}:{:02d} (ns: {})",
+                     curr_tm.tm_year + 1900, curr_tm.tm_mon + 1, curr_tm.tm_mday,
+                     curr_tm.tm_hour, curr_tm.tm_min, curr_tm.tm_sec, earliest_time);
+    } else {
+        // First time initialization
+        std::time_t curr_seconds = earliest_time / 1000000000ULL;
+        std::tm curr_tm = {};
+        
+#ifdef _WIN32
+        gmtime_s(&curr_tm, &curr_seconds);
+#else
+        gmtime_r(&curr_seconds, &curr_tm);
+#endif
+        
+        logger->debug("Initializing with time: {}-{:02d}-{:02d} {:02d}:{:02d}:{:02d} (ns: {})",
+                     curr_tm.tm_year + 1900, curr_tm.tm_mon + 1, curr_tm.tm_mday,
+                     curr_tm.tm_hour, curr_tm.tm_min, curr_tm.tm_sec, earliest_time);
+    }
+
     // Process each provider based on its timestamp compared to the earliest time
     for (auto& [name, provider] : providers_) {
         if (latest_bars_.find(name) != latest_bars_.end() && latest_bars_[name].has_value()) {
             // This provider has data
             if (latest_bars_[name]->time <= earliest_time) {
                 // This provider has the earliest timestamp, include its data
-                result[name] = latest_bars_[name];
+                result.data[name] = latest_bars_[name];
+                logger->debug("Including data from provider {} at time {}", name, latest_bars_[name]->time);
                 // Clear this provider's cached bar so it fetches a new one next time
                 latest_bars_[name] = std::nullopt;
             } else {
                 // This provider's data is from a future time, roll it back
                 provider->rollback();
-                result[name] = std::nullopt;
+                result.data[name] = std::nullopt;
+                logger->debug("Rolling back provider {} (future time: {} vs current: {})", 
+                             name, latest_bars_[name]->time, earliest_time);
             }
         } else {
             // No data for this provider
-            result[name] = std::nullopt;
+            result.data[name] = std::nullopt;
+            logger->debug("No data available for provider {}", name);
         }
     }
+
+    // Update previous time for next iteration
+    previous_time_ = earliest_time;
 
     return result;
 }
@@ -155,8 +229,9 @@ bool DataReplayController::rewind() {
         has_more_data_[name] = true;
     }
     
-    // Clear cached bars
+    // Clear cached bars and reset previous time
     latest_bars_.clear();
+    previous_time_ = 0;
     
     return success;
 }

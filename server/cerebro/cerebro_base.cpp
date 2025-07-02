@@ -207,14 +207,21 @@ bool CerebroBase::process_next() {
     }
     
     // Get next synchronized data points
-    auto data_map = replay_controller_->next_synchronized();
-    if (data_map.empty()) {
+    auto sync_result = replay_controller_->next_synchronized();
+    if (sync_result.data.empty()) {
         logger_->info("{} Empty data returned from replay controller", name_);
         return false;
     }
     
+    // Log time switch information if any changes occurred
+    if (sync_result.day_changed || sync_result.hour_changed || sync_result.minute_changed) {
+        logger_->info("{} Time alignment changes: day={}, hour={}, minute={}, time={}",
+                     name_, sync_result.day_changed, sync_result.hour_changed, 
+                     sync_result.minute_changed, sync_result.current_time);
+    }
+    
     // Update our historical data storage with the new data points
-    for (const auto& [name, bar] : data_map) {
+    for (const auto& [name, bar] : sync_result.data) {
         if (historical_data_.find(name) == historical_data_.end()) {
             historical_data_[name] = std::vector<std::optional<data::BarStruct>>();
         }

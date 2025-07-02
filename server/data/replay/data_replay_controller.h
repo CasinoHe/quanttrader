@@ -12,6 +12,17 @@ namespace data {
 namespace replay {
 
 /**
+ * @brief Structure to hold synchronized data and time switch information
+ */
+struct SynchronizedDataResult {
+    std::map<std::string, std::optional<BarStruct>> data;
+    bool day_changed = false;
+    bool hour_changed = false;
+    bool minute_changed = false;
+    uint64_t current_time = 0;  // Current timestamp in nanoseconds
+};
+
+/**
  * @brief Data replay controller for cerebro
  * 
  * This class manages multiple data providers and synchronizes their data feeds
@@ -76,9 +87,9 @@ public:
     /**
      * @brief Get the next synchronized data point from all providers
      * 
-     * @return A map of provider names to their next data points
+     * @return SynchronizedDataResult containing data and time switch information
      */
-    std::map<std::string, std::optional<BarStruct>> next_synchronized();
+    SynchronizedDataResult next_synchronized();
     
     /**
      * @brief Signal to provide the next step in STEPPED replay mode for all providers
@@ -111,6 +122,7 @@ private:
     provider::DataProvider::ReplayMode replay_mode_;
     std::map<std::string, std::optional<BarStruct>> latest_bars_;
     std::map<std::string, bool> has_more_data_;
+    uint64_t previous_time_ = 0;  // Previous timestamp for time change detection
 };
 
 } // namespace replay
