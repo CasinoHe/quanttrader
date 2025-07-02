@@ -118,6 +118,9 @@ public:
      */
     bool has_more_data() const;
 
+public:
+    // Expose providers for timezone check in CerebroBase
+    const std::unordered_map<std::string, std::shared_ptr<provider::DataProvider>>& get_providers() const { return providers_; }
 private:
     std::unordered_map<std::string, std::shared_ptr<provider::DataProvider>> providers_;
     provider::DataProvider::ReplayMode replay_mode_;
