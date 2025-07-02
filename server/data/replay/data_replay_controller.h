@@ -1,6 +1,7 @@
 #pragma once
 
 #include "data/common/data_provider.h"
+#include "logger/quantlogger.h"
 #include <memory>
 #include <vector>
 #include <map>
@@ -123,6 +124,7 @@ private:
     std::map<std::string, std::optional<BarStruct>> latest_bars_;
     std::map<std::string, bool> has_more_data_;
     uint64_t previous_time_ = 0;  // Previous timestamp for time change detection
+    quanttrader::log::LoggerPtr logger_ = nullptr;  // Logger for this controller
 };
 
 } // namespace replay

@@ -1,5 +1,4 @@
 #include "data_replay_controller.h"
-#include "logger/quantlogger.h"
 #include "basic/time/time_util.h"
 #include <algorithm>
 #include <limits>
@@ -15,6 +14,7 @@ namespace replay {
 
 DataReplayController::DataReplayController()
     : replay_mode_(provider::DataProvider::ReplayMode::NORMAL) {
+    logger_ = quanttrader::log::get_common_rotation_logger("DataReplayController", "data");
 }
 
 bool DataReplayController::add_data_provider(const std::string& name, std::shared_ptr<provider::DataProvider> provider) {
@@ -55,8 +55,7 @@ bool DataReplayController::start() {
         provider->set_replay_mode(replay_mode_);
 
         if (!provider->start_request_data()) {
-            auto logger = quanttrader::log::get_common_rotation_logger("DataReplayController", "data");
-            logger->error("Failed to start data provider: {}", name);
+            logger_->error("Failed to start data provider: {}", name);
             success = false;
         }
     }
@@ -79,15 +78,15 @@ void DataReplayController::set_replay_mode(provider::DataProvider::ReplayMode mo
 
 SynchronizedDataResult DataReplayController::next_synchronized() {
     SynchronizedDataResult result;
-    auto logger = quanttrader::log::get_common_rotation_logger("DataReplayController", "data");
     
     if (providers_.empty()) {
-        logger->debug("No providers available for synchronization");
+        logger_->debug("No providers available for synchronization");
         return result;
     }
 
     // Find the provider with the earliest timestamp
     uint64_t earliest_time = std::numeric_limits<uint64_t>::max();
+    std::string_view data_name;
     
     // First, check if we need to fetch new data for any provider
     for (auto& [name, provider] : providers_) {
@@ -100,11 +99,11 @@ SynchronizedDataResult DataReplayController::next_synchronized() {
             auto next_bar = provider->next();
             if (next_bar.has_value()) {
                 latest_bars_[name] = next_bar;
-                logger->debug("Fetched new bar for provider {}: time={}", name, next_bar->time);
+                logger_->debug("Fetched new bar for provider {}: time={}", name, next_bar->time);
             } else {
                 has_more_data_[name] = false;
                 latest_bars_[name] = std::nullopt;
-                logger->debug("No more data for provider {}", name);
+                logger_->debug("No more data for provider {}", name);
                 continue;  // No more data for this provider
             }
         }
@@ -112,12 +111,13 @@ SynchronizedDataResult DataReplayController::next_synchronized() {
         // Find the earliest timestamp among available bars
         if (latest_bars_[name].has_value() && latest_bars_[name]->time < earliest_time) {
             earliest_time = latest_bars_[name]->time;
+            data_name = name;
         }
     }
 
     // If no valid bar was found, return empty result
     if (earliest_time == std::numeric_limits<uint64_t>::max()) {
-        logger->debug("No valid bars found, returning empty result");
+        logger_->debug("No valid bars found, returning empty result");
         return result;
     }
 
@@ -145,7 +145,7 @@ SynchronizedDataResult DataReplayController::next_synchronized() {
             prev_tm.tm_mon != curr_tm.tm_mon || 
             prev_tm.tm_mday != curr_tm.tm_mday) {
             result.day_changed = true;
-            logger->debug("Day changed from {}-{:02d}-{:02d} to {}-{:02d}-{:02d}", 
+            logger_->debug("Day changed from {}-{:02d}-{:02d} to {}-{:02d}-{:02d}", 
                          prev_tm.tm_year + 1900, prev_tm.tm_mon + 1, prev_tm.tm_mday,
                          curr_tm.tm_year + 1900, curr_tm.tm_mon + 1, curr_tm.tm_mday);
         }
@@ -153,19 +153,19 @@ SynchronizedDataResult DataReplayController::next_synchronized() {
         // Check for hour change
         if (prev_tm.tm_hour != curr_tm.tm_hour || result.day_changed) {
             result.hour_changed = true;
-            logger->debug("Hour changed from {:02d} to {:02d}", prev_tm.tm_hour, curr_tm.tm_hour);
+            logger_->debug("Hour changed from {:02d} to {:02d}", prev_tm.tm_hour, curr_tm.tm_hour);
         }
         
         // Check for minute change
         if (prev_tm.tm_min != curr_tm.tm_min || result.hour_changed) {
             result.minute_changed = true;
-            logger->debug("Minute changed from {:02d} to {:02d}", prev_tm.tm_min, curr_tm.tm_min);
+            logger_->debug("Minute changed from {:02d} to {:02d}", prev_tm.tm_min, curr_tm.tm_min);
         }
         
         // Log current aligned time
-        logger->debug("Current aligned time: {}-{:02d}-{:02d} {:02d}:{:02d}:{:02d} (ns: {})",
+        logger_->info("Current aligned time: {}-{:02d}-{:02d} {:02d}:{:02d}:{:02d} (ns: {}), data {}",
                      curr_tm.tm_year + 1900, curr_tm.tm_mon + 1, curr_tm.tm_mday,
-                     curr_tm.tm_hour, curr_tm.tm_min, curr_tm.tm_sec, earliest_time);
+                     curr_tm.tm_hour, curr_tm.tm_min, curr_tm.tm_sec, earliest_time, data_name);
     } else {
         // First time initialization
         std::time_t curr_seconds = earliest_time / 1000000000ULL;
@@ -177,9 +177,9 @@ SynchronizedDataResult DataReplayController::next_synchronized() {
         gmtime_r(&curr_seconds, &curr_tm);
 #endif
         
-        logger->debug("Initializing with time: {}-{:02d}-{:02d} {:02d}:{:02d}:{:02d} (ns: {})",
+        logger_->info("Initializing with time: {}-{:02d}-{:02d} {:02d}:{:02d}:{:02d} (ns: {}), data {}",
                      curr_tm.tm_year + 1900, curr_tm.tm_mon + 1, curr_tm.tm_mday,
-                     curr_tm.tm_hour, curr_tm.tm_min, curr_tm.tm_sec, earliest_time);
+                     curr_tm.tm_hour, curr_tm.tm_min, curr_tm.tm_sec, earliest_time, data_name);
     }
 
     // Process each provider based on its timestamp compared to the earliest time
@@ -189,20 +189,20 @@ SynchronizedDataResult DataReplayController::next_synchronized() {
             if (latest_bars_[name]->time <= earliest_time) {
                 // This provider has the earliest timestamp, include its data
                 result.data[name] = latest_bars_[name];
-                logger->debug("Including data from provider {} at time {}", name, latest_bars_[name]->time);
+                logger_->debug("Including data from provider {} at time {}", name, latest_bars_[name]->time);
                 // Clear this provider's cached bar so it fetches a new one next time
                 latest_bars_[name] = std::nullopt;
             } else {
                 // This provider's data is from a future time, roll it back
                 provider->rollback();
                 result.data[name] = std::nullopt;
-                logger->debug("Rolling back provider {} (future time: {} vs current: {})", 
+                logger_->debug("Rolling back provider {} (future time: {} vs current: {})", 
                              name, latest_bars_[name]->time, earliest_time);
             }
         } else {
             // No data for this provider
             result.data[name] = std::nullopt;
-            logger->debug("No data available for provider {}", name);
+            logger_->debug("No data available for provider {}", name);
         }
     }
 
