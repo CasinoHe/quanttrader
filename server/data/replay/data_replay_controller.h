@@ -21,6 +21,7 @@ struct SynchronizedDataResult {
     bool hour_changed = false;
     bool minute_changed = false;
     uint64_t current_time = 0;  // Current timestamp in nanoseconds
+    bool has_result = false;
 };
 
 /**

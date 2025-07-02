@@ -144,24 +144,31 @@ void fetch_next_valid_bar(const std::string& name, std::shared_ptr<provider::Dat
 }
 
 // Helper: find earliest timestamp among all providers
-void find_earliest_time(const std::map<std::string, std::optional<BarStruct>>& latest_bars_, const std::map<std::string, bool>& has_more_data_, uint64_t previous_time_, uint64_t& earliest_time, std::string_view& data_name) {
+void find_earliest_time(const std::map<std::string, std::optional<BarStruct>>& latest_bars_, uint64_t previous_time_, uint64_t& earliest_time, std::string_view& data_name) {
     earliest_time = std::numeric_limits<uint64_t>::max();
     for (const auto& [name, bar_opt] : latest_bars_) {
-        if (!has_more_data_.at(name)) continue;
-        if (bar_opt.has_value() && (previous_time_ == 0 || bar_opt->time >= previous_time_) && bar_opt->time < earliest_time) {
-            earliest_time = bar_opt->time;
-            data_name = name;
+        if (!bar_opt.has_value()) {
+            continue;
+        }
+        
+        if((previous_time_ == 0 || bar_opt->time >= previous_time_)) {
+            if (bar_opt->time < earliest_time) {
+                earliest_time = bar_opt->time;
+                data_name = name;
+            }
         }
     }
 }
 
 // Helper: process each provider for result.data
-void process_providers_for_result(const std::map<std::string, std::optional<BarStruct>>& latest_bars_, std::map<std::string, std::optional<BarStruct>>& result_data, uint64_t earliest_time, const std::shared_ptr<spdlog::logger>& logger) {
+void process_providers_for_result(std::map<std::string, std::optional<BarStruct>>& latest_bars_, std::map<std::string, std::optional<BarStruct>>& result_data, uint64_t earliest_time, const std::shared_ptr<spdlog::logger>& logger) {
     for (const auto& [name, bar_opt] : latest_bars_) {
         if (bar_opt.has_value()) {
             if (bar_opt->time <= earliest_time) {
                 result_data[name] = bar_opt;
                 logger->debug("Including data from provider {} at time {}", name, bar_opt->time);
+                // Clear this provider's cached bar so it fetches a new one next time
+                latest_bars_[name] = std::nullopt;
             } else {
                 result_data[name] = std::nullopt;
                 logger->debug("Keeping future data from provider {} (future time: {} vs current: {})", name, bar_opt->time, earliest_time);
@@ -189,7 +196,7 @@ SynchronizedDataResult DataReplayController::next_synchronized() {
     // Step 2: Find the earliest timestamp among all providers
     uint64_t earliest_time = std::numeric_limits<uint64_t>::max();
     std::string_view data_name;
-    find_earliest_time(latest_bars_, has_more_data_, previous_time_, earliest_time, data_name);
+    find_earliest_time(latest_bars_, previous_time_, earliest_time, data_name);
 
     // Step 3: If no valid bar was found, return empty result
     if (earliest_time == std::numeric_limits<uint64_t>::max()) {
@@ -198,6 +205,7 @@ SynchronizedDataResult DataReplayController::next_synchronized() {
     }
 
     result.current_time = earliest_time;
+    result.has_result = true;
 
     // Step 4: Compare time changes (day/hour/minute)
     std::string timezone = "UTC";
