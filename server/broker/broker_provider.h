@@ -13,6 +13,7 @@ namespace broker {
 // Forward declarations
 struct BarData {
     uint64_t time;
+    uint64_t end_time;
     double open;
     double high;
     double low;

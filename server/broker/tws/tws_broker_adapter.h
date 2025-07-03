@@ -122,7 +122,7 @@ private:
     std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::shared_ptr<RequestHeader>>> requestQueue_ = nullptr;
     std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::shared_ptr<ResponseHeader>>> responseQueue_ = nullptr;
     std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::shared_ptr<ResErrorMsg>>> errorQueue_ = nullptr;
-    
+
     // Configuration for timing
     std::string host_{"127.0.0.1"};
     int port_{0};
@@ -130,6 +130,13 @@ private:
     std::chrono::milliseconds retryInterval_{1000};    // Default 1 second
     std::chrono::milliseconds waitTimeout_{10};        // Default 10 milliseconds
     std::chrono::milliseconds updateConfigInterval_{30000};  // Default 30 seconds
+
+    // session time configuration
+    std::string sessionStart_{"09:30:00"};
+    std::string sessionEnd_{"16:00:00"};
+
+    // map request id to bar size string for end time calculation
+    std::unordered_map<TickerId, std::string> requestBarSize_;
 
     // Configuration path
     std::string configPath_;

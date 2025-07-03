@@ -2,6 +2,7 @@
 #include "service/service_consts.h"
 #include "config/lua_config_loader.h"
 #include "broker/broker_consts.h"
+#include "data/common/data_provider.h"
 #include "time/time_with_zone.h"
 #include <chrono>
 
@@ -95,7 +96,11 @@ long TwsBrokerAdapter::requestHistoricalData(
         }
     };
     
-    return pushRequest(std::dynamic_pointer_cast<RequestHeader>(request), callback);
+    long requestId = pushRequest(std::dynamic_pointer_cast<RequestHeader>(request), callback);
+    if (requestId > 0) {
+        requestBarSize_[requestId] = barSize;
+    }
+    return requestId;
 }
 
 long TwsBrokerAdapter::requestRealTimeData(
@@ -131,6 +136,7 @@ void TwsBrokerAdapter::cancelHistoricalData(long requestId) {
     
     // Remove any registered callbacks for this request
     barDataCallbacks_.erase(requestId);
+    requestBarSize_.erase(requestId);
     removeCallback(requestId);
     logger_->info("Cancelled historical data for request ID: {}", requestId);
 }
@@ -283,6 +289,7 @@ bool TwsBrokerAdapter::removeCallback(long requestId) {
 // Helper methods
 BarData TwsBrokerAdapter::convertToBarData(const ResHistoricalData& resData) {
     BarData barData;
+    barData.end_time = 0;
     if (resData.is_end) {
         logger_->info("Received end of historical data for request ID: {}", resData.request_id);
         barData.is_last = true;
@@ -291,18 +298,63 @@ BarData TwsBrokerAdapter::convertToBarData(const ResHistoricalData& resData) {
     
     // Handle the variant type for date
     if (std::holds_alternative<std::string>(resData.date)) {
-        // Convert string date to uint64_t timestamp using TimeWithZone
         std::string dateStr = std::get<std::string>(resData.date);
-        auto timeWithZone = quanttrader::time::TimeWithZone::from_ibapi_string(dateStr, "America/New_York");
+        bool onlyDate = dateStr.size() == 8;
+        std::string parseStr = dateStr;
+        if (onlyDate) {
+            parseStr += " " + sessionStart_;
+        }
+
+        auto timeWithZone = quanttrader::time::TimeWithZone::from_ibapi_string(parseStr, "America/New_York");
         if (timeWithZone.has_value()) {
-            // Convert to milliseconds epoch for barData.time
             barData.time = timeWithZone.value().get_nano_epoch();
+
+            if (onlyDate) {
+                std::string endStr = std::get<std::string>(resData.date) + " " + sessionEnd_;
+                auto endWithZone = quanttrader::time::TimeWithZone::from_ibapi_string(endStr, "America/New_York");
+                if (endWithZone.has_value()) {
+                    barData.end_time = endWithZone.value().get_nano_epoch();
+                }
+            } else {
+                auto iter = requestBarSize_.find(resData.request_id);
+                if (iter != requestBarSize_.end()) {
+                    auto barInfo = quanttrader::data::provider::DataProvider::get_bar_type_from_string(iter->second);
+                    uint64_t sec = barInfo.second;
+                    switch (barInfo.first) {
+                        case data::BarType::Minute: sec *= 60; break;
+                        case data::BarType::Hour: sec *= 3600; break;
+                        case data::BarType::Day: sec *= 86400; break;
+                        case data::BarType::Week: sec *= 604800; break;
+                        case data::BarType::Month: sec *= 2592000; break; // approx
+                        default: break; // seconds already handled
+                    }
+                    if (sec > 0) {
+                        barData.end_time = barData.time + sec * 1000000000ULL;
+                    }
+                }
+            }
         } else {
             logger_->error("Failed to parse date string: {} open:{} high:{} low:{} close:{}", dateStr, resData.open, resData.high, resData.low, resData.close);
             barData.time = 0;
         }
     } else if (std::holds_alternative<int>(resData.date)) {
         barData.time = std::get<int>(resData.date);
+        auto iter = requestBarSize_.find(resData.request_id);
+        if (iter != requestBarSize_.end()) {
+            auto barInfo = quanttrader::data::provider::DataProvider::get_bar_type_from_string(iter->second);
+            uint64_t sec = barInfo.second;
+            switch (barInfo.first) {
+                case data::BarType::Minute: sec *= 60; break;
+                case data::BarType::Hour: sec *= 3600; break;
+                case data::BarType::Day: sec *= 86400; break;
+                case data::BarType::Week: sec *= 604800; break;
+                case data::BarType::Month: sec *= 2592000; break;
+                default: break;
+            }
+            if (sec > 0) {
+                barData.end_time = barData.time + sec * 1000000000ULL;
+            }
+        }
     }
     
     barData.open = resData.open;
@@ -592,6 +644,9 @@ bool TwsBrokerAdapter::updateConfig() {
     retryInterval_ = std::chrono::milliseconds(loader.get_int_value(TWS_PROVIDER_NAME, RETRY_INTERVAL_VARIABLE));
     waitTimeout_ = std::chrono::milliseconds(loader.get_int_value(TWS_PROVIDER_NAME, WAIT_TIMEOUT_VARIABLE));
     updateConfigInterval_ = std::chrono::milliseconds(loader.get_int_value(TWS_PROVIDER_NAME, UPDATE_CONFIG_INTERVAL_VARIABLE));
+
+    sessionStart_ = loader.get_string_value(TWS_PROVIDER_NAME, SESSION_START_VARIABLE);
+    sessionEnd_ = loader.get_string_value(TWS_PROVIDER_NAME, SESSION_END_VARIABLE);
 
     bool stop_flag = loader.get_bool_value(TWS_PROVIDER_NAME, STOP_FLAG_VARIABLE);
     bool record_log = loader.get_bool_value(TWS_PROVIDER_NAME, RECORD_LOG_VARIABLE);

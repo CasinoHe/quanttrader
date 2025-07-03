@@ -28,6 +28,8 @@ constexpr char WAIT_TIMEOUT_VARIABLE[] = "wait_timeout";
 constexpr char UPDATE_CONFIG_INTERVAL_VARIABLE[] = "update_config_interval";
 constexpr char STOP_FLAG_VARIABLE[] = "stop_flag";
 constexpr char RECORD_LOG_VARIABLE[] = "record_log";
+constexpr char SESSION_START_VARIABLE[] = "session_start";
+constexpr char SESSION_END_VARIABLE[] = "session_end";
 
 }
 }
