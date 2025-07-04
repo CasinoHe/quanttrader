@@ -38,8 +38,6 @@ bool TwsDataFeed::prepare_data() {
     timezone_ = get_config_value<std::string>(DATA_TIMEZONE_NAME, kDefaultTimezone);
     what_type_ = get_config_value<std::string>(DATA_TRADE_WHAT_NAME, kDefaultWhatToShow);
     keep_up_to_date_ = get_config_value<bool>(KEEP_UP_TO_DATE_NAME, false);
-    session_start_ = get_config_value<std::string>(DATA_SESSION_START_NAME, kDefaultSessionStart);
-    session_end_ = get_config_value<std::string>(DATA_SESSION_END_NAME, kDefaultSessionEnd);
 
     std::string data_type = get_config_value<std::string>(DATA_TYPE_NAME);
     if (data_type == "historical") {
@@ -57,6 +55,10 @@ bool TwsDataFeed::prepare_data() {
             bar_type_ = bar_type_size.first;
             bar_size_ = bar_type_size.second;
             bar_line_ = std::make_shared<util::BarLine>(0, bar_type_, bar_size_);
+            if (bar_type_ == BarType::Day) {
+                session_start_ = get_config_value<std::string>(DATA_SESSION_START_NAME, kDefaultSessionStart);
+                session_end_ = get_config_value<std::string>(DATA_SESSION_END_NAME, kDefaultSessionEnd);
+            }
         }
     } else if (data_type == "realtime") {
         is_realtime_ = true;
@@ -71,6 +73,10 @@ bool TwsDataFeed::prepare_data() {
             bar_type_ = bar_type_size.first;
             bar_size_ = bar_type_size.second;
             bar_line_ = std::make_shared<util::BarLine>(0, bar_type_, bar_size_);
+            if (bar_type_ == BarType::Day) {
+                session_start_ = get_config_value<std::string>(DATA_SESSION_START_NAME, kDefaultSessionStart);
+                session_end_ = get_config_value<std::string>(DATA_SESSION_END_NAME, kDefaultSessionEnd);
+            }
         }
     } else {
         logger_->error("Unsupported data type: {}", data_type);
@@ -216,6 +222,9 @@ long TwsDataFeed::fetch_historical_data() {
     }
     
     // Request historical data first to get the correct request ID
+    std::string startSession = bar_type_ == BarType::Day ? session_start_ : "";
+    std::string endSession = bar_type_ == BarType::Day ? session_end_ : "";
+
     long requestId = broker_adapter_->requestHistoricalData(
         symbol_,
         security_type_,
@@ -227,8 +236,8 @@ long TwsDataFeed::fetch_historical_data() {
         what_type_,
         use_rth_,
         keep_up_to_date_,
-        session_start_,
-        session_end_
+        startSession,
+        endSession
     );
     
     // Only register the callback if we got a valid request ID

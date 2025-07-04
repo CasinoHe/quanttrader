@@ -65,8 +65,8 @@ private:
     bool use_rth_ {kDefaultUseRth};
     std::string what_type_ {kDefaultWhatToShow};
     bool keep_up_to_date_ {false};
-    std::string session_start_ {kDefaultSessionStart};
-    std::string session_end_ {kDefaultSessionEnd};
+    std::string session_start_ {""};
+    std::string session_end_ {""};
 
     // Historical data parameters
     std::string start_date_ {""};
