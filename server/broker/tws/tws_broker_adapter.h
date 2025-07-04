@@ -15,6 +15,7 @@
 #include <unordered_map>
 #include <optional>
 #include <chrono>
+#include <utility>
 
 namespace quanttrader {
 namespace broker {
@@ -38,12 +39,14 @@ public:
         const std::string& secType,
         const std::string& exchange,
         const std::string& currency,
-        const std::string& endTime, 
+        const std::string& endTime,
         const std::string& duration,
         const std::string& barSize,
         const std::string& whatToShow,
         bool useRTH,
-        bool keepUpToDate) override;
+        bool keepUpToDate,
+        const std::string& sessionStart = "",
+        const std::string& sessionEnd = "") override;
     
     long requestRealTimeData(
         const std::string& symbol,
@@ -70,6 +73,13 @@ public:
     void registerTradeCallback(TradeCallback callback) override;
     void registerOrderStatusCallback(OrderStatusCallback callback) override;
     void registerErrorCallback(ErrorCallback callback) override;
+    void registerContractDetailsCallback(long requestId, std::function<void(const std::string&, const std::string&)> callback);
+
+    long requestContractDetails(
+        const std::string& symbol,
+        const std::string& secType,
+        const std::string& exchange,
+        const std::string& currency);
     
     void requestCurrentTime() override;
     long getNextRequestId() override;
@@ -111,6 +121,7 @@ private:
     std::atomic<bool> stopFlag_ = false;
     std::unordered_map<TickerId, ResponseCallBackType> responseCallbacks_;
     std::unordered_map<TickerId, BarDataCallback> barDataCallbacks_;
+    std::unordered_map<TickerId, std::function<void(const std::string&, const std::string&)>> contractDetailCallbacks_;
     TradeCallback tradeCallback_ = nullptr;
     OrderStatusCallback orderStatusCallback_ = nullptr;
     ErrorCallback errorCallback_ = nullptr;
@@ -122,7 +133,7 @@ private:
     std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::shared_ptr<RequestHeader>>> requestQueue_ = nullptr;
     std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::shared_ptr<ResponseHeader>>> responseQueue_ = nullptr;
     std::shared_ptr<moodycamel::BlockingConcurrentQueue<std::shared_ptr<ResErrorMsg>>> errorQueue_ = nullptr;
-    
+
     // Configuration for timing
     std::string host_{"127.0.0.1"};
     int port_{0};
@@ -130,6 +141,16 @@ private:
     std::chrono::milliseconds retryInterval_{1000};    // Default 1 second
     std::chrono::milliseconds waitTimeout_{10};        // Default 10 milliseconds
     std::chrono::milliseconds updateConfigInterval_{30000};  // Default 30 seconds
+
+    // session time configuration
+    std::string sessionStart_{"09:30:00"};
+    std::string sessionEnd_{"16:00:00"};
+
+    // map request id to bar size string for end time calculation
+    std::unordered_map<TickerId, std::string> requestBarSize_;
+
+    // map request id to session start and end time
+    std::unordered_map<TickerId, std::pair<std::string, std::string>> requestSession_;
 
     // Configuration path
     std::string configPath_;

@@ -55,6 +55,10 @@ bool TwsDataFeed::prepare_data() {
             bar_type_ = bar_type_size.first;
             bar_size_ = bar_type_size.second;
             bar_line_ = std::make_shared<util::BarLine>(0, bar_type_, bar_size_);
+            if (bar_type_ == BarType::Day) {
+                session_start_ = get_config_value<std::string>(DATA_SESSION_START_NAME, kDefaultSessionStart);
+                session_end_ = get_config_value<std::string>(DATA_SESSION_END_NAME, kDefaultSessionEnd);
+            }
         }
     } else if (data_type == "realtime") {
         is_realtime_ = true;
@@ -69,6 +73,10 @@ bool TwsDataFeed::prepare_data() {
             bar_type_ = bar_type_size.first;
             bar_size_ = bar_type_size.second;
             bar_line_ = std::make_shared<util::BarLine>(0, bar_type_, bar_size_);
+            if (bar_type_ == BarType::Day) {
+                session_start_ = get_config_value<std::string>(DATA_SESSION_START_NAME, kDefaultSessionStart);
+                session_end_ = get_config_value<std::string>(DATA_SESSION_END_NAME, kDefaultSessionEnd);
+            }
         }
     } else {
         logger_->error("Unsupported data type: {}", data_type);
@@ -214,6 +222,9 @@ long TwsDataFeed::fetch_historical_data() {
     }
     
     // Request historical data first to get the correct request ID
+    std::string startSession = bar_type_ == BarType::Day ? session_start_ : "";
+    std::string endSession = bar_type_ == BarType::Day ? session_end_ : "";
+
     long requestId = broker_adapter_->requestHistoricalData(
         symbol_,
         security_type_,
@@ -224,7 +235,9 @@ long TwsDataFeed::fetch_historical_data() {
         bar_type_str_,
         what_type_,
         use_rth_,
-        keep_up_to_date_
+        keep_up_to_date_,
+        startSession,
+        endSession
     );
     
     // Only register the callback if we got a valid request ID

@@ -53,6 +53,16 @@ struct ResRealtimeData : ResponseHeader {
     int field;
 };
 
+struct ResContractDetails : ResponseHeader {
+    ResContractDetails() {
+        response_type = MessageType::REQUEST_CONTRACT_DETAILS;
+    }
+
+    std::string trading_hours;
+    std::string time_zone;
+    bool is_end = false;
+};
+
 struct ResErrorMsg : ResponseHeader {
     ResErrorMsg() {
         response_type = MessageType::ERROR_MSG;

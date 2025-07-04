@@ -15,6 +15,7 @@ enum class MessageType {
     REQUEST_REALTIME_MKT_DATA = 3,
     CANCEL_REQUEST_HISTORICAL_DATA = 4,
     CANCEL_REAL_TIME_MKT_DATA = 5,
+    REQUEST_CONTRACT_DETAILS = 6,
     ERROR_MSG = 999,
     END_REQUEST = 1000,
 };
@@ -28,6 +29,8 @@ constexpr char WAIT_TIMEOUT_VARIABLE[] = "wait_timeout";
 constexpr char UPDATE_CONFIG_INTERVAL_VARIABLE[] = "update_config_interval";
 constexpr char STOP_FLAG_VARIABLE[] = "stop_flag";
 constexpr char RECORD_LOG_VARIABLE[] = "record_log";
+constexpr char SESSION_START_VARIABLE[] = "session_start";
+constexpr char SESSION_END_VARIABLE[] = "session_end";
 
 }
 }

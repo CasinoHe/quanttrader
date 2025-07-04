@@ -62,5 +62,16 @@ struct ReqCancelRealtimeMktData: RequestHeader {
     }
 };
 
+struct ReqContractDetails: RequestHeader {
+    ReqContractDetails() {
+        request_type = MessageType::REQUEST_CONTRACT_DETAILS;
+    }
+
+    std::string symbol;
+    std::string security_type;
+    std::string exchange;
+    std::string currency;
+};
+
 }
 }

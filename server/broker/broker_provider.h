@@ -13,6 +13,7 @@ namespace broker {
 // Forward declarations
 struct BarData {
     uint64_t time;
+    uint64_t end_time;
     double open;
     double high;
     double low;
@@ -48,12 +49,14 @@ public:
         const std::string& secType,
         const std::string& exchange,
         const std::string& currency,
-        const std::string& endTime, 
+        const std::string& endTime,
         const std::string& duration,
         const std::string& barSize,
         const std::string& whatToShow,
         bool useRTH,
-        bool keepUpToDate) = 0;
+        bool keepUpToDate,
+        const std::string& sessionStart = "",
+        const std::string& sessionEnd = "") = 0;
     
     virtual long requestRealTimeData(
         const std::string& symbol,

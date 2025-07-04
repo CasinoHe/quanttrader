@@ -2,8 +2,11 @@
 #include "service/service_consts.h"
 #include "config/lua_config_loader.h"
 #include "broker/broker_consts.h"
+#include "data/common/data_provider.h"
 #include "time/time_with_zone.h"
 #include <chrono>
+#include <utility>
+#include <sstream>
 
 namespace quanttrader {
 namespace broker {
@@ -63,7 +66,9 @@ long TwsBrokerAdapter::requestHistoricalData(
     const std::string& barSize,
     const std::string& whatToShow,
     bool useRTH,
-    bool keepUpToDate) {
+    bool keepUpToDate,
+    const std::string& sessionStart,
+    const std::string& sessionEnd) {
     
     auto request = std::make_shared<ReqHistoricalData>();
     request->symbol = symbol;
@@ -95,7 +100,14 @@ long TwsBrokerAdapter::requestHistoricalData(
         }
     };
     
-    return pushRequest(std::dynamic_pointer_cast<RequestHeader>(request), callback);
+    long requestId = pushRequest(std::dynamic_pointer_cast<RequestHeader>(request), callback);
+    if (requestId > 0) {
+        requestBarSize_[requestId] = barSize;
+        std::string ss = sessionStart.empty() ? sessionStart_ : sessionStart;
+        std::string se = sessionEnd.empty() ? sessionEnd_ : sessionEnd;
+        requestSession_[requestId] = {ss, se};
+    }
+    return requestId;
 }
 
 long TwsBrokerAdapter::requestRealTimeData(
@@ -124,6 +136,58 @@ long TwsBrokerAdapter::requestRealTimeData(
     return pushRequest(std::dynamic_pointer_cast<RequestHeader>(request), callback);
 }
 
+long TwsBrokerAdapter::requestContractDetails(
+    const std::string& symbol,
+    const std::string& secType,
+    const std::string& exchange,
+    const std::string& currency) {
+
+    auto request = std::make_shared<ReqContractDetails>();
+    request->symbol = symbol;
+    request->security_type = secType;
+    request->exchange = exchange;
+    request->currency = currency;
+
+    auto callback = [this](std::shared_ptr<ResponseHeader> response) {
+        auto cdResponse = std::dynamic_pointer_cast<ResContractDetails>(response);
+        if (!cdResponse) {
+            logger_->error("Failed to cast response to ResContractDetails");
+            return;
+        }
+
+        auto parseSession = [](const std::string& hours) -> std::pair<std::string, std::string> {
+            std::stringstream ss(hours);
+            std::string seg;
+            while (std::getline(ss, seg, ';')) {
+                auto pos = seg.find(':');
+                if (pos == std::string::npos) continue;
+                std::string times = seg.substr(pos + 1);
+                if (times == "CLOSED" || times.empty()) continue;
+                auto dash = times.find('-');
+                if (dash == std::string::npos) continue;
+                std::string start = times.substr(0, dash);
+                std::string end = times.substr(dash + 1);
+                if (start.size() == 4) start.insert(2, ":").append(":00");
+                if (end.size() == 4) end.insert(2, ":").append(":00");
+                return {start, end};
+            }
+            return {"", ""};
+        };
+
+        auto it = contractDetailCallbacks_.find(cdResponse->request_id);
+        if (it != contractDetailCallbacks_.end() && it->second) {
+            auto sess = parseSession(cdResponse->trading_hours);
+            it->second(sess.first, sess.second);
+            if (cdResponse->is_end) {
+                contractDetailCallbacks_.erase(it);
+                removeCallback(cdResponse->request_id);
+            }
+        }
+    };
+
+    return pushRequest(std::dynamic_pointer_cast<RequestHeader>(request), callback);
+}
+
 void TwsBrokerAdapter::cancelHistoricalData(long requestId) {
     auto request = std::make_shared<ReqCancelHistoricalData>();
     request->request_id = requestId;
@@ -131,6 +195,8 @@ void TwsBrokerAdapter::cancelHistoricalData(long requestId) {
     
     // Remove any registered callbacks for this request
     barDataCallbacks_.erase(requestId);
+    requestBarSize_.erase(requestId);
+    requestSession_.erase(requestId);
     removeCallback(requestId);
     logger_->info("Cancelled historical data for request ID: {}", requestId);
 }
@@ -181,6 +247,10 @@ void TwsBrokerAdapter::registerOrderStatusCallback(OrderStatusCallback callback)
 
 void TwsBrokerAdapter::registerErrorCallback(ErrorCallback callback) {
     errorCallback_ = callback;
+}
+
+void TwsBrokerAdapter::registerContractDetailsCallback(long requestId, std::function<void(const std::string&, const std::string&)> callback) {
+    contractDetailCallbacks_[requestId] = std::move(callback);
 }
 
 // Adapter-specific methods
@@ -283,6 +353,7 @@ bool TwsBrokerAdapter::removeCallback(long requestId) {
 // Helper methods
 BarData TwsBrokerAdapter::convertToBarData(const ResHistoricalData& resData) {
     BarData barData;
+    barData.end_time = 0;
     if (resData.is_end) {
         logger_->info("Received end of historical data for request ID: {}", resData.request_id);
         barData.is_last = true;
@@ -291,18 +362,73 @@ BarData TwsBrokerAdapter::convertToBarData(const ResHistoricalData& resData) {
     
     // Handle the variant type for date
     if (std::holds_alternative<std::string>(resData.date)) {
-        // Convert string date to uint64_t timestamp using TimeWithZone
         std::string dateStr = std::get<std::string>(resData.date);
-        auto timeWithZone = quanttrader::time::TimeWithZone::from_ibapi_string(dateStr, "America/New_York");
+        bool onlyDate = dateStr.size() == 8;
+        std::string parseStr = dateStr;
+        if (onlyDate) {
+            std::string sessStart = sessionStart_;
+            auto sit = requestSession_.find(resData.request_id);
+            if (sit != requestSession_.end()) {
+                sessStart = sit->second.first;
+            }
+            parseStr += " " + sessStart;
+        }
+
+        auto timeWithZone = quanttrader::time::TimeWithZone::from_ibapi_string(parseStr, "America/New_York");
         if (timeWithZone.has_value()) {
-            // Convert to milliseconds epoch for barData.time
             barData.time = timeWithZone.value().get_nano_epoch();
+
+            if (onlyDate) {
+                std::string sessEnd = sessionEnd_;
+                auto sit = requestSession_.find(resData.request_id);
+                if (sit != requestSession_.end()) {
+                    sessEnd = sit->second.second;
+                }
+                std::string endStr = std::get<std::string>(resData.date) + " " + sessEnd;
+                auto endWithZone = quanttrader::time::TimeWithZone::from_ibapi_string(endStr, "America/New_York");
+                if (endWithZone.has_value()) {
+                    barData.end_time = endWithZone.value().get_nano_epoch();
+                }
+            } else {
+                auto iter = requestBarSize_.find(resData.request_id);
+                if (iter != requestBarSize_.end()) {
+                    auto barInfo = quanttrader::data::provider::DataProvider::get_bar_type_from_string(iter->second);
+                    uint64_t sec = barInfo.second;
+                    switch (barInfo.first) {
+                        case data::BarType::Minute: sec *= 60; break;
+                        case data::BarType::Hour: sec *= 3600; break;
+                        case data::BarType::Day: sec *= 86400; break;
+                        case data::BarType::Week: sec *= 604800; break;
+                        case data::BarType::Month: sec *= 2592000; break; // approx
+                        default: break; // seconds already handled
+                    }
+                    if (sec > 0) {
+                        barData.end_time = barData.time + sec * 1000000000ULL;
+                    }
+                }
+            }
         } else {
             logger_->error("Failed to parse date string: {} open:{} high:{} low:{} close:{}", dateStr, resData.open, resData.high, resData.low, resData.close);
             barData.time = 0;
         }
     } else if (std::holds_alternative<int>(resData.date)) {
         barData.time = std::get<int>(resData.date);
+        auto iter = requestBarSize_.find(resData.request_id);
+        if (iter != requestBarSize_.end()) {
+            auto barInfo = quanttrader::data::provider::DataProvider::get_bar_type_from_string(iter->second);
+            uint64_t sec = barInfo.second;
+            switch (barInfo.first) {
+                case data::BarType::Minute: sec *= 60; break;
+                case data::BarType::Hour: sec *= 3600; break;
+                case data::BarType::Day: sec *= 86400; break;
+                case data::BarType::Week: sec *= 604800; break;
+                case data::BarType::Month: sec *= 2592000; break;
+                default: break;
+            }
+            if (sec > 0) {
+                barData.end_time = barData.time + sec * 1000000000ULL;
+            }
+        }
     }
     
     barData.open = resData.open;
@@ -465,6 +591,17 @@ void TwsBrokerAdapter::runRequest(std::atomic<int> &twsVersion) {
                 if (request) {
                     client_->cancel_real_time_data(request->request_id);
                 }
+            } else if (requestPtr->request_type == MessageType::REQUEST_CONTRACT_DETAILS) {
+                auto request = std::dynamic_pointer_cast<ReqContractDetails>(requestPtr);
+                if (request) {
+                    Contract contract;
+                    contract.symbol = request->symbol;
+                    contract.currency = request->currency;
+                    contract.exchange = request->exchange;
+                    contract.secType = request->security_type;
+
+                    client_->request_contract_details(request->request_id, contract);
+                }
             } else {
                 logger_->warn("Cannot find the request type: {}", static_cast<int>(requestPtr->request_type));
             }
@@ -592,6 +729,9 @@ bool TwsBrokerAdapter::updateConfig() {
     retryInterval_ = std::chrono::milliseconds(loader.get_int_value(TWS_PROVIDER_NAME, RETRY_INTERVAL_VARIABLE));
     waitTimeout_ = std::chrono::milliseconds(loader.get_int_value(TWS_PROVIDER_NAME, WAIT_TIMEOUT_VARIABLE));
     updateConfigInterval_ = std::chrono::milliseconds(loader.get_int_value(TWS_PROVIDER_NAME, UPDATE_CONFIG_INTERVAL_VARIABLE));
+
+    sessionStart_ = loader.get_string_value(TWS_PROVIDER_NAME, SESSION_START_VARIABLE);
+    sessionEnd_ = loader.get_string_value(TWS_PROVIDER_NAME, SESSION_END_VARIABLE);
 
     bool stop_flag = loader.get_bool_value(TWS_PROVIDER_NAME, STOP_FLAG_VARIABLE);
     bool record_log = loader.get_bool_value(TWS_PROVIDER_NAME, RECORD_LOG_VARIABLE);

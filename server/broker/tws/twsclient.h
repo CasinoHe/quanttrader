@@ -49,6 +49,7 @@ public:
                                   const std::string &duration, const std::string &bar_size,
                                   const std::string &what_to_show, int use_rth, bool keep_up_to_date);
     void cancel_historical_data(TickerId request_id);
+    void request_contract_details(TickerId request_id, const Contract &contract);
     
     // Utility functions
     std::string translate_time_format(const std::string& time_str);
@@ -61,6 +62,8 @@ public:
     void error(int id, time_t error_time, int error_code, const std::string &error_string, const std::string& advancedOrderRejectJson) override;
     void connectionClosed() override;
     void currentTime(long time) override;
+    void contractDetails( int reqId, const ContractDetails& contractDetails) override;
+    void contractDetailsEnd( int reqId) override;
 
     static TickerId next_request_id() {
         if (next_request_id_.load() >= LONG_MAX - 1000) {
@@ -91,9 +94,7 @@ public:
     virtual void updateAccountTime(const std::string& timeStamp) override {};
     virtual void accountDownloadEnd(const std::string& accountName) override {};
     virtual void nextValidId( OrderId orderId) override {};
-    virtual void contractDetails( int reqId, const ContractDetails& contractDetails) override {};
     virtual void bondContractDetails( int reqId, const ContractDetails& contractDetails) override {};
-    virtual void contractDetailsEnd( int reqId) override {};
     virtual void execDetails( int reqId, const Contract& contract, const Execution& execution) override {};
     virtual void execDetailsEnd( int reqId) override {};
     virtual void updateMktDepth(TickerId id, int position, int operation, int side,
