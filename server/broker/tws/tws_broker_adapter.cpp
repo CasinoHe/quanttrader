@@ -156,21 +156,13 @@ long TwsBrokerAdapter::requestContractDetails(
         }
 
         if (!cdResponse->is_end && cdResponse->contract_details) {
-            // Store the contract details information using the full ContractDetails
-            ContractInfo contractInfo;
-            contractInfo.symbol = symbol;
-            contractInfo.secType = secType;
-            contractInfo.exchange = exchange;
-            contractInfo.currency = currency;
-            contractInfo.trading_hours = cdResponse->contract_details->tradingHours;
-            contractInfo.liquid_hours = cdResponse->contract_details->liquidHours;
-            contractInfo.time_zone = cdResponse->contract_details->timeZoneId;
-            
-            std::string key = contractInfo.getKey();
-            contractDetails_[key] = contractInfo;
+            // Store the contract details using the TWS ContractDetails structure directly
+            std::string key = getContractKey(symbol, secType, exchange, currency);
+            contractDetails_[key] = *cdResponse->contract_details;
             
             logger_->info("Stored contract details for key: {} trading_hours: {} liquid_hours: {} time_zone: {}", 
-                         key, contractInfo.trading_hours, contractInfo.liquid_hours, contractInfo.time_zone);
+                         key, cdResponse->contract_details->tradingHours, 
+                         cdResponse->contract_details->liquidHours, cdResponse->contract_details->timeZoneId);
         }
 
         auto it = contractDetailCallbacks_.find(cdResponse->request_id);
@@ -193,12 +185,8 @@ long TwsBrokerAdapter::requestContractDetails(
     long requestId = pushRequest(std::dynamic_pointer_cast<RequestHeader>(request), callback);
     if (requestId > 0) {
         // Store the mapping from request ID to contract key for cleanup
-        ContractInfo tempInfo;
-        tempInfo.symbol = symbol;
-        tempInfo.secType = secType;
-        tempInfo.exchange = exchange;
-        tempInfo.currency = currency;
-        requestIdToContractKey_[requestId] = tempInfo.getKey();
+        std::string key = getContractKey(symbol, secType, exchange, currency);
+        requestIdToContractKey_[requestId] = key;
     }
     return requestId;
 }
@@ -771,12 +759,7 @@ bool TwsBrokerAdapter::removeContractDetails(
     const std::string& exchange,
     const std::string& currency) {
     
-    ContractInfo tempInfo;
-    tempInfo.symbol = symbol;
-    tempInfo.secType = secType;
-    tempInfo.exchange = exchange;
-    tempInfo.currency = currency;
-    std::string key = tempInfo.getKey();
+    std::string key = getContractKey(symbol, secType, exchange, currency);
     
     auto it = contractDetails_.find(key);
     if (it != contractDetails_.end()) {
@@ -793,16 +776,11 @@ std::optional<std::string> TwsBrokerAdapter::getTradingHours(
     const std::string& exchange,
     const std::string& currency) const {
     
-    ContractInfo tempInfo;
-    tempInfo.symbol = symbol;
-    tempInfo.secType = secType;
-    tempInfo.exchange = exchange;
-    tempInfo.currency = currency;
-    std::string key = tempInfo.getKey();
+    std::string key = getContractKey(symbol, secType, exchange, currency);
     
     auto it = contractDetails_.find(key);
     if (it != contractDetails_.end()) {
-        return it->second.trading_hours;
+        return it->second.tradingHours;
     }
     return std::nullopt;
 }
@@ -813,16 +791,11 @@ std::optional<std::string> TwsBrokerAdapter::getLiquidHours(
     const std::string& exchange,
     const std::string& currency) const {
     
-    ContractInfo tempInfo;
-    tempInfo.symbol = symbol;
-    tempInfo.secType = secType;
-    tempInfo.exchange = exchange;
-    tempInfo.currency = currency;
-    std::string key = tempInfo.getKey();
+    std::string key = getContractKey(symbol, secType, exchange, currency);
     
     auto it = contractDetails_.find(key);
     if (it != contractDetails_.end()) {
-        return it->second.liquid_hours;
+        return it->second.liquidHours;
     }
     return std::nullopt;
 }
@@ -833,38 +806,33 @@ std::optional<std::string> TwsBrokerAdapter::getTimeZone(
     const std::string& exchange,
     const std::string& currency) const {
     
-    ContractInfo tempInfo;
-    tempInfo.symbol = symbol;
-    tempInfo.secType = secType;
-    tempInfo.exchange = exchange;
-    tempInfo.currency = currency;
-    std::string key = tempInfo.getKey();
+    std::string key = getContractKey(symbol, secType, exchange, currency);
     
     auto it = contractDetails_.find(key);
     if (it != contractDetails_.end()) {
-        return it->second.time_zone;
+        return it->second.timeZoneId;
     }
     return std::nullopt;
 }
 
-std::optional<ContractInfo> TwsBrokerAdapter::getContractInfo(
+std::optional<ContractDetails> TwsBrokerAdapter::getContractInfo(
     const std::string& symbol,
     const std::string& secType,
     const std::string& exchange,
     const std::string& currency) const {
     
-    ContractInfo tempInfo;
-    tempInfo.symbol = symbol;
-    tempInfo.secType = secType;
-    tempInfo.exchange = exchange;
-    tempInfo.currency = currency;
-    std::string key = tempInfo.getKey();
+    std::string key = getContractKey(symbol, secType, exchange, currency);
     
     auto it = contractDetails_.find(key);
     if (it != contractDetails_.end()) {
         return it->second;
     }
     return std::nullopt;
+}
+
+std::string TwsBrokerAdapter::getContractKey(const std::string& symbol, const std::string& secType, 
+                                           const std::string& exchange, const std::string& currency) const {
+    return symbol + "_" + secType + "_" + exchange + "_" + currency;
 }
 } // namespace broker
 } // namespace quanttrader

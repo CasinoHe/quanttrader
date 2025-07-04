@@ -24,22 +24,6 @@ namespace broker {
 // Type for response callbacks
 using ResponseCallBackType = std::function<void(std::shared_ptr<ResponseHeader>)>;
 
-// Structure to store contract details information
-struct ContractInfo {
-    std::string symbol;
-    std::string secType;
-    std::string exchange;
-    std::string currency;
-    std::string trading_hours;
-    std::string liquid_hours;
-    std::string time_zone;
-    
-    // Helper method to create a unique key for the contract
-    std::string getKey() const {
-        return symbol + "_" + secType + "_" + exchange + "_" + currency;
-    }
-};
-
 /**
  * TWS Broker Adapter class that connects the TWS client with the broker provider interface.
  * This adapter implements the BrokerProvider interface using the TWS API client.
@@ -117,7 +101,7 @@ public:
         const std::string& exchange,
         const std::string& currency) const override;
     
-    std::optional<ContractInfo> getContractInfo(
+    std::optional<ContractDetails> getContractInfo(
         const std::string& symbol,
         const std::string& secType,
         const std::string& exchange,
@@ -166,6 +150,10 @@ private:
 
     // Helper methods for converting between provider interface and TWS API
     BarData convertToBarData(const ResHistoricalData& resData);
+    
+    // Helper method to create a unique key for contract identification
+    std::string getContractKey(const std::string& symbol, const std::string& secType, 
+                              const std::string& exchange, const std::string& currency) const;
 
 private:
     quanttrader::log::LoggerPtr logger_ = nullptr;
@@ -179,7 +167,7 @@ private:
     ErrorCallback errorCallback_ = nullptr;
 
     // Storage for contract details
-    std::unordered_map<std::string, ContractInfo> contractDetails_;
+    std::unordered_map<std::string, ContractDetails> contractDetails_;
     std::unordered_map<TickerId, std::string> requestIdToContractKey_;
 
     // Thread management
