@@ -6,6 +6,7 @@
 #include "time/time_with_zone.h"
 #include <chrono>
 #include <utility>
+#include <sstream>
 
 namespace quanttrader {
 namespace broker {
@@ -135,6 +136,58 @@ long TwsBrokerAdapter::requestRealTimeData(
     return pushRequest(std::dynamic_pointer_cast<RequestHeader>(request), callback);
 }
 
+long TwsBrokerAdapter::requestContractDetails(
+    const std::string& symbol,
+    const std::string& secType,
+    const std::string& exchange,
+    const std::string& currency) {
+
+    auto request = std::make_shared<ReqContractDetails>();
+    request->symbol = symbol;
+    request->security_type = secType;
+    request->exchange = exchange;
+    request->currency = currency;
+
+    auto callback = [this](std::shared_ptr<ResponseHeader> response) {
+        auto cdResponse = std::dynamic_pointer_cast<ResContractDetails>(response);
+        if (!cdResponse) {
+            logger_->error("Failed to cast response to ResContractDetails");
+            return;
+        }
+
+        auto parseSession = [](const std::string& hours) -> std::pair<std::string, std::string> {
+            std::stringstream ss(hours);
+            std::string seg;
+            while (std::getline(ss, seg, ';')) {
+                auto pos = seg.find(':');
+                if (pos == std::string::npos) continue;
+                std::string times = seg.substr(pos + 1);
+                if (times == "CLOSED" || times.empty()) continue;
+                auto dash = times.find('-');
+                if (dash == std::string::npos) continue;
+                std::string start = times.substr(0, dash);
+                std::string end = times.substr(dash + 1);
+                if (start.size() == 4) start.insert(2, ":").append(":00");
+                if (end.size() == 4) end.insert(2, ":").append(":00");
+                return {start, end};
+            }
+            return {"", ""};
+        };
+
+        auto it = contractDetailCallbacks_.find(cdResponse->request_id);
+        if (it != contractDetailCallbacks_.end() && it->second) {
+            auto sess = parseSession(cdResponse->trading_hours);
+            it->second(sess.first, sess.second);
+            if (cdResponse->is_end) {
+                contractDetailCallbacks_.erase(it);
+                removeCallback(cdResponse->request_id);
+            }
+        }
+    };
+
+    return pushRequest(std::dynamic_pointer_cast<RequestHeader>(request), callback);
+}
+
 void TwsBrokerAdapter::cancelHistoricalData(long requestId) {
     auto request = std::make_shared<ReqCancelHistoricalData>();
     request->request_id = requestId;
@@ -194,6 +247,10 @@ void TwsBrokerAdapter::registerOrderStatusCallback(OrderStatusCallback callback)
 
 void TwsBrokerAdapter::registerErrorCallback(ErrorCallback callback) {
     errorCallback_ = callback;
+}
+
+void TwsBrokerAdapter::registerContractDetailsCallback(long requestId, std::function<void(const std::string&, const std::string&)> callback) {
+    contractDetailCallbacks_[requestId] = std::move(callback);
 }
 
 // Adapter-specific methods
@@ -533,6 +590,17 @@ void TwsBrokerAdapter::runRequest(std::atomic<int> &twsVersion) {
                 auto request = std::dynamic_pointer_cast<ReqCancelRealtimeMktData>(requestPtr);
                 if (request) {
                     client_->cancel_real_time_data(request->request_id);
+                }
+            } else if (requestPtr->request_type == MessageType::REQUEST_CONTRACT_DETAILS) {
+                auto request = std::dynamic_pointer_cast<ReqContractDetails>(requestPtr);
+                if (request) {
+                    Contract contract;
+                    contract.symbol = request->symbol;
+                    contract.currency = request->currency;
+                    contract.exchange = request->exchange;
+                    contract.secType = request->security_type;
+
+                    client_->request_contract_details(request->request_id, contract);
                 }
             } else {
                 logger_->warn("Cannot find the request type: {}", static_cast<int>(requestPtr->request_type));

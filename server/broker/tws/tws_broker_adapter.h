@@ -73,6 +73,13 @@ public:
     void registerTradeCallback(TradeCallback callback) override;
     void registerOrderStatusCallback(OrderStatusCallback callback) override;
     void registerErrorCallback(ErrorCallback callback) override;
+    void registerContractDetailsCallback(long requestId, std::function<void(const std::string&, const std::string&)> callback);
+
+    long requestContractDetails(
+        const std::string& symbol,
+        const std::string& secType,
+        const std::string& exchange,
+        const std::string& currency);
     
     void requestCurrentTime() override;
     long getNextRequestId() override;
@@ -114,6 +121,7 @@ private:
     std::atomic<bool> stopFlag_ = false;
     std::unordered_map<TickerId, ResponseCallBackType> responseCallbacks_;
     std::unordered_map<TickerId, BarDataCallback> barDataCallbacks_;
+    std::unordered_map<TickerId, std::function<void(const std::string&, const std::string&)>> contractDetailCallbacks_;
     TradeCallback tradeCallback_ = nullptr;
     OrderStatusCallback orderStatusCallback_ = nullptr;
     ErrorCallback errorCallback_ = nullptr;

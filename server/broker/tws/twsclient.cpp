@@ -117,6 +117,11 @@ void TwsClient::request_historical_data(TickerId request_id, const Contract &con
                   request_id, contract.symbol, contract.secType, contract.exchange, contract.currency, translated_end_time, duration, bar_size, what_to_show, use_rth, keep_up_to_date);
 }
 
+void TwsClient::request_contract_details(TickerId request_id, const Contract &contract) {
+    client_socket_.reqContractDetails(request_id, contract);
+    logger_->info("Requested contract details for request ID: {} symbol {}", request_id, contract.symbol);
+}
+
 void TwsClient::cancel_historical_data(TickerId request_id) {
     client_socket_.cancelHistoricalData(request_id);
     logger_->info("Cancelled historical data for request ID: {}", request_id);
@@ -182,6 +187,24 @@ void TwsClient::error(int id, time_t error_time, int error_code, const std::stri
 
 void TwsClient::connectionClosed() {
     logger_->warn("Connection closed.");
+}
+
+void TwsClient::contractDetails(int req_id, const ContractDetails& contractDetails) {
+    auto response = std::make_shared<ResContractDetails>();
+    response->request_id = req_id;
+    response->trading_hours = contractDetails.tradingHours;
+    response->time_zone = contractDetails.timeZoneId;
+    response->is_end = false;
+    response_queue_->enqueue(std::dynamic_pointer_cast<ResponseHeader>(response));
+    logger_->info("Contract details: req {} tz {} hours {}", req_id, contractDetails.timeZoneId, contractDetails.tradingHours);
+}
+
+void TwsClient::contractDetailsEnd(int req_id) {
+    auto response = std::make_shared<ResContractDetails>();
+    response->request_id = req_id;
+    response->is_end = true;
+    response_queue_->enqueue(std::dynamic_pointer_cast<ResponseHeader>(response));
+    logger_->info("Contract details end: req {}", req_id);
 }
 
 } // namespace broker
