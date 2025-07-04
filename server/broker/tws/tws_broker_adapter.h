@@ -7,6 +7,7 @@
 #include "broker/requests.h"
 #include "broker/response.h"
 #include "concurrentqueue/blockingconcurrentqueue.h"
+#include "Contract.h"
 
 #include <string>
 #include <memory>
@@ -22,6 +23,22 @@ namespace broker {
 
 // Type for response callbacks
 using ResponseCallBackType = std::function<void(std::shared_ptr<ResponseHeader>)>;
+
+// Structure to store contract details information
+struct ContractInfo {
+    std::string symbol;
+    std::string secType;
+    std::string exchange;
+    std::string currency;
+    std::string trading_hours;
+    std::string liquid_hours;
+    std::string time_zone;
+    
+    // Helper method to create a unique key for the contract
+    std::string getKey() const {
+        return symbol + "_" + secType + "_" + exchange + "_" + currency;
+    }
+};
 
 /**
  * TWS Broker Adapter class that connects the TWS client with the broker provider interface.
@@ -73,13 +90,38 @@ public:
     void registerTradeCallback(TradeCallback callback) override;
     void registerOrderStatusCallback(OrderStatusCallback callback) override;
     void registerErrorCallback(ErrorCallback callback) override;
-    void registerContractDetailsCallback(long requestId, std::function<void(const std::string&, const std::string&)> callback);
+    void registerContractDetailsCallback(long requestId, std::function<void(const ContractDetails&)> callback);
 
     long requestContractDetails(
         const std::string& symbol,
         const std::string& secType,
         const std::string& exchange,
-        const std::string& currency);
+        const std::string& currency) override;
+    
+    // Methods to retrieve contract details information
+    std::optional<std::string> getTradingHours(
+        const std::string& symbol,
+        const std::string& secType,
+        const std::string& exchange,
+        const std::string& currency) const override;
+    
+    std::optional<std::string> getLiquidHours(
+        const std::string& symbol,
+        const std::string& secType,
+        const std::string& exchange,
+        const std::string& currency) const override;
+    
+    std::optional<std::string> getTimeZone(
+        const std::string& symbol,
+        const std::string& secType,
+        const std::string& exchange,
+        const std::string& currency) const override;
+    
+    std::optional<ContractInfo> getContractInfo(
+        const std::string& symbol,
+        const std::string& secType,
+        const std::string& exchange,
+        const std::string& currency) const;
     
     void requestCurrentTime() override;
     long getNextRequestId() override;
@@ -96,6 +138,16 @@ public:
     // Method to push requests to the queue
     long pushRequest(std::shared_ptr<RequestHeader> request, std::optional<ResponseCallBackType> callback);
     bool removeCallback(long requestId);
+
+    // Method to clear stored contract details
+    void clearContractDetails();
+    
+    // Method to remove specific contract details
+    bool removeContractDetails(
+        const std::string& symbol,
+        const std::string& secType,
+        const std::string& exchange,
+        const std::string& currency);
 
 private:
     friend class Singleton<TwsBrokerAdapter>;
@@ -121,10 +173,14 @@ private:
     std::atomic<bool> stopFlag_ = false;
     std::unordered_map<TickerId, ResponseCallBackType> responseCallbacks_;
     std::unordered_map<TickerId, BarDataCallback> barDataCallbacks_;
-    std::unordered_map<TickerId, std::function<void(const std::string&, const std::string&)>> contractDetailCallbacks_;
+    std::unordered_map<TickerId, std::function<void(const ContractDetails&)>> contractDetailCallbacks_;
     TradeCallback tradeCallback_ = nullptr;
     OrderStatusCallback orderStatusCallback_ = nullptr;
     ErrorCallback errorCallback_ = nullptr;
+
+    // Storage for contract details
+    std::unordered_map<std::string, ContractInfo> contractDetails_;
+    std::unordered_map<TickerId, std::string> requestIdToContractKey_;
 
     // Thread management
     std::shared_ptr<std::thread> clientThread_ = nullptr;

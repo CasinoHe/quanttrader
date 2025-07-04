@@ -6,6 +6,9 @@
 #include <variant>
 #include "Decimal.h"
 
+// Forward declaration of ContractDetails from TWS API
+struct ContractDetails;
+
 namespace quanttrader {
 namespace broker {
 
@@ -58,9 +61,10 @@ struct ResContractDetails : ResponseHeader {
         response_type = MessageType::REQUEST_CONTRACT_DETAILS;
     }
 
-    std::string trading_hours;
-    std::string time_zone;
     bool is_end = false;
+    
+    // Store the full contract details from TWS API
+    std::shared_ptr<ContractDetails> contract_details = nullptr;
 };
 
 struct ResErrorMsg : ResponseHeader {

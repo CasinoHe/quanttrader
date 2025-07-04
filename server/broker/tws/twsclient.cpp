@@ -192,11 +192,13 @@ void TwsClient::connectionClosed() {
 void TwsClient::contractDetails(int req_id, const ContractDetails& contractDetails) {
     auto response = std::make_shared<ResContractDetails>();
     response->request_id = req_id;
-    response->trading_hours = contractDetails.tradingHours;
-    response->time_zone = contractDetails.timeZoneId;
     response->is_end = false;
+    
+    // Store the full contract details
+    response->contract_details = std::make_shared<ContractDetails>(contractDetails);
+    
     response_queue_->enqueue(std::dynamic_pointer_cast<ResponseHeader>(response));
-    logger_->info("Contract details: req {} tz {} hours {}", req_id, contractDetails.timeZoneId, contractDetails.tradingHours);
+    logger_->info("Contract details: req {} tz {} trading_hours {} liquid_hours {}", req_id, contractDetails.timeZoneId, contractDetails.tradingHours, contractDetails.liquidHours);
 }
 
 void TwsClient::contractDetailsEnd(int req_id) {

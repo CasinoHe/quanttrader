@@ -86,6 +86,31 @@ public:
     virtual void registerOrderStatusCallback(OrderStatusCallback callback) = 0;
     virtual void registerErrorCallback(ErrorCallback callback) = 0;
     
+    // Contract details methods
+    virtual long requestContractDetails(
+        const std::string& symbol,
+        const std::string& secType,
+        const std::string& exchange,
+        const std::string& currency) = 0;
+    
+    virtual std::optional<std::string> getTradingHours(
+        const std::string& symbol,
+        const std::string& secType,
+        const std::string& exchange,
+        const std::string& currency) const = 0;
+    
+    virtual std::optional<std::string> getLiquidHours(
+        const std::string& symbol,
+        const std::string& secType,
+        const std::string& exchange,
+        const std::string& currency) const = 0;
+    
+    virtual std::optional<std::string> getTimeZone(
+        const std::string& symbol,
+        const std::string& secType,
+        const std::string& exchange,
+        const std::string& currency) const = 0;
+    
     // Utility methods
     virtual void requestCurrentTime() = 0;
     virtual long getNextRequestId() = 0;
