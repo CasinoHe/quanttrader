@@ -15,6 +15,7 @@
 #include <unordered_map>
 #include <optional>
 #include <chrono>
+#include <utility>
 
 namespace quanttrader {
 namespace broker {
@@ -38,12 +39,14 @@ public:
         const std::string& secType,
         const std::string& exchange,
         const std::string& currency,
-        const std::string& endTime, 
+        const std::string& endTime,
         const std::string& duration,
         const std::string& barSize,
         const std::string& whatToShow,
         bool useRTH,
-        bool keepUpToDate) override;
+        bool keepUpToDate,
+        const std::string& sessionStart = "",
+        const std::string& sessionEnd = "") override;
     
     long requestRealTimeData(
         const std::string& symbol,
@@ -137,6 +140,9 @@ private:
 
     // map request id to bar size string for end time calculation
     std::unordered_map<TickerId, std::string> requestBarSize_;
+
+    // map request id to session start and end time
+    std::unordered_map<TickerId, std::pair<std::string, std::string>> requestSession_;
 
     // Configuration path
     std::string configPath_;

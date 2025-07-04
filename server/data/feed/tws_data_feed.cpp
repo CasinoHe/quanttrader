@@ -38,6 +38,8 @@ bool TwsDataFeed::prepare_data() {
     timezone_ = get_config_value<std::string>(DATA_TIMEZONE_NAME, kDefaultTimezone);
     what_type_ = get_config_value<std::string>(DATA_TRADE_WHAT_NAME, kDefaultWhatToShow);
     keep_up_to_date_ = get_config_value<bool>(KEEP_UP_TO_DATE_NAME, false);
+    session_start_ = get_config_value<std::string>(DATA_SESSION_START_NAME, kDefaultSessionStart);
+    session_end_ = get_config_value<std::string>(DATA_SESSION_END_NAME, kDefaultSessionEnd);
 
     std::string data_type = get_config_value<std::string>(DATA_TYPE_NAME);
     if (data_type == "historical") {
@@ -224,7 +226,9 @@ long TwsDataFeed::fetch_historical_data() {
         bar_type_str_,
         what_type_,
         use_rth_,
-        keep_up_to_date_
+        keep_up_to_date_,
+        session_start_,
+        session_end_
     );
     
     // Only register the callback if we got a valid request ID

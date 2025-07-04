@@ -5,6 +5,7 @@
 #include "data/common/data_provider.h"
 #include "time/time_with_zone.h"
 #include <chrono>
+#include <utility>
 
 namespace quanttrader {
 namespace broker {
@@ -64,7 +65,9 @@ long TwsBrokerAdapter::requestHistoricalData(
     const std::string& barSize,
     const std::string& whatToShow,
     bool useRTH,
-    bool keepUpToDate) {
+    bool keepUpToDate,
+    const std::string& sessionStart,
+    const std::string& sessionEnd) {
     
     auto request = std::make_shared<ReqHistoricalData>();
     request->symbol = symbol;
@@ -99,6 +102,9 @@ long TwsBrokerAdapter::requestHistoricalData(
     long requestId = pushRequest(std::dynamic_pointer_cast<RequestHeader>(request), callback);
     if (requestId > 0) {
         requestBarSize_[requestId] = barSize;
+        std::string ss = sessionStart.empty() ? sessionStart_ : sessionStart;
+        std::string se = sessionEnd.empty() ? sessionEnd_ : sessionEnd;
+        requestSession_[requestId] = {ss, se};
     }
     return requestId;
 }
@@ -137,6 +143,7 @@ void TwsBrokerAdapter::cancelHistoricalData(long requestId) {
     // Remove any registered callbacks for this request
     barDataCallbacks_.erase(requestId);
     requestBarSize_.erase(requestId);
+    requestSession_.erase(requestId);
     removeCallback(requestId);
     logger_->info("Cancelled historical data for request ID: {}", requestId);
 }
@@ -302,7 +309,12 @@ BarData TwsBrokerAdapter::convertToBarData(const ResHistoricalData& resData) {
         bool onlyDate = dateStr.size() == 8;
         std::string parseStr = dateStr;
         if (onlyDate) {
-            parseStr += " " + sessionStart_;
+            std::string sessStart = sessionStart_;
+            auto sit = requestSession_.find(resData.request_id);
+            if (sit != requestSession_.end()) {
+                sessStart = sit->second.first;
+            }
+            parseStr += " " + sessStart;
         }
 
         auto timeWithZone = quanttrader::time::TimeWithZone::from_ibapi_string(parseStr, "America/New_York");
@@ -310,7 +322,12 @@ BarData TwsBrokerAdapter::convertToBarData(const ResHistoricalData& resData) {
             barData.time = timeWithZone.value().get_nano_epoch();
 
             if (onlyDate) {
-                std::string endStr = std::get<std::string>(resData.date) + " " + sessionEnd_;
+                std::string sessEnd = sessionEnd_;
+                auto sit = requestSession_.find(resData.request_id);
+                if (sit != requestSession_.end()) {
+                    sessEnd = sit->second.second;
+                }
+                std::string endStr = std::get<std::string>(resData.date) + " " + sessEnd;
                 auto endWithZone = quanttrader::time::TimeWithZone::from_ibapi_string(endStr, "America/New_York");
                 if (endWithZone.has_value()) {
                     barData.end_time = endWithZone.value().get_nano_epoch();
