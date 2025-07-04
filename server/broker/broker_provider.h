@@ -56,7 +56,8 @@ public:
         bool useRTH,
         bool keepUpToDate,
         const std::string& sessionStart = "",
-        const std::string& sessionEnd = "") = 0;
+        const std::string& sessionEnd = "",
+        const std::string& sessionTimezone = "") = 0;
     
     virtual long requestRealTimeData(
         const std::string& symbol,

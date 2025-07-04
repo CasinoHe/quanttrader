@@ -11,4 +11,8 @@ tws_provider = {
 	stop_flag = false,          -- stop flag
 	session_start = "09:30:00", -- trading session start time
 	session_end = "16:00:00",   -- trading session end time
+	-- NOTE: session_timezone should be configured in individual data provider configs,
+	-- not here in the TWS broker config, since the broker adapter is a singleton
+	-- and multiple data feeds may have different timezones
+	-- session_timezone = "America/New_York", -- DEPRECATED: configure in data provider instead
 }

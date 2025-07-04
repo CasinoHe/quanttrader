@@ -30,6 +30,7 @@ constexpr const char *kDefaultSessionEnd = "16:00:00";
 
 constexpr const char *DATA_SESSION_START_NAME = "session_start";
 constexpr const char *DATA_SESSION_END_NAME = "session_end";
+constexpr const char *DATA_SESSION_TIMEZONE_NAME = "session_timezone";
 
 constexpr const char *kSecondsBarType[] = {"1 secs", "5 secs", "10 secs", "15 secs", "30 secs"};
 constexpr const char *kMinutesBarType[] = {"1 min", "2 mins", "3 mins", "5 mins", "10 mins", "15 mins", "20 mins", "30 mins"};

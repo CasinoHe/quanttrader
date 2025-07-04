@@ -20,6 +20,7 @@ daily_data = {
 	resample_bar_size = "1 day",  -- resample bar type
 	session_start = "09:30:00",
 	session_end = "16:00:00",
+	session_timezone = "America/New_York",  -- timezone for session start/end times
 }
 
 min_data = {

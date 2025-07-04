@@ -47,7 +47,8 @@ public:
         bool useRTH,
         bool keepUpToDate,
         const std::string& sessionStart = "",
-        const std::string& sessionEnd = "") override;
+        const std::string& sessionEnd = "",
+        const std::string& sessionTimezone = "") override;
     
     long requestRealTimeData(
         const std::string& symbol,
@@ -189,12 +190,20 @@ private:
     // session time configuration
     std::string sessionStart_{"09:30:00"};
     std::string sessionEnd_{"16:00:00"};
+    std::string sessionTimezone_{"America/New_York"};
 
     // map request id to bar size string for end time calculation
     std::unordered_map<TickerId, std::string> requestBarSize_;
 
-    // map request id to session start and end time
-    std::unordered_map<TickerId, std::pair<std::string, std::string>> requestSession_;
+    // Structure to store session information
+    struct SessionInfo {
+        std::string startTime;
+        std::string endTime;
+        std::string timezone;
+    };
+
+    // map request id to session information
+    std::unordered_map<TickerId, SessionInfo> requestSession_;
 
     // Configuration path
     std::string configPath_;

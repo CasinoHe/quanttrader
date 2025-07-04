@@ -3,6 +3,7 @@
 #include "config/lua_config_loader.h"
 #include "broker/broker_consts.h"
 #include "data/common/data_provider.h"
+#include "data/common/data_consts.h"
 #include "time/time_with_zone.h"
 #include <chrono>
 #include <utility>
@@ -68,7 +69,8 @@ long TwsBrokerAdapter::requestHistoricalData(
     bool useRTH,
     bool keepUpToDate,
     const std::string& sessionStart,
-    const std::string& sessionEnd) {
+    const std::string& sessionEnd,
+    const std::string& sessionTimezone) {
     
     auto request = std::make_shared<ReqHistoricalData>();
     request->symbol = symbol;
@@ -105,7 +107,8 @@ long TwsBrokerAdapter::requestHistoricalData(
         requestBarSize_[requestId] = barSize;
         std::string ss = sessionStart.empty() ? sessionStart_ : sessionStart;
         std::string se = sessionEnd.empty() ? sessionEnd_ : sessionEnd;
-        requestSession_[requestId] = {ss, se};
+        std::string st = sessionTimezone.empty() ? sessionTimezone_ : sessionTimezone;
+        requestSession_[requestId] = {ss, se, st};
     }
     return requestId;
 }
@@ -368,16 +371,19 @@ BarData TwsBrokerAdapter::convertToBarData(const ResHistoricalData& resData) {
         std::string dateStr = std::get<std::string>(resData.date);
         bool onlyDate = dateStr.size() == 8;
         std::string parseStr = dateStr;
+        std::string sessTimezone = sessionTimezone_;
+        
         if (onlyDate) {
             std::string sessStart = sessionStart_;
             auto sit = requestSession_.find(resData.request_id);
             if (sit != requestSession_.end()) {
-                sessStart = sit->second.first;
+                sessStart = sit->second.startTime;
+                sessTimezone = sit->second.timezone;
             }
             parseStr += " " + sessStart;
         }
 
-        auto timeWithZone = quanttrader::time::TimeWithZone::from_ibapi_string(parseStr, "America/New_York");
+        auto timeWithZone = quanttrader::time::TimeWithZone::from_ibapi_string(parseStr, sessTimezone);
         if (timeWithZone.has_value()) {
             barData.time = timeWithZone.value().get_nano_epoch();
 
@@ -385,10 +391,11 @@ BarData TwsBrokerAdapter::convertToBarData(const ResHistoricalData& resData) {
                 std::string sessEnd = sessionEnd_;
                 auto sit = requestSession_.find(resData.request_id);
                 if (sit != requestSession_.end()) {
-                    sessEnd = sit->second.second;
+                    sessEnd = sit->second.endTime;
+                    sessTimezone = sit->second.timezone;
                 }
                 std::string endStr = std::get<std::string>(resData.date) + " " + sessEnd;
-                auto endWithZone = quanttrader::time::TimeWithZone::from_ibapi_string(endStr, "America/New_York");
+                auto endWithZone = quanttrader::time::TimeWithZone::from_ibapi_string(endStr, sessTimezone);
                 if (endWithZone.has_value()) {
                     barData.end_time = endWithZone.value().get_nano_epoch();
                 }
@@ -735,6 +742,18 @@ bool TwsBrokerAdapter::updateConfig() {
 
     sessionStart_ = loader.get_string_value(TWS_PROVIDER_NAME, SESSION_START_VARIABLE);
     sessionEnd_ = loader.get_string_value(TWS_PROVIDER_NAME, SESSION_END_VARIABLE);
+    sessionTimezone_ = loader.get_string_value(TWS_PROVIDER_NAME, SESSION_TIMEZONE_VARIABLE);
+    
+    // Use default values if not specified in config
+    if (sessionStart_.empty()) {
+        sessionStart_ = data::kDefaultSessionStart;
+    }
+    if (sessionEnd_.empty()) {
+        sessionEnd_ = data::kDefaultSessionEnd;  
+    }
+    if (sessionTimezone_.empty()) {
+        sessionTimezone_ = data::kDefaultTimezone;
+    }
 
     bool stop_flag = loader.get_bool_value(TWS_PROVIDER_NAME, STOP_FLAG_VARIABLE);
     bool record_log = loader.get_bool_value(TWS_PROVIDER_NAME, RECORD_LOG_VARIABLE);

@@ -31,6 +31,7 @@ constexpr char STOP_FLAG_VARIABLE[] = "stop_flag";
 constexpr char RECORD_LOG_VARIABLE[] = "record_log";
 constexpr char SESSION_START_VARIABLE[] = "session_start";
 constexpr char SESSION_END_VARIABLE[] = "session_end";
+constexpr char SESSION_TIMEZONE_VARIABLE[] = "session_timezone";
 
 }
 }

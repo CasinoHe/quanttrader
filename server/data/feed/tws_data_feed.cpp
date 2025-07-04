@@ -58,6 +58,18 @@ bool TwsDataFeed::prepare_data() {
             if (bar_type_ == BarType::Day) {
                 session_start_ = get_config_value<std::string>(DATA_SESSION_START_NAME, kDefaultSessionStart);
                 session_end_ = get_config_value<std::string>(DATA_SESSION_END_NAME, kDefaultSessionEnd);
+                
+                // For day bars, session timezone is required to avoid conflicts in singleton broker adapter
+                try {
+                    session_timezone_ = get_config_value<std::string>(DATA_SESSION_TIMEZONE_NAME);
+                    if (session_timezone_.empty()) {
+                        logger_->error("Session timezone is required for day bars but not specified in data provider config: {}", data_name_);
+                        return false;
+                    }
+                } catch (const std::exception& e) {
+                    logger_->error("Session timezone is required for day bars but not found in data provider config: {}. Error: {}", data_name_, e.what());
+                    return false;
+                }
             }
         }
     } else if (data_type == "realtime") {
@@ -76,6 +88,18 @@ bool TwsDataFeed::prepare_data() {
             if (bar_type_ == BarType::Day) {
                 session_start_ = get_config_value<std::string>(DATA_SESSION_START_NAME, kDefaultSessionStart);
                 session_end_ = get_config_value<std::string>(DATA_SESSION_END_NAME, kDefaultSessionEnd);
+                
+                // For day bars, session timezone is required to avoid conflicts in singleton broker adapter
+                try {
+                    session_timezone_ = get_config_value<std::string>(DATA_SESSION_TIMEZONE_NAME);
+                    if (session_timezone_.empty()) {
+                        logger_->error("Session timezone is required for day bars but not specified in data provider config: {}", data_name_);
+                        return false;
+                    }
+                } catch (const std::exception& e) {
+                    logger_->error("Session timezone is required for day bars but not found in data provider config: {}. Error: {}", data_name_, e.what());
+                    return false;
+                }
             }
         }
     } else {
@@ -224,6 +248,7 @@ long TwsDataFeed::fetch_historical_data() {
     // Request historical data first to get the correct request ID
     std::string startSession = bar_type_ == BarType::Day ? session_start_ : "";
     std::string endSession = bar_type_ == BarType::Day ? session_end_ : "";
+    std::string sessionTimezone = bar_type_ == BarType::Day ? session_timezone_ : "";
 
     long requestId = broker_adapter_->requestHistoricalData(
         symbol_,
@@ -237,7 +262,8 @@ long TwsDataFeed::fetch_historical_data() {
         use_rth_,
         keep_up_to_date_,
         startSession,
-        endSession
+        endSession,
+        sessionTimezone
     );
     
     // Only register the callback if we got a valid request ID

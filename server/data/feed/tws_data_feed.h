@@ -67,6 +67,7 @@ private:
     bool keep_up_to_date_ {false};
     std::string session_start_ {""};
     std::string session_end_ {""};
+    std::string session_timezone_ {""}; // Required for day bars, no default value
 
     // Historical data parameters
     std::string start_date_ {""};
