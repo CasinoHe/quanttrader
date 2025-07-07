@@ -62,14 +62,14 @@ bool StrategyBase::on_stop() {
 }
 
     
-void StrategyBase::on_data_series(const std::map<std::string, data::BarSeries>& bar_series_map) {
+void StrategyBase::on_data_series(const std::map<std::string, data::BarSeries>& bar_series_map, bool day_change, bool hour_change, bool minute_change) {
     // Call on_bar with TA-Lib compatible data for each feed
     if (log_data_) {
         logger_->info("Processing data series for strategy: {}", strategy_name_);
     }
     for (const auto& [data_name, bar_series] : bar_series_map) {
         if (!bar_series.close.empty()) {
-            on_bar(data_name, bar_series);
+            on_bar(data_name, bar_series, day_change, hour_change, minute_change);
         }
 
         if (log_data_) {

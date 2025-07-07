@@ -35,7 +35,7 @@ public:
 
     // Core event handlers
     virtual void on_tick(const std::string& data_name, const std::any& tick_data) {}
-    virtual void on_bar(const std::string& data_name, const data::BarSeries& bar_series) {}
+    virtual void on_bar(const std::string& data_name, const data::BarSeries& bar_series, bool day_change, bool hour_change, bool minute_change) {}
     virtual void on_trade(const std::string& symbol, double price, int quantity, bool is_buy) {}
     virtual void on_order(const std::string& order_id, const std::string& status) {}
     
@@ -47,7 +47,7 @@ public:
      * 
      * @param bar_series_map Map of data provider names to cached BarSeries (readonly)
      */
-    virtual void on_data_series(const std::map<std::string, data::BarSeries>& bar_series_map);
+    virtual void on_data_series(const std::map<std::string, data::BarSeries>& bar_series_map, bool day_change, bool hour_change, bool minute_change);
     
     // Lifecycle methods
     virtual bool initialize();

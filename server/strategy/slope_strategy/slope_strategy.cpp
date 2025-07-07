@@ -200,7 +200,8 @@ void SlopeStrategy::calculate_moving_averages_incremental(const data::BarSeries&
     }
 }
 
-void SlopeStrategy::on_bar(const std::string& data_name, const data::BarSeries& bar_series) {
+void SlopeStrategy::on_bar(const std::string& data_name, const data::BarSeries& bar_series, 
+                           bool day_change, bool hour_change, bool minute_change) {
     // Extract the symbol from data_name by finding the part after the last underscore
     std::string bar_symbol = data_name;
     size_t last_underscore_pos = data_name.find_last_of('_');

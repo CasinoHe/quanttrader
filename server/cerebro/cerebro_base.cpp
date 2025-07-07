@@ -230,13 +230,6 @@ bool CerebroBase::process_next() {
         return false;
     }
     
-    // Log time switch information if any changes occurred
-    if (sync_result.day_changed || sync_result.hour_changed || sync_result.minute_changed) {
-        logger_->info("{} Time alignment changes: day={}, hour={}, minute={}, time={}",
-                     name_, sync_result.day_changed, sync_result.hour_changed, 
-                     sync_result.minute_changed, sync_result.current_time);
-    }
-    
     // Update our historical data storage with the new data points
     for (const auto& [name, bar] : sync_result.data) {
         if (historical_data_.find(name) == historical_data_.end()) {
@@ -250,7 +243,8 @@ bool CerebroBase::process_next() {
     
     // Feed the cached BarSeries directly to all strategies (readonly access)
     for (auto& strategy : strategies_) {
-        strategy->on_data_series(cached_bar_series_);
+        strategy->on_data_series(cached_bar_series_, sync_result.day_changed, 
+                                 sync_result.hour_changed, sync_result.minute_changed);
     }
     
     return true;

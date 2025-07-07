@@ -26,7 +26,7 @@ public:
     bool initialize() override;
     
     // Event handlers 
-    void on_bar(const std::string& data_name, const data::BarSeries& bar_series) override;
+    void on_bar(const std::string& data_name, const data::BarSeries& bar_series, bool day_change, bool hour_change, bool minute_change) override;
     
 protected:
     // Implementation of the next method required by StrategyBase
