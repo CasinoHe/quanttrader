@@ -67,9 +67,12 @@ void StrategyBase::on_data_series(const std::map<std::string, data::BarSeries>& 
     if (log_data_) {
         logger_->info("Processing data series for strategy: {}", strategy_name_);
     }
+    current_time_ = 0;
     for (const auto& [data_name, bar_series] : bar_series_map) {
         if (!bar_series.close.empty()) {
             on_bar(data_name, bar_series);
+            last_prices_[data_name] = bar_series.close.back();
+            current_time_ = std::max(current_time_, bar_series.start_time.back());
         }
 
         if (log_data_) {
@@ -101,6 +104,19 @@ void StrategyBase::buy(const std::string& symbol, int quantity, double price) {
     }
     
     logger_->info("BUY SIGNAL: {} {} @ {}", symbol, quantity, price_str);
+
+    double trade_price = price;
+    if (trade_price <= 0) {
+        auto it = last_prices_.find(symbol);
+        if (it != last_prices_.end()) {
+            trade_price = it->second;
+        }
+    }
+    if (trade_price > 0) {
+        for (auto& obs : observers_) {
+            obs->record_trade(current_time_, symbol, quantity, trade_price, true);
+        }
+    }
     
     // In a real implementation, this would send the order to the broker
     // broker_->place_order(symbol, quantity, price, true);
@@ -122,6 +138,19 @@ void StrategyBase::sell(const std::string& symbol, int quantity, double price) {
     }
     
     logger_->info("SELL SIGNAL: {} {} @ {}", symbol, quantity, price_str);
+
+    double trade_price = price;
+    if (trade_price <= 0) {
+        auto it = last_prices_.find(symbol);
+        if (it != last_prices_.end()) {
+            trade_price = it->second;
+        }
+    }
+    if (trade_price > 0) {
+        for (auto& obs : observers_) {
+            obs->record_trade(current_time_, symbol, quantity, trade_price, false);
+        }
+    }
     
     // In a real implementation, this would send the order to the broker
     // broker_->place_order(symbol, quantity, price, false);

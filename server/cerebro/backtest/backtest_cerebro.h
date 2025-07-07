@@ -81,6 +81,9 @@ public:
         
         is_running_ = false;
         logger_->info("Backtest completed with {} steps", step_count);
+        for (auto& obs : observers_) {
+            obs->report();
+        }
         return true;
     }
 };
