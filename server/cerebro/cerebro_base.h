@@ -6,6 +6,7 @@
 #include "strategy/strategy_base.h"
 #include "observer/observer_base.h"
 #include "observer/performance_observer.h"
+#include "broker/abstract_broker.h"
 #include "logger/quantlogger.h"
 #include <memory>
 #include <string>
@@ -52,6 +53,20 @@ public:
      * @return true if successful, false otherwise
      */
     bool add_strategy(std::shared_ptr<strategy::StrategyBase> strategy);
+
+    /**
+     * @brief Set the broker for trading operations
+     * 
+     * @param broker The broker to use for trading
+     */
+    void set_broker(std::shared_ptr<broker::AbstractBroker> broker);
+
+    /**
+     * @brief Get the current broker
+     * 
+     * @return The current broker
+     */
+    std::shared_ptr<broker::AbstractBroker> get_broker() const { return broker_; }
 
     /**
      * @brief Set the replay mode for all data providers
@@ -151,7 +166,7 @@ protected:
     // Logging
     quanttrader::log::LoggerPtr logger_;
     std::string name_;
-    std::shared_ptr<broker::BrokerProvider> broker_;
+    std::shared_ptr<broker::AbstractBroker> broker_;
     std::atomic<bool> stop_flag_;
     long long wait_data_timeout_ = 60000; // 60 seconds
 

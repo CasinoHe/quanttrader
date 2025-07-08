@@ -1,4 +1,5 @@
 #include "cerebro_base.h"
+#include "broker/backtest_broker.h"
 
 namespace quanttrader {
 namespace cerebro {
@@ -47,11 +48,28 @@ bool CerebroBase::add_strategy(std::shared_ptr<strategy::StrategyBase> strategy)
     }
     
     strategies_.push_back(strategy);
+    
+    // Set the broker for the strategy if one is available
+    if (broker_) {
+        strategy->set_broker(broker_);
+    }
+    
     for (auto& obs : observers_) {
         strategy->add_observer(obs);
     }
     logger_->info("{} Added strategy: {}", name_, strategy->get_name());
     return true;
+}
+
+void CerebroBase::set_broker(std::shared_ptr<broker::AbstractBroker> broker) {
+    broker_ = broker;
+    
+    // Set the broker for all existing strategies
+    for (auto& strategy : strategies_) {
+        strategy->set_broker(broker_);
+    }
+    
+    logger_->info("{} Set broker for cerebro", name_);
 }
 
 void CerebroBase::set_replay_mode(data::provider::DataProvider::ReplayMode mode) {
@@ -259,6 +277,18 @@ bool CerebroBase::process_next() {
             }
         }
     }
+    
+    // Update broker with market prices
+    if (broker_) {
+        broker_->update_market_prices(price_map);
+        
+        // If using backtest broker, process market data
+        auto backtest_broker = std::dynamic_pointer_cast<broker::BacktestBroker>(broker_);
+        if (backtest_broker) {
+            backtest_broker->process_market_data(sync_result.current_time, price_map);
+        }
+    }
+    
     for (auto& obs : observers_) {
         obs->update_market_value(sync_result.current_time, price_map);
     }
