@@ -7,6 +7,7 @@
 #include <chrono>
 #include <iomanip>
 #include <ctime>
+#include <cstring>
 #include <sstream>
 
 namespace quanttrader {

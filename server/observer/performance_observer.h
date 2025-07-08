@@ -43,6 +43,7 @@ struct OpenTrade {
 class PerformanceObserver : public ObserverBase {
 public:
     explicit PerformanceObserver(double starting_cash = 100000.0);
+    ~PerformanceObserver() override = default;
 
     void record_trade(uint64_t time, const std::string& symbol, int quantity, double price, bool is_buy) override;
 
