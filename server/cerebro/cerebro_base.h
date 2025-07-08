@@ -4,6 +4,8 @@
 #include "data/common/data_provider.h"
 #include "data/replay/data_replay_controller.h"
 #include "strategy/strategy_base.h"
+#include "observer/observer_base.h"
+#include "observer/performance_observer.h"
 #include "logger/quantlogger.h"
 #include <memory>
 #include <string>
@@ -107,6 +109,9 @@ public:
         wait_data_timeout_ = timeout;
     }
 
+    std::vector<std::shared_ptr<observer::ObserverBase>> get_observers() const { return observers_; }
+    void add_observer(std::shared_ptr<observer::ObserverBase> obs) { if (obs) observers_.push_back(obs); }
+
 protected:
     /**
      * @brief Update cached BarSeries with new bar data
@@ -149,6 +154,8 @@ protected:
     std::shared_ptr<broker::BrokerProvider> broker_;
     std::atomic<bool> stop_flag_;
     long long wait_data_timeout_ = 60000; // 60 seconds
+
+    std::vector<std::shared_ptr<observer::ObserverBase>> observers_;
 };
 
 } // namespace cerebro

@@ -7,8 +7,10 @@
 #include <functional>
 #include <memory>
 #include <optional>
+#include <vector>
 #include "logger/quantlogger.h"
 #include "data/common/data_struct.h"
+#include "observer/observer_base.h"
 
 namespace quanttrader {
 namespace data {
@@ -53,6 +55,8 @@ public:
     virtual bool initialize();
     virtual bool on_start();
     virtual bool on_stop();
+
+    void add_observer(std::shared_ptr<observer::ObserverBase> obs) { if (obs) observers_.push_back(obs); }
     
     // Access methods
     std::string get_name() const { return strategy_name_; }
@@ -72,6 +76,10 @@ protected:
 
     // key data debug switch
     bool log_data_ = false; // Added key data debug switch
+
+    std::vector<std::shared_ptr<observer::ObserverBase>> observers_;
+    uint64_t current_time_ = 0;
+    std::unordered_map<std::string, double> last_prices_;
 
     // Derived strategies should implement this method
     virtual void next() = 0;

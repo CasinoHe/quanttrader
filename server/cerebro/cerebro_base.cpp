@@ -4,10 +4,10 @@ namespace quanttrader {
 namespace cerebro {
 
 CerebroBase::CerebroBase(const std::string_view name) : name_(name), stop_flag_(false) {
-        logger_ = quanttrader::log::get_common_rotation_logger(name_, "cerebro");
-        logger_->info("Created cerebro: {} ", name_);
-    logger_ = quanttrader::log::get_common_rotation_logger("CerebroBase", "cerebro");
+    logger_ = quanttrader::log::get_common_rotation_logger(name_, "cerebro");
+    logger_->info("Created cerebro: {} ", name_);
     replay_controller_ = std::make_shared<data::replay::DataReplayController>();
+    observers_.push_back(std::make_shared<observer::PerformanceObserver>());
 }
 
 CerebroBase::~CerebroBase() {
@@ -47,6 +47,9 @@ bool CerebroBase::add_strategy(std::shared_ptr<strategy::StrategyBase> strategy)
     }
     
     strategies_.push_back(strategy);
+    for (auto& obs : observers_) {
+        strategy->add_observer(obs);
+    }
     logger_->info("{} Added strategy: {}", name_, strategy->get_name());
     return true;
 }
@@ -246,7 +249,20 @@ bool CerebroBase::process_next() {
         strategy->on_data_series(cached_bar_series_, sync_result.day_changed, 
                                  sync_result.hour_changed, sync_result.minute_changed);
     }
-    
+
+    std::map<std::string, double> price_map;
+    for (const auto& [name, bar] : sync_result.data) {
+        if (bar.has_value()) {
+            auto provider = replay_controller_->get_data_provider(name);
+            if (provider) {
+                price_map[provider->get_symbol()] = bar->close;
+            }
+        }
+    }
+    for (auto& obs : observers_) {
+        obs->update_market_value(sync_result.current_time, price_map);
+    }
+
     return true;
 }
 
