@@ -22,6 +22,17 @@ class BrokerProvider;
 namespace cerebro {
 
 /**
+ * @brief Configuration for backtest broker
+ */
+struct BacktestConfig {
+    double starting_cash = 100000.0;
+    double commission_per_trade = 0.0;
+    double slippage_percent = 0.0;
+    double initial_margin_percent = 0.0;
+    double maintenance_margin_percent = 0.0;
+};
+
+/**
  * @brief Base class for all cerebro types
  * 
  * This class provides the common functionality for all cerebro implementations,
@@ -68,6 +79,14 @@ public:
      */
     std::shared_ptr<broker::AbstractBroker> get_broker() const { return broker_; }
 
+    // Broker configuration
+    bool set_broker_type(const std::string& broker_type);
+    bool configure_backtest_broker(double starting_cash, double commission = 0.0, double slippage = 0.0, 
+                                  double initial_margin = 0.0, double maintenance_margin = 0.0);
+    
+    // Get performance statistics
+    void print_performance_report() const;
+
     /**
      * @brief Set the replay mode for all data providers
      * 
@@ -106,7 +125,7 @@ public:
      * 
      * @return true if the run is successful, false otherwise
      */
-    virtual bool run() = 0;
+    virtual bool run();
 
     /**
      * @brief Stop cerebro execution
@@ -171,6 +190,10 @@ protected:
     long long wait_data_timeout_ = 60000; // 60 seconds
 
     std::vector<std::shared_ptr<observer::ObserverBase>> observers_;
+    
+    // Broker configuration parameters
+    std::string broker_type_ = "backtest";
+    BacktestConfig backtest_config_;
 };
 
 } // namespace cerebro

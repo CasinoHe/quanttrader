@@ -1,12 +1,14 @@
 #include "cerebro_base.h"
 #include "broker/backtest_broker.h"
+#include <thread>
 
 namespace quanttrader {
 namespace cerebro {
 
-CerebroBase::CerebroBase(const std::string_view name) : name_(name), stop_flag_(false) {
+CerebroBase::CerebroBase(const std::string_view name) 
+    : name_(name), stop_flag_(false) {
     logger_ = quanttrader::log::get_common_rotation_logger(name_, "cerebro");
-    logger_->info("Created cerebro: {} ", name_);
+    logger_->info("Created cerebro: {}", name_);
     replay_controller_ = std::make_shared<data::replay::DataReplayController>();
     observers_.push_back(std::make_shared<observer::PerformanceObserver>());
 }
@@ -70,6 +72,37 @@ void CerebroBase::set_broker(std::shared_ptr<broker::AbstractBroker> broker) {
     }
     
     logger_->info("{} Set broker for cerebro", name_);
+}
+
+bool CerebroBase::set_broker_type(const std::string& broker_type) {
+    if (is_running_) {
+        logger_->error("{} Cannot change broker type while running", name_);
+        return false;
+    }
+    
+    broker_type_ = broker_type;
+    
+    logger_->info("{} Set broker type to: {}", name_, broker_type_);
+    return true;
+}
+
+bool CerebroBase::configure_backtest_broker(double starting_cash, double commission, double slippage, 
+                                           double initial_margin, double maintenance_margin) {
+    if (is_running_) {
+        logger_->error("{} Cannot configure broker while running", name_);
+        return false;
+    }
+    
+    // Store the configuration temporarily, will be applied when broker is created
+    backtest_config_.starting_cash = starting_cash;
+    backtest_config_.commission_per_trade = commission;
+    backtest_config_.slippage_percent = slippage;
+    backtest_config_.initial_margin_percent = initial_margin;
+    backtest_config_.maintenance_margin_percent = maintenance_margin;
+    
+    logger_->info("{} Configured backtest broker: starting_cash={}, commission={}, slippage={}%, initial_margin={}%, maintenance_margin={}%",
+                 name_, starting_cash, commission, slippage, initial_margin, maintenance_margin);
+    return true;
 }
 
 void CerebroBase::set_replay_mode(data::provider::DataProvider::ReplayMode mode) {
@@ -138,6 +171,35 @@ bool CerebroBase::prepare() {
         return false;
     }
     
+    // Create and configure broker if not already set
+    if (!broker_) {
+        if (broker_type_ == "backtest") {
+            auto backtest_broker = std::make_shared<broker::BacktestBroker>(backtest_config_.starting_cash);
+            backtest_broker->set_commission(backtest_config_.commission_per_trade);
+            backtest_broker->set_slippage(backtest_config_.slippage_percent);
+            backtest_broker->set_margin_requirements(backtest_config_.initial_margin_percent, backtest_config_.maintenance_margin_percent);
+            broker_ = backtest_broker;
+        } else {
+            logger_->error("{} Unsupported broker type: {}", name_, broker_type_);
+            return false;
+        }
+        
+        // Set the broker for all strategies
+        for (auto& strategy : strategies_) {
+            strategy->set_broker(broker_);
+        }
+        
+        // Connect observers to broker
+        for (auto& observer : observers_) {
+            auto performance_observer = std::dynamic_pointer_cast<observer::PerformanceObserver>(observer);
+            if (performance_observer) {
+                performance_observer->set_broker(broker_);
+            }
+        }
+        
+        logger_->info("{} Created and configured {} broker", name_, broker_type_);
+    }
+    
     // Start the data providers
     if (!replay_controller_->start()) {
         logger_->error("{} Failed to start data providers", name_);
@@ -196,6 +258,8 @@ bool CerebroBase::stop() {
         return true;
     }
     
+    stop_flag_.store(true);
+    
     // Stop all data providers
     replay_controller_->stop();
     
@@ -206,6 +270,9 @@ bool CerebroBase::stop() {
     for (auto& strategy : strategies_) {
         strategy->on_stop();
     }
+    
+    // Generate final performance report
+    print_performance_report();
     
     is_running_ = false;
     logger_->info("{} CerebroBase stopped successfully", name_);
@@ -294,6 +361,106 @@ bool CerebroBase::process_next() {
     }
 
     return true;
+}
+
+bool CerebroBase::run() {
+    if (!prepare()) {
+        logger_->error("{} Failed to prepare for execution", name_);
+        return false;
+    }
+    
+    is_running_ = true;
+    logger_->info("{} Starting execution...", name_);
+    
+    // Initialize all strategies
+    for (auto& strategy : strategies_) {
+        if (!strategy->on_start()) {
+            logger_->error("{} Failed to start strategy: {}", name_, strategy->get_name());
+            return false;
+        }
+    }
+    
+    // Main execution loop
+    while (is_running_ && !stop_flag_.load()) {
+        if (!process_next()) {
+            logger_->info("{} No more data to process, execution complete", name_);
+            break;
+        }
+        
+        // Small delay to prevent tight loop in real-time scenarios
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+    
+    // Stop all strategies
+    for (auto& strategy : strategies_) {
+        strategy->on_stop();
+    }
+    
+    // Generate performance report
+    print_performance_report();
+    
+    is_running_ = false;
+    logger_->info("{} Execution completed", name_);
+    return true;
+}
+
+void CerebroBase::print_performance_report() const {
+    logger_->info("========== {} Performance Report ==========", name_);
+    
+    if (broker_) {
+        auto account_info = broker_->get_account_info();
+        logger_->info("Account Summary:");
+        logger_->info("  Current Cash: {:.2f}", account_info.cash);
+        logger_->info("  Current Equity: {:.2f}", account_info.equity);
+        
+        // Calculate return if we have starting cash information
+        double starting_cash = backtest_config_.starting_cash;
+        if (starting_cash > 0) {
+            logger_->info("  Starting Cash: {:.2f}", starting_cash);
+            logger_->info("  Total Return: {:.2f} ({:.2f}%)", 
+                         account_info.equity - starting_cash,
+                         ((account_info.equity - starting_cash) / starting_cash) * 100.0);
+        }
+        
+        logger_->info("  Realized P&L: {:.2f}", account_info.realized_pnl);
+        logger_->info("  Unrealized P&L: {:.2f}", account_info.unrealized_pnl);
+        logger_->info("  Buying Power: {:.2f}", account_info.buying_power);
+        
+        // Current positions
+        auto positions = broker_->get_all_positions();
+        logger_->info("Current Positions:");
+        if (positions.empty()) {
+            logger_->info("  No open positions");
+        } else {
+            for (const auto& [symbol, position] : positions) {
+                if (position.quantity != 0) {
+                    logger_->info("  {}: {} shares @ {:.2f} (P&L: {:.2f})",
+                                 symbol, position.quantity, position.avg_price,
+                                 position.realized_pnl + position.unrealized_pnl);
+                }
+            }
+        }
+        
+        // Recent trades
+        auto trades = broker_->get_trades();
+        logger_->info("Trade History ({} trades):", trades.size());
+        for (const auto& trade : trades) {
+            logger_->info("  {} {} {:.0f} {} @ {:.2f} (Order: {})",
+                         trade.symbol,
+                         (trade.side == broker::OrderSide::BUY) ? "BUY" : "SELL",
+                         trade.quantity,
+                         trade.symbol,
+                         trade.price,
+                         trade.order_id);
+        }
+    }
+    
+    // Observer reports
+    for (const auto& observer : observers_) {
+        observer->report();
+    }
+    
+    logger_->info("========== End Performance Report ==========");
 }
 
 } // namespace cerebro

@@ -72,14 +72,15 @@ virtual void on_position_update(const broker::Position& position);
 virtual void on_account_update(const broker::AccountInfo& account);
 ```
 
-### 4. Enhanced Cerebro (`cerebro/enhanced_cerebro.h`)
+### 4. Enhanced Cerebro (`cerebro/cerebro_base.h`)
 
 The cerebro class now provides complete broker integration:
 
-- **Broker Configuration**: Easy setup of different broker types
+- **Broker Configuration**: Easy setup of different broker types with parameters
 - **Strategy Integration**: Automatic broker assignment to strategies
 - **Performance Monitoring**: Enhanced reporting with broker data
 - **Data Synchronization**: Market data updates to broker and strategies
+- **Unified Interface**: Single class handles both simple and complex trading scenarios
 
 ### 5. Performance Observer Updates (`observer/performance_observer.h`)
 
@@ -93,7 +94,7 @@ The performance observer can now work with broker data:
 
 ```cpp
 // Create enhanced cerebro
-auto cerebro = std::make_shared<cerebro::EnhancedCerebro>("MyBacktest", 100000.0);
+auto cerebro = std::make_shared<cerebro::CerebroBase>("MyBacktest", 100000.0);
 
 // Configure backtest broker
 cerebro->set_broker_type("backtest", 100000.0);
