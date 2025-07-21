@@ -81,6 +81,7 @@ private:
     
     // Internal methods
     void update_from_broker();
+    void reconstruct_completed_trades_from_broker();
 };
 
 } // namespace observer
