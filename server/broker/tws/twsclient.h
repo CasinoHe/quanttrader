@@ -167,6 +167,33 @@ public:
     virtual void wshEventData(int reqId, const std::string& dataJson) override {};
     virtual void historicalSchedule(int reqId, const std::string& startDateTime, const std::string& endDateTime, const std::string& timeZone, const std::vector<HistoricalSession>& sessions) override {};
     virtual void userInfo(int reqId, const std::string& whiteBrandingId) override {};
+    virtual void currentTimeInMillis(time_t timeInMillis) override {};
+
+    // protobuf methods
+#if !defined(USE_WIN_DLL)
+    virtual void execDetailsProtoBuf(const protobuf::ExecutionDetails& executionDetailsProto) override {};
+    virtual void execDetailsEndProtoBuf(const protobuf::ExecutionDetailsEnd& executionDetailsEndProto) override {};
+    virtual void orderStatusProtoBuf(const protobuf::OrderStatus& orderStatusProto) override {};
+    virtual void openOrderProtoBuf(const protobuf::OpenOrder& openOrderProto) override {};
+    virtual void openOrdersEndProtoBuf(const protobuf::OpenOrdersEnd& openOrderEndProto) override {};
+    virtual void errorProtoBuf(const protobuf::ErrorMessage& errorProto) override {};
+    virtual void completedOrderProtoBuf(const protobuf::CompletedOrder& completedOrderProto) override {};
+    virtual void completedOrdersEndProtoBuf(const protobuf::CompletedOrdersEnd& completedOrdersEndProto) override {};
+    virtual void orderBoundProtoBuf(const protobuf::OrderBound& orderBoundProto) override {};
+    virtual void contractDataProtoBuf(const protobuf::ContractData& contractDataProto) override {};
+    virtual void bondContractDataProtoBuf(const protobuf::ContractData& contractDataProto) override {};
+    virtual void contractDataEndProtoBuf(const protobuf::ContractDataEnd& contractDataEndProto) override {};
+    virtual void tickPriceProtoBuf(const protobuf::TickPrice& tickPriceProto) override {};
+    virtual void tickSizeProtoBuf(const protobuf::TickSize& tickSizeProto) override {};
+    virtual void tickOptionComputationProtoBuf(const protobuf::TickOptionComputation& tickOptionComputationProto) override {};
+    virtual void tickGenericProtoBuf(const protobuf::TickGeneric& tickGenericProto) override {};
+    virtual void tickStringProtoBuf(const protobuf::TickString& tickStringProto) override {};
+    virtual void tickSnapshotEndProtoBuf(const protobuf::TickSnapshotEnd& tickSnapshotEndProto) override {};
+    virtual void updateMarketDepthProtoBuf(const protobuf::MarketDepth& marketDepthProto) override {};
+    virtual void updateMarketDepthL2ProtoBuf(const protobuf::MarketDepthL2& marketDepthL2Proto) override {};
+    virtual void marketDataTypeProtoBuf(const protobuf::MarketDataType& marketDataTypeProto) override {};
+    virtual void tickReqParamsProtoBuf(const protobuf::TickReqParams& tickReqParamsProto) override {};
+#endif
 
 private:
     SignalHandler signal_handler_; // Signal handler for EClientSocket
