@@ -83,9 +83,6 @@ public:
     bool set_broker_type(const std::string& broker_type);
     bool configure_backtest_broker(double starting_cash, double commission = 0.0, double slippage = 0.0, 
                                   double initial_margin = 0.0, double maintenance_margin = 0.0);
-    
-    // Get performance statistics
-    void print_performance_report() const;
 
     /**
      * @brief Set the replay mode for all data providers
