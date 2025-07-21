@@ -2,6 +2,7 @@
 #include "data/common/data_struct.h"
 #include <sstream>
 #include <iomanip>
+#include <chrono>
 
 namespace quanttrader {
 namespace strategy {
@@ -88,7 +89,180 @@ void StrategyBase::on_data_series(const std::map<std::string, data::BarSeries>& 
     next();
 }
 
-void StrategyBase::buy(const std::string& symbol, int quantity, double price) {
+void StrategyBase::set_broker(std::shared_ptr<broker::AbstractBroker> broker) {
+    broker_ = broker;
+    
+    if (broker_) {
+        // Register callbacks to receive broker events
+        broker_->register_order_status_callback([this](const broker::Order& order) {
+            on_order_status(order);
+        });
+        
+        broker_->register_trade_callback([this](const broker::Trade& trade) {
+            on_trade_execution(trade);
+        });
+        
+        broker_->register_position_callback([this](const broker::Position& position) {
+            on_position_update(position);
+        });
+        
+        broker_->register_account_callback([this](const broker::AccountInfo& account) {
+            on_account_update(account);
+        });
+        
+        logger_->info("Broker integration enabled for strategy: {}", strategy_name_);
+    }
+}
+
+long StrategyBase::buy(const std::string& symbol, double quantity, double price, broker::OrderType type) {
+    if (!broker_) {
+        logger_->error("No broker set for strategy: {}", strategy_name_);
+        return -1;
+    }
+    
+    if (quantity <= 0) {
+        logger_->warn("Buy order rejected: quantity must be positive ({})", quantity);
+        return -1;
+    }
+    
+    long order_id = broker_->place_order(symbol, broker::OrderSide::BUY, type, quantity, price);
+    
+    if (order_id > 0) {
+        logger_->info("BUY ORDER PLACED: {} {} {} @ {} (Order ID: {})", 
+                     strategy_name_, quantity, symbol, price, order_id);
+    }
+    
+    return order_id;
+}
+
+long StrategyBase::sell(const std::string& symbol, double quantity, double price, broker::OrderType type) {
+    if (!broker_) {
+        logger_->error("No broker set for strategy: {}", strategy_name_);
+        return -1;
+    }
+    
+    if (quantity <= 0) {
+        logger_->warn("Sell order rejected: quantity must be positive ({})", quantity);
+        return -1;
+    }
+    
+    long order_id = broker_->place_order(symbol, broker::OrderSide::SELL, type, quantity, price);
+    
+    if (order_id > 0) {
+        logger_->info("SELL ORDER PLACED: {} {} {} @ {} (Order ID: {})", 
+                     strategy_name_, quantity, symbol, price, order_id);
+    }
+    
+    return order_id;
+}
+
+long StrategyBase::buy_limit(const std::string& symbol, double quantity, double price) {
+    return buy(symbol, quantity, price, broker::OrderType::LIMIT);
+}
+
+long StrategyBase::sell_limit(const std::string& symbol, double quantity, double price) {
+    return sell(symbol, quantity, price, broker::OrderType::LIMIT);
+}
+
+long StrategyBase::buy_stop(const std::string& symbol, double quantity, double stop_price) {
+    return buy(symbol, quantity, stop_price, broker::OrderType::STOP);
+}
+
+long StrategyBase::sell_stop(const std::string& symbol, double quantity, double stop_price) {
+    return sell(symbol, quantity, stop_price, broker::OrderType::STOP);
+}
+
+broker::Position StrategyBase::get_position(const std::string& symbol) const {
+    if (!broker_) {
+        logger_->error("No broker set for strategy: {}", strategy_name_);
+        return broker::Position(symbol, 0.0, 0.0);
+    }
+    
+    return broker_->get_position(symbol);
+}
+
+std::map<std::string, broker::Position> StrategyBase::get_all_positions() const {
+    if (!broker_) {
+        logger_->error("No broker set for strategy: {}", strategy_name_);
+        return {};
+    }
+    
+    return broker_->get_all_positions();
+}
+
+bool StrategyBase::close_position(const std::string& symbol, double quantity) {
+    if (!broker_) {
+        logger_->error("No broker set for strategy: {}", strategy_name_);
+        return false;
+    }
+    
+    return broker_->close_position(symbol, quantity);
+}
+
+bool StrategyBase::cancel_order(long order_id) {
+    if (!broker_) {
+        logger_->error("No broker set for strategy: {}", strategy_name_);
+        return false;
+    }
+    
+    return broker_->cancel_order(order_id);
+}
+
+std::vector<broker::Order> StrategyBase::get_orders(const std::string& symbol) const {
+    if (!broker_) {
+        logger_->error("No broker set for strategy: {}", strategy_name_);
+        return {};
+    }
+    
+    return broker_->get_orders(symbol);
+}
+
+std::vector<broker::Order> StrategyBase::get_open_orders(const std::string& symbol) const {
+    if (!broker_) {
+        logger_->error("No broker set for strategy: {}", strategy_name_);
+        return {};
+    }
+    
+    return broker_->get_open_orders(symbol);
+}
+
+broker::AccountInfo StrategyBase::get_account_info() const {
+    if (!broker_) {
+        logger_->error("No broker set for strategy: {}", strategy_name_);
+        return broker::AccountInfo();
+    }
+    
+    return broker_->get_account_info();
+}
+
+double StrategyBase::get_cash() const {
+    if (!broker_) {
+        logger_->error("No broker set for strategy: {}", strategy_name_);
+        return 0.0;
+    }
+    
+    return broker_->get_cash();
+}
+
+double StrategyBase::get_equity() const {
+    if (!broker_) {
+        logger_->error("No broker set for strategy: {}", strategy_name_);
+        return 0.0;
+    }
+    
+    return broker_->get_equity();
+}
+
+double StrategyBase::get_buying_power() const {
+    if (!broker_) {
+        logger_->error("No broker set for strategy: {}", strategy_name_);
+        return 0.0;
+    }
+    
+    return broker_->get_buying_power();
+}
+
+void StrategyBase::buy_legacy(const std::string& symbol, int quantity, double price) {
     if (quantity <= 0) {
         logger_->warn("Buy order rejected: quantity must be positive ({})", quantity);
         return;
@@ -103,7 +277,7 @@ void StrategyBase::buy(const std::string& symbol, int quantity, double price) {
         price_str = "market";
     }
     
-    logger_->info("BUY SIGNAL: {} {} @ {}", symbol, quantity, price_str);
+    logger_->info("LEGACY BUY SIGNAL: {} {} @ {}", symbol, quantity, price_str);
 
     double trade_price = price;
     if (trade_price <= 0) {
@@ -117,12 +291,9 @@ void StrategyBase::buy(const std::string& symbol, int quantity, double price) {
             obs->record_trade(current_time_, symbol, quantity, trade_price, true);
         }
     }
-    
-    // In a real implementation, this would send the order to the broker
-    // broker_->place_order(symbol, quantity, price, true);
 }
 
-void StrategyBase::sell(const std::string& symbol, int quantity, double price) {
+void StrategyBase::sell_legacy(const std::string& symbol, int quantity, double price) {
     if (quantity <= 0) {
         logger_->warn("Sell order rejected: quantity must be positive ({})", quantity);
         return;
@@ -137,7 +308,7 @@ void StrategyBase::sell(const std::string& symbol, int quantity, double price) {
         price_str = "market";
     }
     
-    logger_->info("SELL SIGNAL: {} {} @ {}", symbol, quantity, price_str);
+    logger_->info("LEGACY SELL SIGNAL: {} {} @ {}", symbol, quantity, price_str);
 
     double trade_price = price;
     if (trade_price <= 0) {
@@ -151,9 +322,6 @@ void StrategyBase::sell(const std::string& symbol, int quantity, double price) {
             obs->record_trade(current_time_, symbol, quantity, trade_price, false);
         }
     }
-    
-    // In a real implementation, this would send the order to the broker
-    // broker_->place_order(symbol, quantity, price, false);
 }
 
 }

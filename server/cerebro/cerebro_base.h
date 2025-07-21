@@ -6,6 +6,7 @@
 #include "strategy/strategy_base.h"
 #include "observer/observer_base.h"
 #include "observer/performance_observer.h"
+#include "broker/abstract_broker.h"
 #include "logger/quantlogger.h"
 #include <memory>
 #include <string>
@@ -19,6 +20,17 @@ class BrokerProvider;
 }
 
 namespace cerebro {
+
+/**
+ * @brief Configuration for backtest broker
+ */
+struct BacktestConfig {
+    double starting_cash = 100000.0;
+    double commission_per_trade = 0.0;
+    double slippage_percent = 0.0;
+    double initial_margin_percent = 0.0;
+    double maintenance_margin_percent = 0.0;
+};
 
 /**
  * @brief Base class for all cerebro types
@@ -52,6 +64,25 @@ public:
      * @return true if successful, false otherwise
      */
     bool add_strategy(std::shared_ptr<strategy::StrategyBase> strategy);
+
+    /**
+     * @brief Set the broker for trading operations
+     * 
+     * @param broker The broker to use for trading
+     */
+    void set_broker(std::shared_ptr<broker::AbstractBroker> broker);
+
+    /**
+     * @brief Get the current broker
+     * 
+     * @return The current broker
+     */
+    std::shared_ptr<broker::AbstractBroker> get_broker() const { return broker_; }
+
+    // Broker configuration
+    bool set_broker_type(const std::string& broker_type);
+    bool configure_backtest_broker(double starting_cash, double commission = 0.0, double slippage = 0.0, 
+                                  double initial_margin = 0.0, double maintenance_margin = 0.0);
 
     /**
      * @brief Set the replay mode for all data providers
@@ -91,7 +122,7 @@ public:
      * 
      * @return true if the run is successful, false otherwise
      */
-    virtual bool run() = 0;
+    virtual bool run();
 
     /**
      * @brief Stop cerebro execution
@@ -151,11 +182,15 @@ protected:
     // Logging
     quanttrader::log::LoggerPtr logger_;
     std::string name_;
-    std::shared_ptr<broker::BrokerProvider> broker_;
+    std::shared_ptr<broker::AbstractBroker> broker_;
     std::atomic<bool> stop_flag_;
     long long wait_data_timeout_ = 60000; // 60 seconds
 
     std::vector<std::shared_ptr<observer::ObserverBase>> observers_;
+    
+    // Broker configuration parameters
+    std::string broker_type_ = "backtest";
+    BacktestConfig backtest_config_;
 };
 
 } // namespace cerebro

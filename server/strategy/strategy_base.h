@@ -11,6 +11,7 @@
 #include "logger/quantlogger.h"
 #include "data/common/data_struct.h"
 #include "observer/observer_base.h"
+#include "broker/abstract_broker.h"
 
 namespace quanttrader {
 namespace data {
@@ -41,6 +42,12 @@ public:
     virtual void on_trade(const std::string& symbol, double price, int quantity, bool is_buy) {}
     virtual void on_order(const std::string& order_id, const std::string& status) {}
     
+    // Broker event handlers
+    virtual void on_order_status(const broker::Order& order) {}
+    virtual void on_trade_execution(const broker::Trade& trade) {}
+    virtual void on_position_update(const broker::Position& position) {}
+    virtual void on_account_update(const broker::AccountInfo& account) {}
+    
     /**
      * @brief Called when new data is available (optimized version)
      * 
@@ -58,12 +65,40 @@ public:
 
     void add_observer(std::shared_ptr<observer::ObserverBase> obs) { if (obs) observers_.push_back(obs); }
     
+    // Broker integration
+    void set_broker(std::shared_ptr<broker::AbstractBroker> broker);
+    std::shared_ptr<broker::AbstractBroker> get_broker() const { return broker_; }
+    
     // Access methods
     std::string get_name() const { return strategy_name_; }
     
-    // Trading signals
-    virtual void buy(const std::string& symbol, int quantity, double price = 0.0);
-    virtual void sell(const std::string& symbol, int quantity, double price = 0.0);
+    // Enhanced trading signals with broker integration
+    virtual long buy(const std::string& symbol, double quantity, double price = 0.0, broker::OrderType type = broker::OrderType::MARKET);
+    virtual long sell(const std::string& symbol, double quantity, double price = 0.0, broker::OrderType type = broker::OrderType::MARKET);
+    virtual long buy_limit(const std::string& symbol, double quantity, double price);
+    virtual long sell_limit(const std::string& symbol, double quantity, double price);
+    virtual long buy_stop(const std::string& symbol, double quantity, double stop_price);
+    virtual long sell_stop(const std::string& symbol, double quantity, double stop_price);
+    
+    // Position management
+    virtual broker::Position get_position(const std::string& symbol) const;
+    virtual std::map<std::string, broker::Position> get_all_positions() const;
+    virtual bool close_position(const std::string& symbol, double quantity = 0.0);
+    
+    // Order management
+    virtual bool cancel_order(long order_id);
+    virtual std::vector<broker::Order> get_orders(const std::string& symbol = "") const;
+    virtual std::vector<broker::Order> get_open_orders(const std::string& symbol = "") const;
+    
+    // Account information
+    virtual broker::AccountInfo get_account_info() const;
+    virtual double get_cash() const;
+    virtual double get_equity() const;
+    virtual double get_buying_power() const;
+    
+    // Legacy trading methods (for backward compatibility)
+    virtual void buy_legacy(const std::string& symbol, int quantity, double price = 0.0);
+    virtual void sell_legacy(const std::string& symbol, int quantity, double price = 0.0);
     
 protected:
     // Common logging
@@ -80,6 +115,9 @@ protected:
     std::vector<std::shared_ptr<observer::ObserverBase>> observers_;
     uint64_t current_time_ = 0;
     std::unordered_map<std::string, double> last_prices_;
+    
+    // Broker integration
+    std::shared_ptr<broker::AbstractBroker> broker_;
 
     // Derived strategies should implement this method
     virtual void next() = 0;
