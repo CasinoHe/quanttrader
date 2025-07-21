@@ -68,7 +68,7 @@ set(TWS_ROOT "${THIRDPARTY_DIR}/tws/source/cppclient/client")
 set(TWS_PROTO_ROOT "${TWS_ROOT}/protobufUnix")
 file(GLOB TWS_SOURCES ${TWS_ROOT}/*.cpp)
 file(GLOB TWS_HEADERS ${TWS_ROOT}/*.h)
-file(GLOB TWS_PROTO_SOURCES ${TWS_PROTO_ROOT}/*.cpp)
+file(GLOB TWS_PROTO_SOURCES ${TWS_PROTO_ROOT}/*.cc)
 file(GLOB TWS_PROTO_HEADERS ${TWS_PROTO_ROOT}/*.h)
 set(twsapi_VERSION 9.79.02)
 # --------------------- build tws api end ---------------------------
