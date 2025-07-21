@@ -46,6 +46,10 @@
         {
             "name": "date",
             "features": []
+        },
+        {
+            "name": "protobuf",
+            "features": []
         }
     ],
     "overrides": [

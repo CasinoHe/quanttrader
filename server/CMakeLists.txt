@@ -45,6 +45,7 @@ find_package(unofficial-concurrentqueue CONFIG REQUIRED)
 find_package(CURL REQUIRED)
 find_package(unofficial-sqlite3 CONFIG REQUIRED)
 find_package(RapidJSON CONFIG REQUIRED)
+find_package(protobuf CONFIG REQUIRED)
 
 # find date library only on Apple platform
 if (APPLE)
@@ -63,9 +64,12 @@ include(${SERVER_ROOT_DIR}/TALib.cmake)
 # --------------------- build ta-lib end ---------------------------
 
 # --------------------- build tws api start ---------------------------
-set(TWS_ROOT "${THIRDPARTY_DIR}/tws")
+set(TWS_ROOT "${THIRDPARTY_DIR}/tws/source/cppclient/client")
+set(TWS_PROTO_ROOT "${TWS_ROOT}/protobufUnix")
 file(GLOB TWS_SOURCES ${TWS_ROOT}/*.cpp)
 file(GLOB TWS_HEADERS ${TWS_ROOT}/*.h)
+file(GLOB TWS_PROTO_SOURCES ${TWS_PROTO_ROOT}/*.cpp)
+file(GLOB TWS_PROTO_HEADERS ${TWS_PROTO_ROOT}/*.h)
 set(twsapi_VERSION 9.79.02)
 # --------------------- build tws api end ---------------------------
 
@@ -74,7 +78,7 @@ source_group("lua" FILES ${LUA_SOURCES})
 source_group("tws" FILES ${TWS_SOURCES} ${TWS_HEADERS})
 source_group("server" FILES ${SERVER_SOURCES})
 
-add_executable(${PROJECT_NAME} ${SERVER_SOURCES} ${LUA_SOURCES} ${TWS_SOURCES} ${TA_LIB_SOURCES})
+add_executable(${PROJECT_NAME} ${SERVER_SOURCES} ${LUA_SOURCES} ${TWS_SOURCES} ${TA_LIB_SOURCES} ${TWS_PROTO_SOURCES} ${TWS_PROTO_HEADERS})
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${THIRDPARTY_DIR}/fmt/include
                                                   ${THIRDPARTY_DIR}/spdlog/include
@@ -82,6 +86,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE ${THIRDPARTY_DIR}/fmt/include
                                                   ${SERVER_ROOT_DIR}/basic
                                                   ${Boost_INCLUDE_DIRS}
                                                   ${TWS_ROOT}
+                                                  ${TWS_PROTO_ROOT}
                                                   )
 get_filename_component(THIRD_PARTY_LIB_DIRS ${Boost_INCLUDE_DIRS}/../lib ABSOLUTE)
 target_link_directories(${PROJECT_NAME} PRIVATE ${THIRD_PARTY_LIB_DIRS})
@@ -95,6 +100,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE fmt::fmt
                                 CURL::libcurl
                                 unofficial::sqlite3::sqlite3
                                 rapidjson
+                                protobuf::libprotoc protobuf::libprotobuf protobuf::libprotobuf-lite
                                 )
 
 if (APPLE)
