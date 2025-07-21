@@ -3,6 +3,7 @@
 #include "observer_base.h"
 #include "logger/quantlogger.h"
 #include "broker/abstract_broker.h"
+#include "basic/time/time_with_zone.h"
 #include <map>
 #include <string>
 #include <vector>
@@ -28,6 +29,7 @@ struct CompletedTrade {
     double entry_price;
     double exit_price;
     double max_drawdown;
+    uint64_t max_drawdown_time;  // Time when max drawdown occurred
     double profit;
     uint64_t duration;
 };
@@ -39,6 +41,7 @@ struct OpenTrade {
     bool is_long;
     double entry_price;
     double worst_price;
+    uint64_t worst_price_time;  // Time when worst price occurred
 };
 
 class PerformanceObserver : public ObserverBase {
@@ -83,6 +86,7 @@ private:
     void update_from_broker();
     void reconstruct_completed_trades_from_broker();
     std::string format_duration(uint64_t duration_ms) const;
+    std::string format_timestamp(uint64_t timestamp_ms) const;
 };
 
 } // namespace observer
