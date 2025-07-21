@@ -398,12 +398,13 @@ bool CerebroBase::run() {
         strategy->on_stop();
     }
     
+    // moved to stop function
     // Observer reports
-    for (const auto& observer : observers_) {
-        observer->report();
-    }
-    
-    is_running_ = false;
+    // for (const auto& observer : observers_) {
+    //     observer->report();
+    // }
+    // is_running_ = false;
+
     logger_->info("{} Execution completed", name_);
     return true;
 }
