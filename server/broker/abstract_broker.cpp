@@ -14,6 +14,14 @@ AbstractBroker::AbstractBroker(double starting_cash) : account_info_(starting_ca
 
 long AbstractBroker::place_order(const std::string& symbol, OrderSide side, OrderType type, 
                                 double quantity, double price, double stop_price) {
+    // Call the overloaded version with current system time
+    uint64_t current_time = std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count();
+    return place_order(symbol, side, type, quantity, price, stop_price, current_time);
+}
+
+long AbstractBroker::place_order(const std::string& symbol, OrderSide side, OrderType type, 
+                                double quantity, double price, double stop_price, uint64_t timestamp) {
     if (quantity <= 0) {
         logger_->error("Invalid order quantity: {}", quantity);
         return -1;
@@ -21,8 +29,7 @@ long AbstractBroker::place_order(const std::string& symbol, OrderSide side, Orde
     
     long order_id = get_next_order_id();
     Order order(order_id, symbol, side, type, quantity, price, stop_price);
-    order.timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::system_clock::now().time_since_epoch()).count();
+    order.timestamp = timestamp;
     
     // Check if we have enough buying power for buy orders
     if (side == OrderSide::BUY) {

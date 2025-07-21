@@ -82,6 +82,7 @@ private:
     // Internal methods
     void update_from_broker();
     void reconstruct_completed_trades_from_broker();
+    std::string format_duration(uint64_t duration_ms) const;
 };
 
 } // namespace observer

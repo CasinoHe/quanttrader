@@ -11,13 +11,13 @@ BacktestBroker::BacktestBroker(double starting_cash) : AbstractBroker(starting_c
 }
 
 void BacktestBroker::process_market_data(uint64_t timestamp, const std::map<std::string, double>& prices) {
-    current_timestamp_ = timestamp;
+    current_timestamp_ = timestamp / 1000000; // Convert nanoseconds to milliseconds
     
     // Update market prices
     update_market_prices(prices);
     
     // Process pending orders
-    process_pending_orders(timestamp, prices);
+    process_pending_orders(current_timestamp_, prices);
     
     // Check margin requirements
     check_margin_requirements();
@@ -25,8 +25,14 @@ void BacktestBroker::process_market_data(uint64_t timestamp, const std::map<std:
 
 long BacktestBroker::place_order(const std::string& symbol, OrderSide side, OrderType type, 
                                 double quantity, double price, double stop_price) {
-    // Call parent implementation to create the order
-    long order_id = AbstractBroker::place_order(symbol, side, type, quantity, price, stop_price);
+    // Use current market timestamp instead of system time
+    return place_order(symbol, side, type, quantity, price, stop_price, current_timestamp_);
+}
+
+long BacktestBroker::place_order(const std::string& symbol, OrderSide side, OrderType type, 
+                                double quantity, double price, double stop_price, uint64_t timestamp) {
+    // Call parent implementation with the provided timestamp
+    long order_id = AbstractBroker::place_order(symbol, side, type, quantity, price, stop_price, timestamp);
     
     if (order_id > 0) {
         // For market orders, try to fill immediately if we have current price

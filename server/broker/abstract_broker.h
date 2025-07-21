@@ -127,6 +127,8 @@ public:
     // Order management
     virtual long place_order(const std::string& symbol, OrderSide side, OrderType type, 
                            double quantity, double price = 0.0, double stop_price = 0.0);
+    virtual long place_order(const std::string& symbol, OrderSide side, OrderType type, 
+                           double quantity, double price, double stop_price, uint64_t timestamp);
     virtual bool cancel_order(long order_id);
     virtual bool modify_order(long order_id, double new_quantity, double new_price = 0.0);
     virtual std::optional<Order> get_order(long order_id) const;

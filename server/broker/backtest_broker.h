@@ -32,6 +32,8 @@ public:
     // Override order placement to handle backtesting logic
     long place_order(const std::string& symbol, OrderSide side, OrderType type, 
                     double quantity, double price = 0.0, double stop_price = 0.0) override;
+    long place_order(const std::string& symbol, OrderSide side, OrderType type, 
+                    double quantity, double price, double stop_price, uint64_t timestamp) override;
 
 private:
     // Backtesting parameters

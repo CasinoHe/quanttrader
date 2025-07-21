@@ -1,6 +1,7 @@
 #include "performance_observer.h"
 #include <iostream>
 #include <algorithm>
+#include <sstream>
 
 namespace quanttrader {
 namespace observer {
@@ -191,7 +192,7 @@ void PerformanceObserver::report() const {
         } else {
             for (const auto& trade : completed_trades_) {
                 double return_pct = (trade.profit / (trade.entry_price * trade.quantity)) * 100.0;
-                logger_->info("  {} {} {} shares: Entry {:.2f} -> Exit {:.2f} = {} {:.2f} ({:.2f}%) [Duration: {}ms]",
+                logger_->info("  {} {} {} shares: Entry {:.2f} -> Exit {:.2f} = {} {:.2f} ({:.2f}%) [Duration: {}]",
                              trade.symbol,
                              trade.is_long ? "LONG" : "SHORT",
                              trade.quantity,
@@ -200,7 +201,7 @@ void PerformanceObserver::report() const {
                              trade.profit >= 0 ? "Profit" : "Loss",
                              trade.profit,
                              return_pct,
-                             trade.duration);
+                             format_duration(trade.duration));
             }
         }
         
@@ -232,7 +233,7 @@ void PerformanceObserver::report() const {
         } else {
             for (const auto& ct : completed_trades_) {
                 double return_pct = (ct.profit / (ct.entry_price * ct.quantity)) * 100.0;
-                logger_->info("  {} {} {} shares: Entry {:.2f} -> Exit {:.2f} = {} {:.2f} ({:.2f}%) [Duration: {}ms, Max DD: {:.2f}]",
+                logger_->info("  {} {} {} shares: Entry {:.2f} -> Exit {:.2f} = {} {:.2f} ({:.2f}%) [Duration: {}, Max DD: {:.2f}]",
                              ct.symbol,
                              ct.is_long ? "LONG" : "SHORT",
                              ct.quantity,
@@ -241,7 +242,7 @@ void PerformanceObserver::report() const {
                              ct.profit >= 0 ? "Profit" : "Loss",
                              ct.profit,
                              return_pct,
-                             ct.duration,
+                             format_duration(ct.duration),
                              ct.max_drawdown);
             }
         }
@@ -385,6 +386,50 @@ void PerformanceObserver::reconstruct_completed_trades_from_broker() {
             open_trades_[symbol] = ot;
         }
     }
+}
+
+std::string PerformanceObserver::format_duration(uint64_t duration_ms) const {
+    if (duration_ms == 0) {
+        return "0ms";
+    }
+    
+    // Convert milliseconds to different time units
+    uint64_t seconds = duration_ms / 1000;
+    uint64_t minutes = seconds / 60;
+    uint64_t hours = minutes / 60;
+    uint64_t days = hours / 24;
+    
+    std::ostringstream oss;
+    
+    if (days > 0) {
+        uint64_t remaining_hours = hours % 24;
+        oss << days << "d";
+        if (remaining_hours > 0) {
+            oss << " " << remaining_hours << "h";
+        }
+    } else if (hours > 0) {
+        uint64_t remaining_minutes = minutes % 60;
+        oss << hours << "h";
+        if (remaining_minutes > 0) {
+            oss << " " << remaining_minutes << "m";
+        }
+    } else if (minutes > 0) {
+        uint64_t remaining_seconds = seconds % 60;
+        oss << minutes << "m";
+        if (remaining_seconds > 0) {
+            oss << " " << remaining_seconds << "s";
+        }
+    } else if (seconds > 0) {
+        uint64_t remaining_ms = duration_ms % 1000;
+        oss << seconds << "s";
+        if (remaining_ms > 0) {
+            oss << " " << remaining_ms << "ms";
+        }
+    } else {
+        oss << duration_ms << "ms";
+    }
+    
+    return oss.str();
 }
 
 } // namespace observer
