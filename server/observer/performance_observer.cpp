@@ -167,6 +167,10 @@ void PerformanceObserver::update_from_broker() {
     }
 }
 
+void PerformanceObserver::set_broker(std::shared_ptr<broker::AbstractBroker> broker) {
+    broker_ = broker;
+}
+
 void PerformanceObserver::report() const {
     logger_->info("===== Performance Report =====");
     
@@ -626,9 +630,9 @@ std::string PerformanceObserver::format_timestamp(uint64_t timestamp_ms) const {
     uint64_t timestamp_ns = timestamp_ms * 1000000ULL;
     
     try {
-        // Use the current system timezone or fall back to UTC
-        auto time_with_zone = quanttrader::time::TimeWithZone(timestamp_ns, "");
-        return time_with_zone.to_string();
+        // Use the configured timezone instead of empty string
+        auto time_with_zone = quanttrader::time::TimeWithZone(timestamp_ns, timezone_);
+        return time_with_zone.to_string_with_name();  // Use to_string_with_name() to include timezone info
     } catch (const std::exception& e) {
         // Fallback to simple formatting if TimeWithZone fails
         std::time_t timestamp_sec = timestamp_ms / 1000;
@@ -646,6 +650,9 @@ std::string PerformanceObserver::format_timestamp(uint64_t timestamp_ms) const {
         
         std::ostringstream oss;
         oss << std::put_time(&tm_local, "%Y-%m-%d %H:%M:%S");
+        if (!timezone_.empty()) {
+            oss << " " << timezone_;
+        }
         return oss.str();
     }
 }

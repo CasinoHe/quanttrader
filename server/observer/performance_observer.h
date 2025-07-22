@@ -54,7 +54,7 @@ public:
     void update_market_value(uint64_t time, const std::map<std::string, double>& prices) override;
 
     // Broker integration
-    void set_broker(std::shared_ptr<broker::AbstractBroker> broker) { broker_ = broker; }
+    void set_broker(std::shared_ptr<broker::AbstractBroker> broker);
     std::shared_ptr<broker::AbstractBroker> get_broker() const { return broker_; }
 
     double get_equity() const { return equity_; }

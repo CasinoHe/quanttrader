@@ -21,6 +21,13 @@ public:
                                      const std::map<std::string, double>& prices) = 0;
 
     virtual void report() const = 0;
+
+    // Timezone management
+    virtual void set_timezone(const std::string& timezone) { timezone_ = timezone; }
+    virtual std::string get_timezone() const { return timezone_; }
+
+protected:
+    std::string timezone_ = "UTC";  // Default timezone
 };
 
 } // namespace observer

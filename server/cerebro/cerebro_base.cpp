@@ -223,6 +223,14 @@ bool CerebroBase::prepare() {
         return false;
     }
 
+    // Set timezone for all observers from data providers
+    if (!first_timezone.empty()) {
+        for (auto& observer : observers_) {
+            observer->set_timezone(first_timezone);
+            logger_->info("{} Set timezone '{}' for observer", name_, first_timezone);
+        }
+    }
+
     // Wait for all data to be ready
     int wait_time = 0;
     const int max_wait_time = static_cast<int>(wait_data_timeout_ / 1000);  // seconds
