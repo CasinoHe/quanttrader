@@ -13,7 +13,7 @@ namespace observer {
 
 PerformanceObserver::PerformanceObserver(double starting_cash)
     : starting_cash_(starting_cash), cash_(starting_cash), equity_(starting_cash),
-      peak_equity_(starting_cash), max_drawdown_(0.0) {
+      peak_equity_(starting_cash), max_drawdown_(0.0), max_drawdown_time_(0) {
     logger_ = quanttrader::log::get_common_rotation_logger("PerformanceObserver", "observer");
 }
 
@@ -63,12 +63,16 @@ void PerformanceObserver::record_trade(uint64_t time, const std::string& symbol,
     }
 
     positions_[symbol] = new_qty;
+    
+    // Update equity after trade (simplified calculation using only cash)
+    // Full equity calculation happens in update_market_value
+    equity_ = cash_;  // Temporary, will be updated with position values in update_market_value
 }
 
 void PerformanceObserver::update_market_value(uint64_t time, const std::map<std::string, double>& prices) {
     // Update broker data if available
     if (broker_) {
-        update_from_broker();
+        update_from_broker(time);
     } else {
         // Legacy behavior for backward compatibility
         double pos_value = 0.0;
@@ -94,18 +98,11 @@ void PerformanceObserver::update_market_value(uint64_t time, const std::map<std:
         }
 
         equity_ = cash_ + pos_value;
-        if (equity_ > peak_equity_) {
-            peak_equity_ = equity_;
-        } else {
-            double dd = peak_equity_ - equity_;
-            if (dd > max_drawdown_) {
-                max_drawdown_ = dd;
-            }
-        }
+        track_equity_history(time, equity_);
     }
 }
 
-void PerformanceObserver::update_from_broker() {
+void PerformanceObserver::update_from_broker(uint64_t time) {
     if (!broker_) {
         return;
     }
@@ -115,15 +112,8 @@ void PerformanceObserver::update_from_broker() {
     cash_ = account_info.cash;
     equity_ = account_info.equity;
     
-    // Update peak equity and max drawdown
-    if (equity_ > peak_equity_) {
-        peak_equity_ = equity_;
-    } else {
-        double dd = peak_equity_ - equity_;
-        if (dd > max_drawdown_) {
-            max_drawdown_ = dd;
-        }
-    }
+    // Track equity history with timestamp
+    track_equity_history(time, equity_);
     
     // Update positions from broker
     auto broker_positions = broker_->get_all_positions();
@@ -165,6 +155,22 @@ void PerformanceObserver::update_from_broker() {
             gross_loss_ += -position.realized_pnl;
         }
     }
+}
+
+void PerformanceObserver::track_equity_history(uint64_t time, double equity) {
+    // Update peak equity and max drawdown with timestamp tracking
+    if (equity > peak_equity_) {
+        peak_equity_ = equity;
+    }
+    
+    double drawdown = peak_equity_ - equity;
+    if (drawdown > max_drawdown_) {
+        max_drawdown_ = drawdown;
+        max_drawdown_time_ = time;
+    }
+    
+    // Store equity history point
+    equity_history_.push_back({time, equity, peak_equity_, drawdown});
 }
 
 void PerformanceObserver::set_broker(std::shared_ptr<broker::AbstractBroker> broker) {
@@ -218,7 +224,11 @@ void PerformanceObserver::report() const {
         logger_->info("Realized P&L: ${:.2f} ({:.2f}%)", account_info.realized_pnl, realized_percentage);
         logger_->info("Unrealized P&L: ${:.2f}", account_info.unrealized_pnl);
         logger_->info("Max drawdown: ${:.2f} ({:.2f}%)", max_drawdown_, (max_drawdown_ / starting_cash_) * 100.0);
-        logger_->info("Max DD time: N/A (requires historical equity tracking)");
+        if (max_drawdown_time_ > 0) {
+            logger_->info("Max DD time: {}", format_timestamp(max_drawdown_time_));
+        } else {
+            logger_->info("Max DD time: N/A (no drawdown occurred)");
+        }
         
         logger_->info("===== TRADE STATISTICS =====");
         logger_->info("Total trades: {}", total_trades);
@@ -354,7 +364,11 @@ void PerformanceObserver::report() const {
         logger_->info("Gross profit: ${:.2f}", gross_profit_);
         logger_->info("Gross loss: ${:.2f}", gross_loss_);
         logger_->info("Max drawdown: ${:.2f} ({:.2f}%)", max_drawdown_, (max_drawdown_ / starting_cash_) * 100.0);
-        logger_->info("Max DD time: N/A (requires historical equity tracking)");
+        if (max_drawdown_time_ > 0) {
+            logger_->info("Max DD time: {}", format_timestamp(max_drawdown_time_));
+        } else {
+            logger_->info("Max DD time: N/A (no drawdown occurred)");
+        }
         
         logger_->info("===== TRADE STATISTICS =====");
         logger_->info("Total trades: {}", total_trades);
@@ -621,13 +635,24 @@ std::string PerformanceObserver::format_duration(uint64_t duration_ms) const {
     return oss.str();
 }
 
-std::string PerformanceObserver::format_timestamp(uint64_t timestamp_ms) const {
-    if (timestamp_ms == 0) {
+std::string PerformanceObserver::format_timestamp(uint64_t timestamp_ns) const {
+    if (timestamp_ns == 0) {
         return "N/A";
     }
     
-    // Convert milliseconds to nanoseconds for TimeWithZone
-    uint64_t timestamp_ns = timestamp_ms * 1000000ULL;
+    // Check if timestamp is too small to be valid nanoseconds since epoch
+    const uint64_t kMinimumNanosecondsEpoch = 1000000000000000000ULL; // 10^18, year ~2001
+    if (timestamp_ns < kMinimumNanosecondsEpoch) {
+        // If it appears to be milliseconds, convert to nanoseconds
+        if (timestamp_ns > 1000000000000ULL) { // Seems like milliseconds (> year 2001 in ms)
+            timestamp_ns = timestamp_ns * 1000000ULL;
+            if (timestamp_ns < kMinimumNanosecondsEpoch) {
+                return "Invalid timestamp (too old)";
+            }
+        } else {
+            return "Invalid timestamp (too small)";
+        }
+    }
     
     try {
         // Use the configured timezone instead of empty string
@@ -635,7 +660,7 @@ std::string PerformanceObserver::format_timestamp(uint64_t timestamp_ms) const {
         return time_with_zone.to_string_with_name();  // Use to_string_with_name() to include timezone info
     } catch (const std::exception& e) {
         // Fallback to simple formatting if TimeWithZone fails
-        std::time_t timestamp_sec = timestamp_ms / 1000;
+        std::time_t timestamp_sec = timestamp_ns / 1000000000ULL; // Convert nanoseconds to seconds
         std::tm tm_local;
         
 #ifdef _WIN32

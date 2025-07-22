@@ -59,6 +59,7 @@ public:
 
     double get_equity() const { return equity_; }
     double get_max_drawdown() const { return max_drawdown_; }
+    uint64_t get_max_drawdown_time() const { return max_drawdown_time_; }
     double get_gross_profit() const { return gross_profit_; }
     double get_gross_loss() const { return gross_loss_; }
 
@@ -70,6 +71,7 @@ private:
     double equity_;
     double peak_equity_;
     double max_drawdown_;
+    uint64_t max_drawdown_time_ = 0;  // Time when max drawdown occurred
     double gross_profit_ = 0.0;
     double gross_loss_ = 0.0;
     std::map<std::string, int> positions_;
@@ -79,14 +81,24 @@ private:
     std::vector<CompletedTrade> completed_trades_;
     quanttrader::log::LoggerPtr logger_;
     
+    // Historical equity tracking for max drawdown time calculation
+    struct EquityPoint {
+        uint64_t time;
+        double equity;
+        double peak_equity;
+        double drawdown;
+    };
+    std::vector<EquityPoint> equity_history_;
+    
     // Broker integration
     std::shared_ptr<broker::AbstractBroker> broker_;
     
     // Internal methods
-    void update_from_broker();
+    void update_from_broker(uint64_t time);
     void reconstruct_completed_trades_from_broker();
+    void track_equity_history(uint64_t time, double equity);
     std::string format_duration(uint64_t duration_ms) const;
-    std::string format_timestamp(uint64_t timestamp_ms) const;
+    std::string format_timestamp(uint64_t timestamp_ns) const;
 };
 
 } // namespace observer
