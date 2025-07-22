@@ -105,7 +105,7 @@ void compare_time_changes(uint64_t previous_time, uint64_t current_time, const s
             result.minute_changed = true;
             logger->debug("Minute changed (epoch): {} -> {}", prev_min.time_since_epoch().count(), curr_min.time_since_epoch().count());
         }
-        logger->info("Current aligned time: {} (ns: {}), data {}", curr_twz.to_string_with_name(), current_time, data_name);
+        logger->debug("Current aligned time: {} (ns: {}), data {}", curr_twz.to_string_with_name(), current_time, data_name);
     } else {
         quanttrader::time::TimeWithZone curr_twz(current_time, timezone);
         logger->info("Initializing with time: {} (ns: {}), data {}", curr_twz.to_string_with_name(), current_time, data_name);

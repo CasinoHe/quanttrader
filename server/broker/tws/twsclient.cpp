@@ -159,7 +159,7 @@ void TwsClient::historicalData(TickerId req_id, const Bar &bar) {
     response->is_end = false;
     response_queue_->enqueue(std::dynamic_pointer_cast<ResponseHeader>(response));
 
-    logger_->info("Historical Data. ReqId: {}, Date: {}, Open: {}, High: {}, Low: {}, Close: {}, Volume: {} Wap: {} Count: {}",
+    logger_->debug("Historical Data. ReqId: {}, Date: {}, Open: {}, High: {}, Low: {}, Close: {}, Volume: {} Wap: {} Count: {}",
                   req_id, bar.time, bar.open, bar.high, bar.low, bar.close, bar.volume, bar.wap, bar.count);
 }
 
