@@ -9,6 +9,8 @@ namespace fs = std::filesystem;
 namespace quanttrader {
 namespace strategy {
 
+namespace qlog = quanttrader::log;
+
 static std::vector<void*> loaded_handles;
 
 bool StrategyLoader::load_plugins(const std::string &directory) {
