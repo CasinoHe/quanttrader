@@ -3,6 +3,7 @@
 #include "broker/broker_provider_factory.h"
 #include "data/common/data_provider_factory.h"
 #include "strategy/strategy_factory.h"
+#include "strategy/strategy_loader.h"
 #include "cerebro/cerebro_factory.h"
 #include "config/lua_config_loader.h"
 
@@ -214,6 +215,13 @@ bool StockTradeService::prepare_cerebro() {
 }
 
 bool StockTradeService::prepare_strategyes() {
+    // Load strategy plugins
+    std::string plugin_dir = get_string_value(STRATEGY_LIB_PATH);
+    if (plugin_dir.empty()) {
+        plugin_dir = "strategies";
+    }
+    strategy::StrategyLoader::load_plugins(plugin_dir);
+
     // Get strategy configurations
     auto strategy_names = get_string_value("strategy_names");
     std::vector<std::string> strategies;
@@ -316,6 +324,7 @@ void StockTradeService::stop() {
         }
     }
     logger_->info("Stop broker and back test service.");
+    strategy::StrategyLoader::unload_plugins();
 }
 
 bool StockTradeService::is_service_prepared() const {

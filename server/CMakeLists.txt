@@ -23,6 +23,9 @@ file(GLOB_RECURSE C_SOURCES LIST_DIRECTORIES false ${SERVER_ROOT_DIR}/*.c)
 list(APPEND SERVER_SOURCES ${C_SOURCES})
 # Exclude files in the build directory and its subdirectories
 list(FILTER SERVER_SOURCES EXCLUDE REGEX "${SERVER_ROOT_DIR}/build/.*")
+list(FILTER SERVER_SOURCES EXCLUDE REGEX "${SERVER_ROOT_DIR}/strategy/slope_strategy/.*")
+list(FILTER SERVER_SOURCES EXCLUDE REGEX "${SERVER_ROOT_DIR}/strategy/strategy_base.cpp")
+list(FILTER SERVER_SOURCES EXCLUDE REGEX "${SERVER_ROOT_DIR}/strategy/broker_aware_strategy.cpp")
 
 # -------------------------- build test code ----------------------------
 # TODO: build test using python/lua script in runtime
@@ -78,6 +81,14 @@ source_group("lua" FILES ${LUA_SOURCES})
 source_group("tws" FILES ${TWS_SOURCES} ${TWS_HEADERS})
 source_group("server" FILES ${SERVER_SOURCES})
 
+# core strategy library to be linked by executable and strategy plugins
+add_library(strategy_core STATIC
+    strategy/strategy_base.cpp
+    strategy/broker_aware_strategy.cpp
+)
+set_target_properties(strategy_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
+target_include_directories(strategy_core PUBLIC ${SERVER_ROOT_DIR})
+
 add_executable(${PROJECT_NAME} ${SERVER_SOURCES} ${LUA_SOURCES} ${TWS_SOURCES} ${TA_LIB_SOURCES} ${TWS_PROTO_SOURCES} ${TWS_PROTO_HEADERS})
 
 target_include_directories(${PROJECT_NAME} PRIVATE ${THIRDPARTY_DIR}/fmt/include
@@ -90,8 +101,9 @@ target_include_directories(${PROJECT_NAME} PRIVATE ${THIRDPARTY_DIR}/fmt/include
                                                   )
 get_filename_component(THIRD_PARTY_LIB_DIRS ${Boost_INCLUDE_DIRS}/../lib ABSOLUTE)
 target_link_directories(${PROJECT_NAME} PRIVATE ${THIRD_PARTY_LIB_DIRS})
-target_link_libraries(${PROJECT_NAME} PRIVATE fmt::fmt 
+target_link_libraries(${PROJECT_NAME} PRIVATE fmt::fmt
                                 spdlog::spdlog
+                                strategy_core
                                 Boost::program_options
                                 Boost::algorithm
                                 Boost::stacktrace_basic
@@ -117,3 +129,5 @@ if(MSVC)
 else()
     target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -pedantic -Wno-unused-parameter)
 endif()
+
+add_subdirectory(strategy/slope_strategy)

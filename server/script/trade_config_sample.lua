@@ -22,8 +22,9 @@ StockTradeService = {
 		tickers = "AAPL,MSFT,GOOG",
 	},
 
-	-- settings for strategy
-	strategy_names = "apple_slope,msft_slope",
+        -- settings for strategy
+        strategy_lib_path = "strategies",
+        strategy_names = "apple_slope,msft_slope",
 
 	-- setting for cerebro
 	cerebro_names = "backtest_cerebro,live_cerebro",
