@@ -22,3 +22,11 @@
 1. Logging support module: Use **spdlog** to enable multi-threaded logging output.
 2. Data reading module: Support real-time data acquisition from the IB API.
 3. Simple strategy backtesting module: Perform rapid backtesting with data retrieved from the IB API.
+
+## Strategy Plugins
+
+Strategies are compiled independently of the trading system. Each strategy
+produces a shared library that can be placed in the directory configured by
+`strategy_lib_path`. The sample project under `server/strategy/slope_strategy`
+can be built separately using CMake and the resulting library copied to the
+server before running.

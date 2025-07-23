@@ -130,4 +130,3 @@ else()
     target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -pedantic -Wno-unused-parameter)
 endif()
 
-add_subdirectory(strategy/slope_strategy)
