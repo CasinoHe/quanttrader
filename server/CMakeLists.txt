@@ -25,6 +25,8 @@ list(APPEND SERVER_SOURCES ${C_SOURCES})
 list(FILTER SERVER_SOURCES EXCLUDE REGEX "${SERVER_ROOT_DIR}/build/.*")
 list(FILTER SERVER_SOURCES EXCLUDE REGEX "${SERVER_ROOT_DIR}/strategy/slope_strategy/.*")
 list(FILTER SERVER_SOURCES EXCLUDE REGEX "${SERVER_ROOT_DIR}/strategy/strategy_base.cpp")
+list(FILTER SERVER_SOURCES EXCLUDE REGEX "${SERVER_ROOT_DIR}/strategy/strategy_factory.cpp")
+list(FILTER SERVER_SOURCES EXCLUDE REGEX "${SERVER_ROOT_DIR}/strategy/strategy_loader.cpp")
 list(FILTER SERVER_SOURCES EXCLUDE REGEX "${SERVER_ROOT_DIR}/strategy/broker_aware_strategy.cpp")
 
 # -------------------------- build test code ----------------------------
@@ -95,6 +97,8 @@ set(COMMON_INCLUDE_DIRS
 # core strategy library to be linked by executable and strategy plugins
 add_library(strategy_core STATIC
     strategy/strategy_base.cpp
+    strategy/strategy_factory.cpp
+    strategy/strategy_loader.cpp
     basic/logger/quantlogger.cpp
     basic/config/lua_config_loader.cpp
     ${LUA_SOURCES}

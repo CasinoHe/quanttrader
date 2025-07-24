@@ -5,6 +5,9 @@
 namespace quanttrader {
 namespace strategy {
 
+// Local strategy name - each plugin defines its own
+constexpr const char* STRATEGY_NAME = "broker_aware";
+
 // Function to register the BrokerAwareStrategy with the factory
 bool registerBrokerAwareStrategy() {
     auto creatorFunc = [](StrategyCreateFuncParemType &param) -> std::shared_ptr<StrategyBase> {
@@ -13,7 +16,7 @@ bool registerBrokerAwareStrategy() {
         return std::static_pointer_cast<StrategyBase>(strategy);
     };
     
-    return StrategyFactory::instance()->register_strategy("BrokerAwareStrategy", creatorFunc);
+    return StrategyFactory::instance()->register_strategy(STRATEGY_NAME, creatorFunc);
 }
 
 // Automatic registration
