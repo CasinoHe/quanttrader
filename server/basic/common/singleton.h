@@ -9,8 +9,16 @@ class Singleton {
 public:
     template<typename... Args>
     static std::shared_ptr<T> instance(Args&&... args) {
-        static std::shared_ptr<T> instance(new T(std::forward<Args>(args)...), [](T* ptr) { delete ptr; });
-        return instance;
+        auto& inst = get_instance_ref();
+        if (!inst) {
+            inst.reset(new T(std::forward<Args>(args)...), [](T* ptr) { delete ptr; });
+        }
+        return inst;
+    }
+
+    static void destroy_instance() {
+        auto& inst = get_instance_ref();
+        inst.reset();
     }
 
 protected:
@@ -22,5 +30,10 @@ private:
     Singleton(Singleton&&) = delete;
     Singleton& operator=(const Singleton&) = delete;
     Singleton& operator=(Singleton&&) = delete;
+
+    static std::shared_ptr<T>& get_instance_ref() {
+        static std::shared_ptr<T> instance;
+        return instance;
+    }
 };
 }

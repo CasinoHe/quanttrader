@@ -355,6 +355,10 @@ bool StockTradeService::is_service_prepared() const {
 
     return true;
 }
+void StockTradeService::destroy() {
+    Singleton<StockTradeService>::destroy_instance();
+}
+
 
 }
 }
