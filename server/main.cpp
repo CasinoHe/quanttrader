@@ -89,7 +89,6 @@ int run_strategy_command(const std::string &config_path) {
         // Service::run() contains the main execution loop for backtesting or live trading
         service->run();
         service->stop();
-        service->destroy();
         qlog::QuantLogger::deinitialize();
         return EXIT_SUCCESS;
     }

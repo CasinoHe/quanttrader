@@ -22,14 +22,24 @@ def make_msg_proto(msgId: int, protobufData: bytes) -> bytes:
     msg = struct.pack(f"!I{len(byteArray)}s", len(byteArray), byteArray)
     return msg
 
-def make_msg(msgId:int, useRawIntMsgId: bool, text: str) -> bytes:
-    """adds the length prefix"""
-    if useRawIntMsgId:
-        text = msgId.to_bytes(4, 'big') + str.encode(text)
-    else:
-        text = str.encode(make_field(msgId) + text)
+def make_msg(msgId:int | str, useRawIntMsgId: bool | None = None, text: str | None = None) -> bytes:
+    """adds the length prefix
 
-    msg = struct.pack(f"!I{len(text)}s", len(text), text)
+    This helper historically accepted a single text argument. The modern API
+    requires ``msgId`` and ``useRawIntMsgId`` flags as well.  To maintain
+    backward compatibility with older tests that call ``make_msg(text)``, this
+    function checks the argument count and behaves accordingly.
+    """
+
+    if text is None and useRawIntMsgId is None:
+        payload = str.encode(msgId)
+    else:
+        if useRawIntMsgId:
+            payload = msgId.to_bytes(4, 'big') + str.encode(text)
+        else:
+            payload = str.encode(make_field(msgId) + text)
+
+    msg = struct.pack(f"!I{len(payload)}s", len(payload), payload)
     return msg
 
 def make_initial_msg(text: str) -> bytes:
