@@ -87,10 +87,15 @@ add_library(strategy_core STATIC
     strategy/broker_aware_strategy.cpp
 )
 set_target_properties(strategy_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
-target_include_directories(strategy_core PUBLIC ${SERVER_ROOT_DIR})
+target_include_directories(strategy_core PRIVATE 
+    ${SERVER_ROOT_DIR}
+    ${SERVER_ROOT_DIR}/basic
+    ${Boost_INCLUDE_DIRS}
+    ${TWS_ROOT}
+    ${TWS_PROTO_ROOT}
+)
 
 add_executable(${PROJECT_NAME} ${SERVER_SOURCES} ${LUA_SOURCES} ${TWS_SOURCES} ${TA_LIB_SOURCES} ${TWS_PROTO_SOURCES} ${TWS_PROTO_HEADERS})
-
 target_include_directories(${PROJECT_NAME} PRIVATE ${THIRDPARTY_DIR}/fmt/include
                                                   ${THIRDPARTY_DIR}/spdlog/include
                                                   ${SERVER_ROOT_DIR}
@@ -129,4 +134,7 @@ if(MSVC)
 else()
     target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -pedantic -Wno-unused-parameter)
 endif()
+
+# Build strategy plugins
+add_subdirectory(${PROJECT_ROOT_DIR}/strategies strategies_build)
 
