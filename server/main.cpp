@@ -88,6 +88,7 @@ int run_strategy_command(const std::string &config_path) {
     } else {
         // Service::run() contains the main execution loop for backtesting or live trading
         service->run();
+        service->stop();
         return EXIT_SUCCESS;
     }
 }
