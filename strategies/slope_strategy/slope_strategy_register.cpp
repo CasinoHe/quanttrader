@@ -1,10 +1,12 @@
 #include "slope_strategy.h"
 #include "strategy/strategy_factory.h"
-#include "strategy/strategy_const.h"
 #include <memory>
 
 namespace quanttrader {
 namespace strategy {
+
+// Local strategy name - each plugin defines its own
+constexpr const char* STRATEGY_NAME = "slope";
 
 // Function to register the TWS broker provider with the factory
 bool registerSlopeStrategy() {
@@ -14,7 +16,7 @@ bool registerSlopeStrategy() {
         return std::static_pointer_cast<StrategyBase>(strategy);
     };
     
-    return StrategyFactory::instance()->register_strategy(SLOPE_STRATEGY_NAME, creatorFunc);
+    return StrategyFactory::instance()->register_strategy(STRATEGY_NAME, creatorFunc);
 }
 
 // Automatic registration
