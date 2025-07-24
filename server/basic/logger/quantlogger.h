@@ -34,6 +34,8 @@ class QuantLogger {
 public:
     // Initialize function, should be called before use logger
     static void init();
+    // Deinitialize function, call before shutting down application
+    static void deinitialize();
 
     // Sets the logging level dynamically based on input string
     static bool set_default_log_level(std::string level);

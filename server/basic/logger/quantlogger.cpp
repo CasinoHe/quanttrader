@@ -214,6 +214,16 @@ bool QuantLogger::remove_logger(const std::string &name) {
     }
 }
 
+void QuantLogger::deinitialize() {
+    {
+        std::lock_guard<std::mutex> lock(logger_mutex_);
+        logger_names_.clear();
+    }
+    g_logger_.reset();
+    init_flag_ = false;
+    spdlog::shutdown();
+}
+
 void QuantLogger::print_message(const std::string &&msg) {
     uint64_t now = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
     time_t t = now / 1000;
