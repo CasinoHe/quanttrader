@@ -81,6 +81,17 @@ source_group("lua" FILES ${LUA_SOURCES})
 source_group("tws" FILES ${TWS_SOURCES} ${TWS_HEADERS})
 source_group("server" FILES ${SERVER_SOURCES})
 
+# Define common include directories
+set(COMMON_INCLUDE_DIRS
+    ${THIRDPARTY_DIR}/fmt/include
+    ${THIRDPARTY_DIR}/spdlog/include
+    ${SERVER_ROOT_DIR}
+    ${SERVER_ROOT_DIR}/basic
+    ${Boost_INCLUDE_DIRS}
+    ${TWS_ROOT}
+    ${TWS_PROTO_ROOT}
+)
+
 # core strategy library to be linked by executable and strategy plugins
 add_library(strategy_core STATIC
     strategy/strategy_base.cpp
@@ -89,50 +100,28 @@ add_library(strategy_core STATIC
     ${LUA_SOURCES}
 )
 set_target_properties(strategy_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
-target_include_directories(strategy_core PUBLIC 
-    ${SERVER_ROOT_DIR}
-    ${SERVER_ROOT_DIR}/basic
-    ${THIRDPARTY_DIR}/fmt/include
-    ${THIRDPARTY_DIR}/spdlog/include
-    ${THIRDPARTY_DIR}/lua
-    ${THIRDPARTY_DIR}/ta-lib/include
-    ${THIRDPARTY_DIR}/ta-lib/src/ta_abstract
-    ${THIRDPARTY_DIR}/ta-lib/src/ta_abstract/frames
-    ${THIRDPARTY_DIR}/ta-lib/src/ta_common
-    ${THIRDPARTY_DIR}/ta-lib/src/ta_func
-    ${Boost_INCLUDE_DIRS}
-    ${TWS_ROOT}
-    ${TWS_PROTO_ROOT}
-)
+target_include_directories(strategy_core PUBLIC ${COMMON_INCLUDE_DIRS})
 target_link_libraries(strategy_core PUBLIC 
     fmt::fmt
     spdlog::spdlog
 )
 
 add_executable(${PROJECT_NAME} ${SERVER_SOURCES} ${LUA_SOURCES} ${TWS_SOURCES} ${TA_LIB_SOURCES} ${TWS_PROTO_SOURCES} ${TWS_PROTO_HEADERS})
-target_include_directories(${PROJECT_NAME} PRIVATE ${THIRDPARTY_DIR}/fmt/include
-                                                  ${THIRDPARTY_DIR}/spdlog/include
-                                                  ${SERVER_ROOT_DIR}
-                                                  ${SERVER_ROOT_DIR}/basic
-                                                  ${Boost_INCLUDE_DIRS}
-                                                  ${TWS_ROOT}
-                                                  ${TWS_PROTO_ROOT}
-                                                  )
+target_include_directories(${PROJECT_NAME} PRIVATE ${COMMON_INCLUDE_DIRS})
 get_filename_component(THIRD_PARTY_LIB_DIRS ${Boost_INCLUDE_DIRS}/../lib ABSOLUTE)
 target_link_directories(${PROJECT_NAME} PRIVATE ${THIRD_PARTY_LIB_DIRS})
-target_link_libraries(${PROJECT_NAME} PRIVATE fmt::fmt
-                                spdlog::spdlog
-                                strategy_core
-                                Boost::program_options
-                                Boost::algorithm
-                                Boost::stacktrace_basic
-                                intel_decimal128
-                                unofficial::concurrentqueue::concurrentqueue
-                                CURL::libcurl
-                                unofficial::sqlite3::sqlite3
-                                rapidjson
-                                protobuf::libprotoc protobuf::libprotobuf protobuf::libprotobuf-lite
-                                )
+target_link_libraries(${PROJECT_NAME} PRIVATE
+    strategy_core
+    Boost::program_options
+    Boost::algorithm
+    Boost::stacktrace_basic
+    intel_decimal128
+    unofficial::concurrentqueue::concurrentqueue
+    CURL::libcurl
+    unofficial::sqlite3::sqlite3
+    rapidjson
+    protobuf::libprotoc protobuf::libprotobuf protobuf::libprotobuf-lite
+)
 
 if (APPLE)
     target_link_libraries(${PROJECT_NAME} PRIVATE date::date date-tz)
