@@ -9,6 +9,7 @@
 
 #include <sstream>
 #include <vector>
+#include <filesystem>
 
 namespace quanttrader {
 namespace service {
@@ -220,7 +221,14 @@ bool StockTradeService::prepare_strategyes() {
     if (plugin_dir.empty()) {
         plugin_dir = "strategies";
     }
-    strategy::StrategyLoader::load_plugins(plugin_dir);
+    
+    // Use current working directory as base path for relative plugin directory
+    std::filesystem::path current_path = std::filesystem::current_path();
+    std::filesystem::path plugin_path = current_path / plugin_dir;
+    std::string final_plugin_dir = plugin_path.string();
+    
+    logger_->info("Loading strategy plugins from: {}", final_plugin_dir);
+    strategy::StrategyLoader::load_plugins(final_plugin_dir);
 
     // Get strategy configurations
     auto strategy_names = get_string_value("strategy_names");
