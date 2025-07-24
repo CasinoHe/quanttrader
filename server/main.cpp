@@ -4,7 +4,6 @@
 #include "service/service_factory.h"
 #include "service/service.h"
 #include "service/stock_service/stock_trade_service.h"
-#include "spdlog/spdlog.h"
 
 #ifdef QUANTTRADER_BUILD_TEST
 #include "test/test_base.h"
@@ -92,7 +91,7 @@ int run_strategy_command(const std::string &config_path) {
         service->run();
         service->stop();
         quanttrader::service::StockTradeService::destroy();
-        spdlog::shutdown();
+        qlog::QuantLogger::deinitialize();
         return EXIT_SUCCESS;
     }
 }
