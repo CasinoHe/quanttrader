@@ -217,6 +217,39 @@ class BuildProject(BuildBase):
         if not self._run_command(build_dir, "cmake", args):
             raise RuntimeError(f"Failed to build project {self.args.build_type}.")
 
+    def copy_strategy_libraries(self):
+        """Copy all strategy dynamic libraries to the executable directory for easy testing"""
+        if self.args.build_type != "server":
+            return  # Only copy for server builds
+            
+        build_dir = self.get_build_dir()
+        executable_dir = os.path.join(build_dir, self.args.build_variant)
+        strategies_build_dir = os.path.join(build_dir, "strategies_build")
+        
+        if not os.path.exists(strategies_build_dir):
+            print("No strategies build directory found, skipping strategy library copy.")
+            return
+            
+        if not os.path.exists(executable_dir):
+            print(f"Executable directory not found: {executable_dir}")
+            return
+            
+        print(f"Copying strategy libraries to executable directory: {executable_dir}")
+        
+        # Find all .so files in strategies_build directory
+        for root, dirs, files in os.walk(strategies_build_dir):
+            for file in files:
+                if file.endswith('.so'):
+                    src_path = os.path.join(root, file)
+                    dst_path = os.path.join(executable_dir, file)
+                    try:
+                        shutil.copy2(src_path, dst_path)
+                        print(f"Copied {file} to executable directory")
+                    except Exception as e:
+                        print(f"Failed to copy {file}: {e}")
+                        
+        print("Strategy library copy completed.")
+
     def get_build_dir(self):
         if self.args.build_type == "server":
             workdir = self.server_root
@@ -242,6 +275,7 @@ class BuildProject(BuildBase):
         else:
             self.configure_project()
             self.build_project()
+            self.copy_strategy_libraries()
 
 
 def parse_args(args):
