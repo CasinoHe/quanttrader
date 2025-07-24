@@ -23,6 +23,7 @@ StockTradeService = {
 	},
 
 	-- settings for strategy
+	strategy_lib_path = "strategies",
 	strategy_names = "apple_slope,msft_slope",
 
 	-- setting for cerebro

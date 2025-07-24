@@ -23,6 +23,9 @@ file(GLOB_RECURSE C_SOURCES LIST_DIRECTORIES false ${SERVER_ROOT_DIR}/*.c)
 list(APPEND SERVER_SOURCES ${C_SOURCES})
 # Exclude files in the build directory and its subdirectories
 list(FILTER SERVER_SOURCES EXCLUDE REGEX "${SERVER_ROOT_DIR}/build/.*")
+list(FILTER SERVER_SOURCES EXCLUDE REGEX "${SERVER_ROOT_DIR}/strategy/slope_strategy/.*")
+list(FILTER SERVER_SOURCES EXCLUDE REGEX "${SERVER_ROOT_DIR}/strategy/strategy_base.cpp")
+list(FILTER SERVER_SOURCES EXCLUDE REGEX "${SERVER_ROOT_DIR}/strategy/broker_aware_strategy.cpp")
 
 # -------------------------- build test code ----------------------------
 # TODO: build test using python/lua script in runtime
@@ -78,30 +81,47 @@ source_group("lua" FILES ${LUA_SOURCES})
 source_group("tws" FILES ${TWS_SOURCES} ${TWS_HEADERS})
 source_group("server" FILES ${SERVER_SOURCES})
 
-add_executable(${PROJECT_NAME} ${SERVER_SOURCES} ${LUA_SOURCES} ${TWS_SOURCES} ${TA_LIB_SOURCES} ${TWS_PROTO_SOURCES} ${TWS_PROTO_HEADERS})
+# Define common include directories
+set(COMMON_INCLUDE_DIRS
+    ${THIRDPARTY_DIR}/fmt/include
+    ${THIRDPARTY_DIR}/spdlog/include
+    ${SERVER_ROOT_DIR}
+    ${SERVER_ROOT_DIR}/basic
+    ${Boost_INCLUDE_DIRS}
+    ${TWS_ROOT}
+    ${TWS_PROTO_ROOT}
+)
 
-target_include_directories(${PROJECT_NAME} PRIVATE ${THIRDPARTY_DIR}/fmt/include
-                                                  ${THIRDPARTY_DIR}/spdlog/include
-                                                  ${SERVER_ROOT_DIR}
-                                                  ${SERVER_ROOT_DIR}/basic
-                                                  ${Boost_INCLUDE_DIRS}
-                                                  ${TWS_ROOT}
-                                                  ${TWS_PROTO_ROOT}
-                                                  )
+# core strategy library to be linked by executable and strategy plugins
+add_library(strategy_core STATIC
+    strategy/strategy_base.cpp
+    basic/logger/quantlogger.cpp
+    basic/config/lua_config_loader.cpp
+    ${LUA_SOURCES}
+)
+set_target_properties(strategy_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
+target_include_directories(strategy_core PUBLIC ${COMMON_INCLUDE_DIRS})
+target_link_libraries(strategy_core PUBLIC 
+    fmt::fmt
+    spdlog::spdlog
+)
+
+add_executable(${PROJECT_NAME} ${SERVER_SOURCES} ${LUA_SOURCES} ${TWS_SOURCES} ${TA_LIB_SOURCES} ${TWS_PROTO_SOURCES} ${TWS_PROTO_HEADERS})
+target_include_directories(${PROJECT_NAME} PRIVATE ${COMMON_INCLUDE_DIRS})
 get_filename_component(THIRD_PARTY_LIB_DIRS ${Boost_INCLUDE_DIRS}/../lib ABSOLUTE)
 target_link_directories(${PROJECT_NAME} PRIVATE ${THIRD_PARTY_LIB_DIRS})
-target_link_libraries(${PROJECT_NAME} PRIVATE fmt::fmt 
-                                spdlog::spdlog
-                                Boost::program_options
-                                Boost::algorithm
-                                Boost::stacktrace_basic
-                                intel_decimal128
-                                unofficial::concurrentqueue::concurrentqueue
-                                CURL::libcurl
-                                unofficial::sqlite3::sqlite3
-                                rapidjson
-                                protobuf::libprotoc protobuf::libprotobuf protobuf::libprotobuf-lite
-                                )
+target_link_libraries(${PROJECT_NAME} PRIVATE
+    strategy_core
+    Boost::program_options
+    Boost::algorithm
+    Boost::stacktrace_basic
+    intel_decimal128
+    unofficial::concurrentqueue::concurrentqueue
+    CURL::libcurl
+    unofficial::sqlite3::sqlite3
+    rapidjson
+    protobuf::libprotoc protobuf::libprotobuf protobuf::libprotobuf-lite
+)
 
 if (APPLE)
     target_link_libraries(${PROJECT_NAME} PRIVATE date::date date-tz)
@@ -117,3 +137,7 @@ if(MSVC)
 else()
     target_compile_options(${PROJECT_NAME} PRIVATE -Wall -Wextra -pedantic -Wno-unused-parameter)
 endif()
+
+# Build strategy plugins
+add_subdirectory(${PROJECT_ROOT_DIR}/strategies strategies_build)
+

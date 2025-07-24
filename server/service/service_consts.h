@@ -15,6 +15,7 @@ constexpr char SPLIT_BACK_TEST_VARIABLE[] = ",";
 
 // strategy variables
 constexpr char STRATEGY_NAME_VARIABLE[] = "strategy_name";
+constexpr char STRATEGY_LIB_PATH[] = "strategy_lib_path";
 
 constexpr int kDefaultUpdateConfigInterval = 60000;  // interval to update the configuration file in milliseconds
 constexpr int kDefaultRetryInterval = 5000;          // retry interval to connect to TWS in milliseconds

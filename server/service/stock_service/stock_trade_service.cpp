@@ -3,11 +3,13 @@
 #include "broker/broker_provider_factory.h"
 #include "data/common/data_provider_factory.h"
 #include "strategy/strategy_factory.h"
+#include "strategy/strategy_loader.h"
 #include "cerebro/cerebro_factory.h"
 #include "config/lua_config_loader.h"
 
 #include <sstream>
 #include <vector>
+#include <filesystem>
 
 namespace quanttrader {
 namespace service {
@@ -214,6 +216,20 @@ bool StockTradeService::prepare_cerebro() {
 }
 
 bool StockTradeService::prepare_strategyes() {
+    // Load strategy plugins
+    std::string plugin_dir = get_string_value(STRATEGY_LIB_PATH);
+    if (plugin_dir.empty()) {
+        plugin_dir = "strategies";
+    }
+    
+    // Use current working directory as base path for relative plugin directory
+    std::filesystem::path current_path = std::filesystem::current_path();
+    std::filesystem::path plugin_path = current_path / plugin_dir;
+    std::string final_plugin_dir = plugin_path.string();
+    
+    logger_->info("Loading strategy plugins from: {}", final_plugin_dir);
+    strategy::StrategyLoader::load_plugins(final_plugin_dir);
+
     // Get strategy configurations
     auto strategy_names = get_string_value("strategy_names");
     std::vector<std::string> strategies;
@@ -316,6 +332,7 @@ void StockTradeService::stop() {
         }
     }
     logger_->info("Stop broker and back test service.");
+    strategy::StrategyLoader::unload_plugins();
 }
 
 bool StockTradeService::is_service_prepared() const {

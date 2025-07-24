@@ -1,0 +1,25 @@
+# Build directories
+build/
+plugins/
+*.so
+*.dylib
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# IDE files
+.vscode/
+.vs/
+*.user
+*.vcxproj*
+*.sln
+
+# OS specific
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
