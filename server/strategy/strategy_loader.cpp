@@ -31,23 +31,27 @@ bool StrategyLoader::load_plugins(const std::string &directory) {
                 continue;
             }
             
+            // Prepare plugin info so strategy registrations can be tracked
+            PluginInfo plugin_info;
+            plugin_info.handle = nullptr;
+            plugin_info.file_path = entry.path().string();
+            loaded_plugins_[plugin_name] = plugin_info;
+
             // Set current loading plugin for tracking registrations
             current_loading_plugin_ = plugin_name;
-            
+
             void *handle = dlopen(entry.path().c_str(), RTLD_NOW);
             if (!handle) {
                 qlog::Error("Failed to load strategy plugin {}: {}", entry.path().string(), dlerror());
+                // Remove placeholder info since the load failed
+                loaded_plugins_.erase(plugin_name);
                 current_loading_plugin_.clear();
             } else {
-                PluginInfo plugin_info;
-                plugin_info.handle = handle;
-                plugin_info.file_path = entry.path().string();
-                
-                // Store plugin info (strategies are tracked during loading via track_strategy_registration)
-                loaded_plugins_[plugin_name] = plugin_info;
-                qlog::Info("Loaded strategy plugin {} with {} strategies", 
-                          entry.path().string(), loaded_plugins_[plugin_name].registered_strategies.size());
-                
+                loaded_plugins_[plugin_name].handle = handle;
+                qlog::Info("Loaded strategy plugin {} with {} strategies",
+                          entry.path().string(),
+                          loaded_plugins_[plugin_name].registered_strategies.size());
+
                 current_loading_plugin_.clear();
             }
         }
