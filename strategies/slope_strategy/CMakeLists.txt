@@ -22,12 +22,3 @@ target_link_libraries(SlopeStrategy PRIVATE
     strategy_core
     strategy_common
 )
-
-# Link to dependencies if they are available
-if(TARGET fmt::fmt)
-    target_link_libraries(SlopeStrategy PRIVATE fmt::fmt)
-endif()
-
-if(TARGET spdlog::spdlog)
-    target_link_libraries(SlopeStrategy PRIVATE spdlog::spdlog)
-endif()

@@ -84,15 +84,29 @@ source_group("server" FILES ${SERVER_SOURCES})
 # core strategy library to be linked by executable and strategy plugins
 add_library(strategy_core STATIC
     strategy/strategy_base.cpp
-    strategy/broker_aware_strategy.cpp
+    basic/logger/quantlogger.cpp
+    basic/config/lua_config_loader.cpp
+    ${LUA_SOURCES}
 )
 set_target_properties(strategy_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
-target_include_directories(strategy_core PRIVATE 
+target_include_directories(strategy_core PUBLIC 
     ${SERVER_ROOT_DIR}
     ${SERVER_ROOT_DIR}/basic
+    ${THIRDPARTY_DIR}/fmt/include
+    ${THIRDPARTY_DIR}/spdlog/include
+    ${THIRDPARTY_DIR}/lua
+    ${THIRDPARTY_DIR}/ta-lib/include
+    ${THIRDPARTY_DIR}/ta-lib/src/ta_abstract
+    ${THIRDPARTY_DIR}/ta-lib/src/ta_abstract/frames
+    ${THIRDPARTY_DIR}/ta-lib/src/ta_common
+    ${THIRDPARTY_DIR}/ta-lib/src/ta_func
     ${Boost_INCLUDE_DIRS}
     ${TWS_ROOT}
     ${TWS_PROTO_ROOT}
+)
+target_link_libraries(strategy_core PUBLIC 
+    fmt::fmt
+    spdlog::spdlog
 )
 
 add_executable(${PROJECT_NAME} ${SERVER_SOURCES} ${LUA_SOURCES} ${TWS_SOURCES} ${TA_LIB_SOURCES} ${TWS_PROTO_SOURCES} ${TWS_PROTO_HEADERS})

@@ -22,6 +22,15 @@ set(THIRDPARTY_DIR "${PROJECT_ROOT_DIR}/thirdparties")
 message(STATUS "QuantTrader Server Root: ${QUANTTRADER_SERVER_ROOT}")
 message(STATUS "QuantTrader Strategies can be built independently or as part of the main project")
 
+# Add global include directories for all strategy targets
+include_directories(
+    "${QUANTTRADER_SERVER_ROOT}"
+    "${QUANTTRADER_SERVER_ROOT}/basic"
+    "${THIRDPARTY_DIR}/fmt/include"
+    "${THIRDPARTY_DIR}/spdlog/include"
+    "${THIRDPARTY_DIR}/tws/source/cppclient/client"
+)
+
 # Find dependencies
 # Try to find dependencies that might be installed system-wide or in vcpkg
 find_package(fmt 11.0.2 QUIET)
@@ -40,25 +49,10 @@ else()
 endif()
 
 # Build strategy core library (if not already built)
+# The strategy_core library is now built in the main server CMakeLists.txt
+# This section is kept for standalone builds of strategies only
 if(NOT TARGET strategy_core)
-    if(EXISTS "${QUANTTRADER_SERVER_ROOT}/strategy/strategy_base.cpp")
-        add_library(strategy_core STATIC
-            "${QUANTTRADER_SERVER_ROOT}/strategy/strategy_base.cpp"
-            "${QUANTTRADER_SERVER_ROOT}/strategy/broker_aware_strategy.cpp"
-        )
-        set_target_properties(strategy_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
-        target_include_directories(strategy_core PUBLIC "${QUANTTRADER_SERVER_ROOT}")
-        
-        # Link dependencies if available
-        if(TARGET fmt::fmt)
-            target_link_libraries(strategy_core PUBLIC fmt::fmt)
-        endif()
-        if(TARGET spdlog::spdlog)
-            target_link_libraries(strategy_core PUBLIC spdlog::spdlog)
-        endif()
-    else()
-        message(FATAL_ERROR "strategy_core source files not found in ${QUANTTRADER_SERVER_ROOT}/strategy/")
-    endif()
+    message(FATAL_ERROR "strategy_core target not found. This should be built by the main server project.")
 endif()
 
 # Common strategy utilities
@@ -66,6 +60,7 @@ add_subdirectory(common)
 
 # Individual strategies
 add_subdirectory(slope_strategy)
+add_subdirectory(broker_aware_strategy)
 
 # Output directory for all strategy plugins
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/plugins")
