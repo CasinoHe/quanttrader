@@ -30,6 +30,8 @@ public:
     virtual bool prepare() = 0;
     virtual void run() = 0;
     virtual void stop() = 0;
+    // Destroy service instance
+    virtual void destroy() = 0;
     
     // Service identification
     virtual const std::string_view get_service_name() const = 0;
@@ -123,6 +125,7 @@ public:
     virtual bool prepare() override { return load_config(); }
     virtual void run() override = 0;
     virtual void stop() override = 0;
+    void destroy() override { Singleton<Derived>::destroy_instance(); }
 
     // Get the service name
     const std::string_view get_service_name() const override { return service_name_; }

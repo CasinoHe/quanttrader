@@ -3,7 +3,6 @@
 #include "boost/program_options.hpp"
 #include "service/service_factory.h"
 #include "service/service.h"
-#include "service/stock_service/stock_trade_service.h"
 
 #ifdef QUANTTRADER_BUILD_TEST
 #include "test/test_base.h"
@@ -90,7 +89,7 @@ int run_strategy_command(const std::string &config_path) {
         // Service::run() contains the main execution loop for backtesting or live trading
         service->run();
         service->stop();
-        quanttrader::service::StockTradeService::destroy();
+        service->destroy();
         qlog::QuantLogger::deinitialize();
         return EXIT_SUCCESS;
     }

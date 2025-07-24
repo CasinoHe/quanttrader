@@ -34,7 +34,6 @@ public:
     void run() override;
     void stop() override;
     bool is_service_prepared() const override;
-    static void destroy();
 
 private:
     friend class Singleton<StockTradeService>;
