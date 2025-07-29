@@ -30,3 +30,6 @@ produces a shared library that can be placed in the directory configured by
 `strategy_lib_path`. The sample project under `server/strategy/slope_strategy`
 can be built separately using CMake and the resulting library copied to the
 server before running.
+
+## Archive
+I found Lean framework(https://github.com/QuantConnect/Lean) would satisfied my requirement, and well maintained, so I archive this project.
